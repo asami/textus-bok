@@ -1,8 +1,7 @@
 package org.simplemodeling.textus.bok
 
-import io.circe.parser.parse
 import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentOrigin}
-import org.goldenport.cncf.mcp.{McpJsonRpcAdapter, McpToolCatalog}
+import org.goldenport.cncf.mcp.{McpJsonRpcAdapter, McpProtocolRevision, McpToolCatalog}
 import org.goldenport.cncf.subsystem.DefaultSubsystemFactory
 import org.goldenport.configuration.{Configuration, ConfigurationValue}
 import org.scalatest.GivenWhenThen
@@ -90,17 +89,20 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       val adapter = new McpJsonRpcAdapter(subsystem)
 
       When("the configured catalog is listed and source replacement is called")
-      val listed = parse(adapter.handle(
-        """{"jsonrpc":"2.0","id":"policy-list","method":"tools/list","params":{}}"""
-      )).fold(error => fail(s"response is not valid JSON: ${error.getMessage}"), identity)
+      val listed = adapter.handle(
+        """{"jsonrpc":"2.0","id":"policy-list","method":"tools/list","params":{}}""",
+        Some(McpProtocolRevision.PREFERRED.print)
+      ).responseBody.getOrElse(fail("MCP list outcome has no JSON response body"))
       val narrowednames = listed.hcursor.downField("result").downField("tools").focus
         .flatMap(_.asArray)
         .getOrElse(Vector.empty)
         .flatMap(_.hcursor.get[String]("name").toOption)
+        .filterNot(_.startsWith("tool."))
         .toSet
-      val called = parse(adapter.handle(
-        """{"jsonrpc":"2.0","id":"mutation-call","method":"tools/call","params":{"name":"Bok.BokRetrieval.replaceKnowledgeSource","arguments":{}}}"""
-      )).fold(error => fail(s"response is not valid JSON: ${error.getMessage}"), identity)
+      val called = adapter.handle(
+        """{"jsonrpc":"2.0","id":"mutation-call","method":"tools/call","params":{"name":"Bok.BokRetrieval.replaceKnowledgeSource","arguments":{}}}""",
+        Some(McpProtocolRevision.PREFERRED.print)
+      ).responseBody.getOrElse(fail("MCP call outcome has no JSON response body"))
 
       Then("configuration removes declared reads but cannot add source mutation")
       narrowednames shouldBe Set(
