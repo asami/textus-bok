@@ -26,6 +26,6 @@ guidance belongs to Textus CBD Support.
 
 ## Current Priority
 
-Phase 1 establishes the independent Cozy CAR baseline. The next development
-boundary is the BoK-owned terminology, component-existence, evidence, source,
-request, and response model.
+Phase 2 is active. The BoK-owned terminology, component-existence, evidence,
+source, request, and response model is defined first; CNCF resource DSL source
+normalization follows before any SIE publication or MCP exposure.

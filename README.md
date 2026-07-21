@@ -27,3 +27,6 @@ Generated Scala sources are written under `target/scala-3.3.8/src_managed/main/s
 - [Development strategy](docs/strategy/textus-bok-development-strategy.md)
 - [Phase 1](docs/phase/phase-1.md)
 - [Phase 1 checklist](docs/phase/phase-1-checklist.md)
+- [BoK domain model contract](docs/spec/bok-domain-model.md)
+- [Phase 2](docs/phase/phase-2.md)
+- [Phase 2 checklist](docs/phase/phase-2-checklist.md)

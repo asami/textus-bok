@@ -8,7 +8,7 @@ org.simplemodeling.textus.bok
 
 ### DESCRIPTION
 
-Bok CAR bundle root.
+BoK terminology and CAR/SAR existence knowledge component.
 
 ### COMPONENTLET
 
@@ -25,7 +25,7 @@ Bok CAR bundle root.
 
 ### DESCRIPTION
 
-Public BokRetrieval participant.
+Public read boundary for typed BoK knowledge.
 
 # COMPONENTLET
 
@@ -36,7 +36,7 @@ Public BokRetrieval participant.
 
 ### DESCRIPTION
 
-Administrative BokRetrieval participant.
+Administrative boundary for replacing one source-owned BoK dataset.
 
 # SERVICE
 
@@ -44,7 +44,8 @@ Administrative BokRetrieval participant.
 
 ### DESCRIPTION
 
-Operations for BokRetrieval.
+Typed operations for BoK terminology and CAR/SAR existence knowledge. Detailed
+component usage and compatibility guidance remains owned by textus-cbd-support.
 
 ### OPERATION
 
@@ -57,18 +58,18 @@ COMMAND
 ##### INPUT
 
 ###### TYPE
-ReplaceKnowledgeSource
+
+ReplaceKnowledgeSourceRequest
 
 ##### OUTPUT
 
 ###### TYPE
-ReplaceKnowledgeSourceResult
 
-##### IMPLEMENTATION
-entity-create
+ReplaceKnowledgeSourceResponse
 
-##### ENTITY
-BokTerm
+##### DESCRIPTION
+
+Replace one source-owned BoK dataset. This administration operation is not MCP Ready.
 
 #### searchTerms
 
@@ -79,85 +80,513 @@ QUERY
 ##### INPUT
 
 ###### TYPE
-SearchTerms
+
+SearchTermsRequest
 
 ##### OUTPUT
 
 ###### TYPE
-SearchTermsResult
 
-##### IMPLEMENTATION
-entity-search
+SearchTermsResponse
 
-##### ENTITY
-BokTerm
+##### DESCRIPTION
 
-# ENTITY
+Search curated BoK terminology with attributable evidence.
 
-## BokTerm
+#### explainTerm
 
-### Attribute
+##### TYPE
 
-| name        | type     | multiplicity |
-|-------------+----------+--------------|
-| id          | entityid | 1            |
-| name        | name     | 1            |
-| description | BokTermDescription | ?            |
+QUERY
 
-# VALUE
+##### INPUT
 
-## ReplaceKnowledgeSource
+###### TYPE
 
-- input-kind :: COMMAND
+ExplainTermRequest
 
-### Attribute
+##### OUTPUT
 
-| name        | type   | multiplicity |
-|-------------+--------+--------------|
-| name        | name   | 1            |
-| description | BokTermDescription | ?            |
+###### TYPE
 
-## SearchTerms
+ExplainTermResponse
 
-- input-kind :: QUERY
+##### DESCRIPTION
 
-### Attribute
+Return one curated BoK term or an explicit no-match state.
 
-| name   | type   | multiplicity |
-|--------+--------+--------------|
-| text   | BokTermSearchText | ?            |
-| offset | int    | ?            |
-| limit  | int    | ?            |
+#### searchComponentReferences
 
-## BokTermDescription
+##### TYPE
 
-### Attribute
+QUERY
 
-| name  | type   | multiplicity |
-|-------+--------+--------------|
-| value | string | 1            |
+##### INPUT
+
+###### TYPE
+
+ComponentReferenceSearchRequest
+
+##### OUTPUT
+
+###### TYPE
+
+ComponentReferenceSearchResponse
+
+##### DESCRIPTION
+
+Search existence-only CAR and SAR references suitable for CBD handoff.
+
+#### getComponentReference
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+
+ComponentReferenceLookupRequest
+
+##### OUTPUT
+
+###### TYPE
+
+ComponentReferenceLookupResponse
+
+##### DESCRIPTION
+
+Return one exact existence-only CAR or SAR reference.
+
+# DATATYPE
+
+## BokTermId
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokTermTitle
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokTermDefinition
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokTermCategory
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokTermType
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
 
 ## BokTermSearchText
 
-### Attribute
+### ATTRIBUTE
 
-| name  | type   | multiplicity |
-|-------+--------+--------------|
-| value | string | 1            |
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
 
-## ReplaceKnowledgeSourceResult
+## BokDatasetId
 
-### Attribute
+### ATTRIBUTE
 
-| name | type     | multiplicity |
-|------+----------+--------------|
-| id   | entityid | 1            |
-| name | name     | 1            |
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
 
-## SearchTermsResult
+## BokSourceId
 
-### Attribute
+### ATTRIBUTE
 
-| name  | type                   | multiplicity |
-|-------+------------------------+--------------|
-| items | BokTerm | *            |
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokSourceVersion
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokSourceGeneration
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokResourceReference
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokEvidenceUri
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokObservedAt
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokFreshness
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokMatchKind
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokMatchRationale
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokQueryStatus
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokWarning
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentSourceId
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentCatalogId
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentOrganization
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentName
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentTitle
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentKind
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentVersion
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## ComponentSearchText
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+# COMMAND
+
+## ReplaceKnowledgeSourceRequest
+
+- input-kind :: COMMAND
+
+### DESCRIPTION
+
+Input command identifying one logical BoK source generation.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| source | BokKnowledgeSource | 1 |
+
+# QUERY
+
+## SearchTermsRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| query | BokTermSearchText | 1 |
+| category | BokTermCategory | ? |
+| limit | int | ? |
+
+## ExplainTermRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| term | BokTermSearchText | 1 |
+
+## ComponentReferenceSearchRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| query | ComponentSearchText | 1 |
+| kind | ComponentKind | ? |
+| limit | int | ? |
+
+## ComponentReferenceLookupRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| name | ComponentName | 1 |
+| version | ComponentVersion | ? |
+| kind | ComponentKind | ? |
+
+# VALUE
+
+## BokKnowledgeSource
+
+### DESCRIPTION
+
+Logical BoK source descriptor consumed later through the CNCF resource DSL.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| sourceId | BokSourceId | 1 |
+| datasetId | BokDatasetId | 1 |
+| generation | BokSourceGeneration | 1 |
+| resource | BokResourceReference | 1 |
+
+## BokEvidence
+
+### DESCRIPTION
+
+Attributable evidence retained with a BoK term or component existence record.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| uri | BokEvidenceUri | 1 |
+| sourceId | BokSourceId | 1 |
+| sourceVersion | BokSourceVersion | ? |
+| observedAt | BokObservedAt | ? |
+| freshness | BokFreshness | ? |
+
+## BokTerm
+
+### DESCRIPTION
+
+Curated term owned by the BoK domain.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| termId | BokTermId | 1 |
+| title | BokTermTitle | 1 |
+| definition | BokTermDefinition | 1 |
+| category | BokTermCategory | ? |
+| termType | BokTermType | 1 |
+| datasetId | BokDatasetId | 1 |
+| evidence | BokEvidence | 1 |
+
+## BokTermMatch
+
+### DESCRIPTION
+
+One evidence-bearing terminology match.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| term | BokTerm | 1 |
+| matchKind | BokMatchKind | 1 |
+| score | double | 1 |
+| rationale | BokMatchRationale | 1 |
+
+## ComponentReference
+
+### DESCRIPTION
+
+Stable proof that one CAR or SAR exists. Usage, dependency, operation, and
+runtime compatibility detail is intentionally excluded.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| sourceId | ComponentSourceId | ? |
+| catalogId | ComponentCatalogId | ? |
+| organization | ComponentOrganization | ? |
+| name | ComponentName | 1 |
+| title | ComponentTitle | 1 |
+| kind | ComponentKind | 1 |
+| version | ComponentVersion | ? |
+| evidence | BokEvidence | 1 |
+
+## ComponentReferenceMatch
+
+### DESCRIPTION
+
+Search evidence associated with one existence-only component reference.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| reference | ComponentReference | 1 |
+| matchKind | BokMatchKind | 1 |
+| score | double | 1 |
+| rationale | BokMatchRationale | 1 |
+
+## ReplaceKnowledgeSourceResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| sourceId | BokSourceId | 1 |
+| datasetId | BokDatasetId | 1 |
+| generation | BokSourceGeneration | 1 |
+| termCount | int | 1 |
+| componentCount | int | 1 |
+| warnings | BokWarning | * |
+
+## SearchTermsResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| query | BokTermSearchText | 1 |
+| results | BokTermMatch | * |
+| warnings | BokWarning | * |
+
+## ExplainTermResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| query | BokTermSearchText | 1 |
+| result | BokTermMatch | ? |
+| warnings | BokWarning | * |
+
+## ComponentReferenceSearchResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| query | ComponentSearchText | 1 |
+| results | ComponentReferenceMatch | * |
+| warnings | BokWarning | * |
+
+## ComponentReferenceLookupResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| reference | ComponentReference | ? |
+| warnings | BokWarning | * |
