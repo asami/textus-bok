@@ -25,10 +25,10 @@ embedding provider, the host filesystem, or the network.
 | Operation | Kind | Purpose | MCP policy |
 |---|---|---|---|
 | `replaceKnowledgeSource` | command | Replace one complete source-owned generation | never ready |
-| `searchTerms` | query | Search typed terminology | not ready until Phase 6 migration |
-| `explainTerm` | query | Resolve one exact term and reliability state | not ready until Phase 6 migration |
-| `searchComponentReferences` | query | Search existence-only CAR/SAR references | not ready until Phase 6 migration |
-| `getComponentReference` | query | Resolve one exact CAR/SAR identity | not ready until Phase 6 migration |
+| `searchTerms` | query | Search typed terminology | ready |
+| `explainTerm` | query | Resolve one exact term and reliability state | ready |
+| `searchComponentReferences` | query | Search existence-only CAR/SAR references | not ready yet |
+| `getComponentReference` | query | Resolve one exact CAR/SAR identity | not ready yet |
 
 CAR or SAR configuration may disable an MCP-ready operation but may never make
 `replaceKnowledgeSource` or another undeclared operation visible through MCP.

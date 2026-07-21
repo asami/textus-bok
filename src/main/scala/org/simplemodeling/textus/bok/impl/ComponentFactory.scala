@@ -186,8 +186,10 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
 }
 
 final class BokPrimaryComponent extends BokComponent {
-  override def mcpReadyServices: Set[String] =
-    Set.empty
+  override def mcpReadyOperations: Set[String] = Set(
+    "BokRetrieval.searchTerms",
+    "BokRetrieval.explainTerm"
+  )
 }
 
 object BokPrimaryFactory extends BokParticipantFactoryBase with Component.PrimaryComponentFactory {

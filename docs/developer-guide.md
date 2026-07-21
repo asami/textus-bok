@@ -61,10 +61,12 @@ term or component reference.
 
 ## MCP Policy
 
-MCP publication is default-deny. P6-30 and P6-31 may make only the four read
-queries ready. `replaceKnowledgeSource` and future mutation or administration
-operations must remain non-ready at both service and operation policy levels.
-CAR/SAR configuration may only disable declared tools.
+MCP publication is default-deny. The component currently marks only
+`BokRetrieval.searchTerms` and `BokRetrieval.explainTerm` ready at operation
+level. The component-reference reads remain private until P6-31.
+`replaceKnowledgeSource` and future mutation or administration operations must
+remain non-ready at both service and operation policy levels. CAR/SAR
+configuration may only disable declared tools.
 
 ## CBD Handoff
 

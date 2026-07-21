@@ -99,8 +99,8 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
       referencemethods.keySet.intersect(cbdfields) shouldBe empty
     }
 
-    "keep all operations outside MCP until the migration phase" in {
-      Given("the Phase 2 primary component")
+    "publish only terminology reads in the first MCP migration slice" in {
+      Given("the Phase 4 primary component")
       val component = new impl.BokPrimaryComponent()
       val operations = Vector(
         "replaceKnowledgeSource",
@@ -113,8 +113,14 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
       When("the component MCP policy is evaluated")
       val readiness = operations.map(operation => operation -> component.isMcpReady("BokRetrieval", operation))
 
-      Then("model publication does not prematurely expose tools or mutation")
-      readiness.toMap.values.toSet shouldBe Set(false)
+      Then("term search and explanation are ready while mutation and component references remain private")
+      readiness.toMap shouldBe Map(
+        "replaceKnowledgeSource" -> false,
+        "searchTerms" -> true,
+        "explainTerm" -> true,
+        "searchComponentReferences" -> false,
+        "getComponentReference" -> false
+      )
     }
   }
 }

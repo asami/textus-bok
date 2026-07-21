@@ -29,9 +29,9 @@ development compile coordinate are declared separately in `project.yaml`.
 
 Typed matching remains inside Textus BoK. Exact knowledge is distinct from
 provider-backed candidates, and complete source generations remove stale
-records only after SIE confirms publication. The current baseline keeps all
-operations outside MCP; the planned migration publishes only the four read
-queries and permanently excludes source replacement.
+records only after SIE confirms publication. MCP currently publishes typed
+`searchTerms` and `explainTerm` tools. Component-reference reads remain private
+until their migration slice, and source replacement is permanently excluded.
 
 ## Documentation
 
@@ -43,6 +43,8 @@ queries and permanently excludes source replacement.
 - [Phase 2 checklist](docs/phase/phase-2-checklist.md)
 - [Phase 3](docs/phase/phase-3.md)
 - [Phase 3 checklist](docs/phase/phase-3-checklist.md)
+- [Phase 4](docs/phase/phase-4.md)
+- [Phase 4 checklist](docs/phase/phase-4-checklist.md)
 - [Developer guide](docs/developer-guide.md)
 - [Packaged reference manual](src/main/car/manual/index.md)
 - [Packaged operator guide](src/main/car/manual/user-guide.md)

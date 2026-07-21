@@ -114,13 +114,16 @@ cncf command Bok.BokRetrieval.getComponentReference \
 
 ## MCP Use
 
-The current baseline intentionally publishes no Textus BoK MCP tools. Phase 6
-items P6-30 and P6-31 must complete before the four read operations appear in
-`/mcp` discovery. `replaceKnowledgeSource` remains absent permanently.
+The current component publishes two terminology tools:
 
-After migration, use the runtime's MCP `tools/list` result as the authoritative
-tool names and schemas. A CAR/SAR deployment may narrow that list. It cannot
-broaden it to administration operations.
+- `Bok.BokRetrieval.searchTerms`;
+- `Bok.BokRetrieval.explainTerm`.
+
+Use the runtime's MCP `tools/list` result as the authoritative names and input
+schemas. `searchComponentReferences` and `getComponentReference` remain private
+until the next migration slice. `replaceKnowledgeSource` remains absent
+permanently. A CAR/SAR deployment may narrow the tool list but cannot broaden
+it to private or administration operations.
 
 ## CBD Handoff
 
