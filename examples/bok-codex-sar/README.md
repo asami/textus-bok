@@ -22,6 +22,23 @@ Runtime state and logs are kept under
 The server process is registered as the user launchd job
 `${TEXTUS_BOK_CODEX_LAUNCH_LABEL:-org.textus.bok-codex-sar}`, so it remains
 available after the starting shell exits and is removed by `stop`.
+Cold multi-CAR loading may take several minutes; the default startup timeout is
+900 seconds and can be overridden with `TEXTUS_BOK_CODEX_STARTUP_TIMEOUT_SECONDS`.
+
+The default provider mode is external-service-free: RDF and Vector DB both use
+`in-memory`. Provider-backed verification may set `TEXTUS_SIE_RDF_DB=fuseki`
+and `TEXTUS_SIE_VECTOR_DB=chroma` together with the existing Fuseki, Chroma,
+provider timeout, and embedding environment settings. The runner forwards those
+settings through launchd and explicit CNCF configuration arguments; provider
+lifecycle remains owned by the caller.
+Only a SHA-256 configuration fingerprint is persisted in runtime state; endpoint
+values are not copied into the state file.
+
+Verify both the in-memory defaults and provider override propagation with:
+
+```sh
+scripts/check-bok-codex-provider-config.sh
+```
 
 The corresponding global Codex configuration is
 [`codex-config.toml`](codex-config.toml). It allows only the four BoK-owned read

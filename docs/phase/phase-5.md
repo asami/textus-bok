@@ -32,3 +32,22 @@ the existing SIE endpoint and the four BoK-owned reads on the new endpoint.
 This proves the first consumer migration boundary. CBD Support integration,
 the `cncf-bok-*` skills, and the complete existence-to-detail workflow remain
 open in this phase.
+
+Provider-configurable SAR boundary implemented on 2026-07-21 JST:
+
+- The operational runner retains in-memory RDF and Vector defaults but now
+  forwards the established SIE Fuseki, Chroma, provider timeout, and embedding
+  settings through launchd and explicit CNCF arguments.
+- This removes the configuration blocker for moving KS-14 provider-backed
+  smoke to the BoK-owned SAR. The provider-backed lifecycle itself remains open
+  until that smoke runs against current artifacts.
+- `scripts/check-bok-codex-provider-config.sh` verifies the in-memory defaults
+  and captures Fuseki, Chroma, endpoint, and embedding overrides at the CNCF
+  process boundary without starting external providers.
+- A live restart on the standard `18005` endpoint wrote the requested provider
+  fingerprint; a same-configuration start reused the running SAR, while an
+  unknown or different fingerprint was rejected without stopping it.
+- Subsequent cold discovery exceeded both 240-second and 360-second bounds
+  without a component failure. The operational bound is temporarily 900
+  seconds so initialization can finish; discovery latency remains an explicit
+  runtime-hardening concern rather than being hidden by repeated restarts.

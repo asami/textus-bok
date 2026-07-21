@@ -10,12 +10,25 @@ CNCF_BIN="${CNCF_BIN:-$(command -v cncf || true)}"
 CNCF_VERSION="${CNCF_VERSION:-0.5.1-SNAPSHOT}"
 CNCF_SERVER_PORT="${CNCF_SERVER_PORT:-18005}"
 CNCF_HTTP_BASEURL="${CNCF_HTTP_BASEURL:-http://127.0.0.1:$CNCF_SERVER_PORT}"
-STARTUP_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_STARTUP_TIMEOUT_SECONDS:-240}"
+TEXTUS_SIE_RDF_DB="${TEXTUS_SIE_RDF_DB:-in-memory}"
+TEXTUS_SIE_VECTOR_DB="${TEXTUS_SIE_VECTOR_DB:-in-memory}"
+TEXTUS_SIE_FUSEKI_ENDPOINT="${TEXTUS_SIE_FUSEKI_ENDPOINT:-http://127.0.0.1:9030}"
+TEXTUS_SIE_FUSEKI_DATASET="${TEXTUS_SIE_FUSEKI_DATASET:-ds}"
+TEXTUS_SIE_CHROMA_ENDPOINT="${TEXTUS_SIE_CHROMA_ENDPOINT:-http://127.0.0.1:8081}"
+TEXTUS_SIE_CHROMA_COLLECTION="${TEXTUS_SIE_CHROMA_COLLECTION:-simplemodeling}"
+TEXTUS_SIE_PROVIDER_TIMEOUT_SECONDS="${TEXTUS_SIE_PROVIDER_TIMEOUT_SECONDS:-10}"
+TEXTUS_SIE_EMBEDDING_PROTOCOL_VERSION="${TEXTUS_SIE_EMBEDDING_PROTOCOL_VERSION:-textus.sie.embedding.v1}"
+TEXTUS_SIE_EMBEDDING_MODEL="${TEXTUS_SIE_EMBEDDING_MODEL:-deterministic-sha256-v1}"
+TEXTUS_SIE_EMBEDDING_DIMENSIONS="${TEXTUS_SIE_EMBEDDING_DIMENSIONS:-128}"
+TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE="${TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE:-128}"
+TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS="${TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS:-30}"
+STARTUP_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_STARTUP_TIMEOUT_SECONDS:-900}"
 SHUTDOWN_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_SHUTDOWN_TIMEOUT_SECONDS:-30}"
 RUN_DIR="${TEXTUS_BOK_CODEX_RUN_DIR:-$HOME/.cncf/textus-bok-codex}"
 LAUNCH_LABEL="${TEXTUS_BOK_CODEX_LAUNCH_LABEL:-org.textus.bok-codex-sar}"
 PID_FILE="$RUN_DIR/server.pid"
 READY_FILE="$RUN_DIR/ready"
+CONFIG_FILE="$RUN_DIR/config"
 SERVER_LOG="$RUN_DIR/server.log"
 COMPONENT_DIR="$RUN_DIR/component.d"
 SAR_ROOT="$RUN_DIR/textus-bok-codex.sar.d"
@@ -42,6 +55,27 @@ _is_running() {
   launchctl print "gui/$(id -u)/$LAUNCH_LABEL" >/dev/null 2>&1
 }
 
+_requested_config() {
+  printf '%s\n' \
+    "rdf-db=$TEXTUS_SIE_RDF_DB" \
+    "vector-db=$TEXTUS_SIE_VECTOR_DB" \
+    "fuseki-endpoint=$TEXTUS_SIE_FUSEKI_ENDPOINT" \
+    "fuseki-dataset=$TEXTUS_SIE_FUSEKI_DATASET" \
+    "chroma-endpoint=$TEXTUS_SIE_CHROMA_ENDPOINT" \
+    "chroma-collection=$TEXTUS_SIE_CHROMA_COLLECTION" \
+    "provider-timeout-seconds=$TEXTUS_SIE_PROVIDER_TIMEOUT_SECONDS" \
+    "embedding-protocol-version=$TEXTUS_SIE_EMBEDDING_PROTOCOL_VERSION" \
+    "embedding-model=$TEXTUS_SIE_EMBEDDING_MODEL" \
+    "embedding-dimensions=$TEXTUS_SIE_EMBEDDING_DIMENSIONS" \
+    "embedding-request-batch-size=$TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE" \
+    "embedding-timeout-seconds=$TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS" \
+    "fixture-root=$FIXTURE_ROOT"
+}
+
+_requested_config_fingerprint() {
+  _requested_config | LC_ALL=C shasum -a 256 | awk '{print $1}'
+}
+
 _build_cars() {
   (cd "$SCRAPER_ROOT" && sbt --batch cozyBuildCAR)
   (cd "$SIE_ROOT" && sbt --batch cozyBuildCAR)
@@ -50,15 +84,20 @@ _build_cars() {
 
 _cleanup_failed_start() {
   launchctl remove "$LAUNCH_LABEL" >/dev/null 2>&1 || true
-  rm -f "$READY_FILE" "$PID_FILE"
+  rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE"
 }
 
 _start() {
   mkdir -p "$RUN_DIR"
   if _is_running; then
     if curl -fsS "$CNCF_HTTP_BASEURL/openapi.json" >/dev/null 2>&1; then
-      echo "Textus BoK Codex SAR is already running at $CNCF_HTTP_BASEURL."
-      return 0
+      if [[ -s "$CONFIG_FILE" ]] && [[ "$(cat "$CONFIG_FILE")" == "$(_requested_config_fingerprint)" ]]; then
+        echo "Textus BoK Codex SAR is already running at $CNCF_HTTP_BASEURL."
+        return 0
+      fi
+      echo "Textus BoK Codex SAR is running with different or unknown provider configuration." >&2
+      echo "Use restart to apply the requested configuration." >&2
+      return 1
     fi
     launchctl remove "$LAUNCH_LABEL" >/dev/null 2>&1 || true
   fi
@@ -66,7 +105,7 @@ _start() {
     _build_cars
   fi
   : >"$SERVER_LOG"
-  rm -f "$READY_FILE" "$PID_FILE"
+  rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE"
   launchctl remove "$LAUNCH_LABEL" >/dev/null 2>&1 || true
   local launch_command=(
     /usr/bin/env
@@ -76,6 +115,18 @@ _start() {
     "CNCF_VERSION=$CNCF_VERSION"
     "CNCF_SERVER_PORT=$CNCF_SERVER_PORT"
     "CNCF_HTTP_BASEURL=$CNCF_HTTP_BASEURL"
+    "TEXTUS_SIE_RDF_DB=$TEXTUS_SIE_RDF_DB"
+    "TEXTUS_SIE_VECTOR_DB=$TEXTUS_SIE_VECTOR_DB"
+    "TEXTUS_SIE_FUSEKI_ENDPOINT=$TEXTUS_SIE_FUSEKI_ENDPOINT"
+    "TEXTUS_SIE_FUSEKI_DATASET=$TEXTUS_SIE_FUSEKI_DATASET"
+    "TEXTUS_SIE_CHROMA_ENDPOINT=$TEXTUS_SIE_CHROMA_ENDPOINT"
+    "TEXTUS_SIE_CHROMA_COLLECTION=$TEXTUS_SIE_CHROMA_COLLECTION"
+    "TEXTUS_SIE_PROVIDER_TIMEOUT_SECONDS=$TEXTUS_SIE_PROVIDER_TIMEOUT_SECONDS"
+    "TEXTUS_SIE_EMBEDDING_PROTOCOL_VERSION=$TEXTUS_SIE_EMBEDDING_PROTOCOL_VERSION"
+    "TEXTUS_SIE_EMBEDDING_MODEL=$TEXTUS_SIE_EMBEDDING_MODEL"
+    "TEXTUS_SIE_EMBEDDING_DIMENSIONS=$TEXTUS_SIE_EMBEDDING_DIMENSIONS"
+    "TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE=$TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE"
+    "TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS=$TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS"
     "TEXTUS_SIE_ROOT=$SIE_ROOT"
     "TEXTUS_SCRAPER_ROOT=$SCRAPER_ROOT"
     "TEXTUS_BOK_CODEX_RUN_DIR=$RUN_DIR"
@@ -121,7 +172,7 @@ _serve() {
       kill "$SERVER_PID" >/dev/null 2>&1 || true
       wait "$SERVER_PID" >/dev/null 2>&1 || true
     fi
-    rm -f "$READY_FILE" "$PID_FILE"
+    rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE"
   }
   trap _cleanup_serve EXIT INT TERM
 
@@ -146,13 +197,25 @@ _serve() {
   env \
     CNCF_SERVER_PORT="$CNCF_SERVER_PORT" \
     CNCF_HTTP_BASEURL="$CNCF_HTTP_BASEURL" \
-    TEXTUS_SIE_RDF_DB="in-memory" \
-    TEXTUS_SIE_VECTOR_DB="in-memory" \
-    JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dcncf.server.port=$CNCF_SERVER_PORT -Dcncf.http.baseurl=$CNCF_HTTP_BASEURL -Dtextus.sie.rdf-db=in-memory -Dtextus.sie.vector-db=in-memory" \
+    TEXTUS_SIE_RDF_DB="$TEXTUS_SIE_RDF_DB" \
+    TEXTUS_SIE_VECTOR_DB="$TEXTUS_SIE_VECTOR_DB" \
+    JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dcncf.server.port=$CNCF_SERVER_PORT -Dcncf.http.baseurl=$CNCF_HTTP_BASEURL -Dtextus.sie.rdf-db=$TEXTUS_SIE_RDF_DB -Dtextus.sie.vector-db=$TEXTUS_SIE_VECTOR_DB" \
     "$CNCF_BIN" \
       "${CNCF_RUNTIME_ARGS[@]}" \
       "--textus.resource.url.file.roots=$FIXTURE_ROOT" \
       "--textus.subsystem=textus-bok-codex" \
+      "--textus.sie.rdf-db=$TEXTUS_SIE_RDF_DB" \
+      "--textus.sie.vector-db=$TEXTUS_SIE_VECTOR_DB" \
+      "--textus.sie.fuseki.endpoint=$TEXTUS_SIE_FUSEKI_ENDPOINT" \
+      "--textus.sie.fuseki.dataset=$TEXTUS_SIE_FUSEKI_DATASET" \
+      "--textus.sie.chroma.endpoint=$TEXTUS_SIE_CHROMA_ENDPOINT" \
+      "--textus.sie.chroma.collection=$TEXTUS_SIE_CHROMA_COLLECTION" \
+      "--textus.sie.provider.timeout-seconds=$TEXTUS_SIE_PROVIDER_TIMEOUT_SECONDS" \
+      "--textus.sie.embedding.protocol-version=$TEXTUS_SIE_EMBEDDING_PROTOCOL_VERSION" \
+      "--textus.sie.embedding.model=$TEXTUS_SIE_EMBEDDING_MODEL" \
+      "--textus.sie.embedding.dimensions=$TEXTUS_SIE_EMBEDDING_DIMENSIONS" \
+      "--textus.sie.embedding.request-batch-size=$TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE" \
+      "--textus.sie.embedding.timeout-seconds=$TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS" \
       server \
       --no-project-classpath \
       --component-dir "$COMPONENT_DIR" &
@@ -167,13 +230,14 @@ _serve() {
   "$SCRIPT_DIR/probe-bok-codex-sar.py" \
     --base-url "$CNCF_HTTP_BASEURL" \
     --source-uri "$(cd "$FIXTURE_ROOT" && pwd -P | sed 's#^#file://#')/"
+  _requested_config_fingerprint >"$CONFIG_FILE"
   printf 'Textus BoK Codex SAR ready: %s/mcp\n' "$CNCF_HTTP_BASEURL" >"$READY_FILE"
   wait "$SERVER_PID"
 }
 
 _stop() {
   if ! _is_running; then
-    rm -f "$PID_FILE" "$READY_FILE"
+    rm -f "$PID_FILE" "$READY_FILE" "$CONFIG_FILE"
     echo "Textus BoK Codex SAR is not running."
     return 0
   fi
