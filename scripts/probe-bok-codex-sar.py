@@ -5,6 +5,7 @@ import json
 import urllib.request
 
 
+MCP_PROTOCOL_VERSION = "2025-11-25"
 BOK_TOOLS = {
     "Bok.BokRetrieval.searchTerms",
     "Bok.BokRetrieval.explainTerm",
@@ -21,10 +22,13 @@ LEGACY_SIE_BOK_TOOLS = {
 
 
 def _post_json(base_url: str, path: str, body: dict, timeout: float) -> dict:
+    headers = {"Content-Type": "application/json"}
+    if path == "/mcp":
+        headers["MCP-Protocol-Version"] = MCP_PROTOCOL_VERSION
     request = urllib.request.Request(
         f"{base_url}{path}",
         data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=headers,
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.load(response)
@@ -71,9 +75,13 @@ def _run(
         {"jsonrpc": "2.0", "id": "list", "method": "tools/list", "params": {}},
         timeout,
     )
+    _require("error" not in listed, f"MCP tools/list failed: {listed}")
     tools = listed.get("result", {}).get("tools", [])
     names = {tool.get("name") for tool in tools}
-    _require(BOK_TOOLS <= names, f"BoK tools are missing: {sorted(BOK_TOOLS - names)}")
+    _require(
+        BOK_TOOLS <= names,
+        f"BoK tools are missing: {sorted(BOK_TOOLS - names)}; published: {sorted(names)}",
+    )
     _require(
         not (LEGACY_SIE_BOK_TOOLS & names),
         f"Legacy SIE BoK tools remain visible: {sorted(LEGACY_SIE_BOK_TOOLS & names)}",

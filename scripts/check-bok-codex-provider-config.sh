@@ -69,6 +69,18 @@ done
 run_capture defaults
 require_arg "$RUNTIME_DIR/defaults.args" "--textus.sie.rdf-db=in-memory"
 require_arg "$RUNTIME_DIR/defaults.args" "--textus.sie.vector-db=in-memory"
+require_arg "$RUNTIME_DIR/defaults.args" "--textus.subsystem=textus-bok-codex"
+require_arg "$RUNTIME_DIR/defaults.args" "--component-dir"
+require_arg "$RUNTIME_DIR/defaults.args" "$RUNTIME_DIR/defaults/component.d"
+for entry in \
+  component/textus-semantic-integration-engine-0.2.0-SNAPSHOT.car \
+  component/textus-bok-0.1.0-SNAPSHOT.car \
+  component/textus-scraper-0.1.1-SNAPSHOT.car; do
+  unzip -Z1 "$RUNTIME_DIR/defaults/component.d/textus-bok-codex.sar" | rg -F -x -- "$entry" >/dev/null || {
+    echo "Expected embedded CAR is missing from the BoK Codex SAR: $entry" >&2
+    exit 1
+  }
+done
 
 run_capture provider \
   TEXTUS_SIE_RDF_DB=fuseki \

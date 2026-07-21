@@ -225,10 +225,11 @@ _serve() {
   fi
 
   rm -rf "$COMPONENT_DIR" "$SAR_ROOT"
-  mkdir -p "$COMPONENT_DIR" "$SAR_ROOT"
+  mkdir -p "$COMPONENT_DIR" "$SAR_ROOT/component"
   cp "$SIE_CAR" "$BOK_CAR" "$SCRAPER_CAR" "$COMPONENT_DIR/"
+  cp "$SIE_CAR" "$BOK_CAR" "$SCRAPER_CAR" "$SAR_ROOT/component/"
   cp "$SAR_DESCRIPTOR" "$SAR_ROOT/subsystem-descriptor.yaml"
-  (cd "$SAR_ROOT" && zip -qr "$SAR_FILE" subsystem-descriptor.yaml)
+  (cd "$SAR_ROOT" && zip -qr "$SAR_FILE" subsystem-descriptor.yaml component)
 
   env \
     CNCF_SERVER_PORT="$CNCF_SERVER_PORT" \
@@ -239,8 +240,7 @@ _serve() {
     "$CNCF_BIN" \
       "${CNCF_RUNTIME_ARGS[@]}" \
       "--textus.resource.url.file.roots=$FIXTURE_ROOT" \
-      "--textus.subsystem.file=$SAR_FILE" \
-      "--textus.repository.dir=component-dir:$COMPONENT_DIR" \
+      "--textus.subsystem=textus-bok-codex" \
       "--textus.sie.rdf-db=$TEXTUS_SIE_RDF_DB" \
       "--textus.sie.vector-db=$TEXTUS_SIE_VECTOR_DB" \
       "--textus.sie.fuseki.endpoint=$TEXTUS_SIE_FUSEKI_ENDPOINT" \
@@ -255,7 +255,7 @@ _serve() {
       "--textus.sie.embedding.timeout-seconds=$TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS" \
       server \
       --no-project-classpath \
-      --no-default-components &
+      --component-dir "$COMPONENT_DIR" &
   SERVER_PID=$!
 
   local deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))

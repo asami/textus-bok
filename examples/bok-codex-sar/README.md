@@ -2,8 +2,8 @@
 
 This operational SAR provides BoK-owned terminology and component-existence
 knowledge to Codex. It composes Textus BoK with SIE's provider-neutral component
-API and Textus Scraper. The old SIE BoK MCP operations are disabled by the SAR;
-SIE's generic retrieval tools remain independent.
+API and Textus Scraper. The current SIE CAR no longer declares BoK operations;
+its generic retrieval tools remain independent.
 
 Manage the local server from the Textus BoK project root:
 
@@ -19,10 +19,12 @@ CARs, assembles the SAR, starts CNCF `0.5.1-SNAPSHOT`, replaces the canonical
 metadata-only fixture through Textus BoK, and verifies a live terminology read.
 Runtime state and logs are kept under
 `${TEXTUS_BOK_CODEX_RUN_DIR:-$HOME/.cncf/textus-bok-codex}`.
-The runner places all three current CARs in its owned component directory,
-disables CNCF default component repositories, and selects its generated SAR by
-explicit file path. This prevents a same-version SNAPSHOT in
-`~/.cncf/local/repository` from shadowing the CARs built for the current run.
+The runner embeds all three current CARs in the generated SAR and also places
+them in its owned component directory. It disables the project classpath and
+selects `textus-bok-codex` by subsystem name from that directory. This keeps
+shared component API resolution self-contained and prevents a same-version
+SNAPSHOT in `~/.cncf/local/repository` from shadowing the CARs built for the
+current run.
 The server process is registered as the user launchd job
 `${TEXTUS_BOK_CODEX_LAUNCH_LABEL:-org.textus.bok-codex-sar}`, so it remains
 available after the starting shell exits and is removed by `stop`.
