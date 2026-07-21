@@ -23,10 +23,9 @@ or usage guidance; those details belong to `textus-cbd-support`.
 ## Source And Evidence
 
 `BokKnowledgeSource` identifies one logical resource and generation owned by a
-dataset. The resource value is interpreted only through the CNCF resource DSL
-in the next implementation step. `BokEvidence` attributes a result to its
-logical source and URI and may record source version, observed time, and
-freshness.
+dataset. `BokSourceReader` interprets the resource value only through the CNCF
+resource DSL. `BokEvidence` attributes a result to its logical source and URI
+and may record source version, observed time, and freshness.
 
 ## Requests And Responses
 
@@ -37,6 +36,21 @@ warnings. The operation declarations are not MCP Ready in this phase.
 
 ## Exclusions
 
-This model contract does not implement source reading, SIE dataset publication,
-matching behavior, MCP publication, or CBD detail resolution. It exposes no
-Fuseki, Chroma, embedding, filesystem, or network type.
+This contract does not implement SIE dataset publication, matching behavior,
+MCP publication, or CBD detail resolution. It exposes no Fuseki, Chroma,
+embedding, filesystem, or network type.
+
+## Resource Normalization
+
+`BokSourceReader` resolves `metadata/cncf/knowledge-source.json` from the
+logical `BokKnowledgeSource.resource` root and reads every child exclusively
+through `ExecutionContext.resources`. The v1 manifest recognizes structured
+`glossary-terms` and CNCF `component-repository-index` resources. Child hrefs
+must be safe relative paths.
+
+Glossary metadata becomes typed `BokTerm` values. The CNCF repository codec
+validates `repository/catalog/index.json`, and its CAR/SAR entries become
+existence-only `ComponentReference` values whose evidence identifies the
+canonical catalog resource. Results are sorted by stable identity and duplicate
+identities fail. No rendered page, CAR/SAR archive, host file, or direct network
+resource is opened by the normalizer.

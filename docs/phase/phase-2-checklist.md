@@ -8,8 +8,8 @@
   warning types are owned by `textus-bok`.
 - [x] Source replacement, terminology retrieval, and component-reference
   retrieval have typed request and response models.
-- [ ] Logical BoK resources are read exclusively through the CNCF resource DSL.
-- [ ] Metadata is normalized deterministically without rendered HTML scraping.
+- [x] Logical BoK resources are read exclusively through the CNCF resource DSL.
+- [x] Metadata is normalized deterministically without rendered HTML scraping.
 - [ ] Exact, candidate, ambiguity, conflict, insufficient-evidence, and no-match
   states have executable specifications.
 - [ ] Source replacement removes stale domain records deterministically.
