@@ -1,0 +1,18 @@
+{
+  "terms": [
+    {
+      "id": "architecture:component",
+      "slug": "component",
+      "title": "Component",
+      "definition_text": "A reusable software unit with an explicit contract.",
+      "summary": "Reusable software unit.",
+      "category": "architecture",
+      "aliases": ["Software Component"],
+      "term_type": "concept",
+      "term_refs": [],
+      "article_refs": [],
+      "rdf_refs": [],
+      "video_refs": []
+    }
+  ]
+}

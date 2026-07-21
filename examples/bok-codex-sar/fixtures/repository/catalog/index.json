@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "cncf.component-repository-index.v1",
+  "generatedAt": "2026-07-21T00:00:00Z",
+  "artifacts": [
+    {
+      "kind": "car",
+      "artifactId": "textus-semantic-integration-engine",
+      "catalog": "car/textus-semantic-integration-engine.yaml",
+      "status": "active",
+      "recommended": "0.2.0-SNAPSHOT"
+    }
+  ]
+}

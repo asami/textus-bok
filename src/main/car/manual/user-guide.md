@@ -126,6 +126,11 @@ schemas. `replaceKnowledgeSource` remains absent permanently. A CAR/SAR
 deployment may narrow the tool list but cannot broaden it to private or
 administration operations.
 
+For a local Codex endpoint, use the repository-owned
+`examples/bok-codex-sar` assembly and `scripts/run-bok-codex-sar.sh`. That SAR
+disables the transitional SIE BoK tools, loads metadata through Textus BoK, and
+keeps SIE's provider-neutral component API available in the same subsystem.
+
 Use `cncf.mcp.enabled=false` to disable component publication, or list declared
 service/operation identities in `cncf.mcp.disabled-services` and
 `cncf.mcp.disabled-operations`. Configuration cannot make an undeclared

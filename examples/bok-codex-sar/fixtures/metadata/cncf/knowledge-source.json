@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "cncf.knowledge-source.v1",
+  "kind": "bok-site",
+  "id": "codex-bok",
+  "label": "Codex BoK Fixture",
+  "sourceRef": {
+    "kind": "bok-site",
+    "value": "codex-bok"
+  },
+  "resources": [
+    {
+      "kind": "glossary-terms",
+      "href": "metadata/glossary/terms.json",
+      "mediaType": "application/json"
+    },
+    {
+      "kind": "component-repository-index",
+      "href": "repository/catalog/index.json",
+      "mediaType": "application/json"
+    }
+  ]
+}

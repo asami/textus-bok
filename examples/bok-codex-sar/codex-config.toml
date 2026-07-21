@@ -1,0 +1,12 @@
+[mcp_servers.textus-bok]
+url = "http://127.0.0.1:18005/mcp"
+enabled = true
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+enabled_tools = [
+  "Bok.BokRetrieval.searchTerms",
+  "Bok.BokRetrieval.explainTerm",
+  "Bok.BokRetrieval.searchComponentReferences",
+  "Bok.BokRetrieval.getComponentReference",
+]
+default_tools_approval_mode = "approve"
