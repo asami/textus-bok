@@ -27,6 +27,12 @@ and replaces the complete source generation through SIE's generated
 `KnowledgeFederation` component contract. The CAR ABI dependency and exact
 development compile coordinate are declared separately in `project.yaml`.
 
+Typed matching remains inside Textus BoK. Exact knowledge is distinct from
+provider-backed candidates, and complete source generations remove stale
+records only after SIE confirms publication. The current baseline keeps all
+operations outside MCP; the planned migration publishes only the four read
+queries and permanently excludes source replacement.
+
 ## Documentation
 
 - [Development strategy](docs/strategy/textus-bok-development-strategy.md)
@@ -35,3 +41,8 @@ development compile coordinate are declared separately in `project.yaml`.
 - [BoK domain model contract](docs/spec/bok-domain-model.md)
 - [Phase 2](docs/phase/phase-2.md)
 - [Phase 2 checklist](docs/phase/phase-2-checklist.md)
+- [Phase 3](docs/phase/phase-3.md)
+- [Phase 3 checklist](docs/phase/phase-3-checklist.md)
+- [Developer guide](docs/developer-guide.md)
+- [Packaged reference manual](src/main/car/manual/index.md)
+- [Packaged operator guide](src/main/car/manual/user-guide.md)

@@ -19,14 +19,15 @@ guidance belongs to Textus CBD Support.
 ## Phase Overview
 
 1. Phase 1: CAR Baseline
-2. Phase 2: BoK Domain Model and Source Normalization
-3. Phase 3: SIE-backed Dataset Publication
+2. Phase 2: BoK Domain and Federation Baseline
+3. Phase 3: Operational Documentation
 4. Phase 4: BoK MCP Migration
 5. Phase 5: SAR and CBD Handoff Verification
 
 ## Current Priority
 
-Phase 2 is complete. The BoK-owned model, CNCF resource DSL normalization,
+Phase 3 is complete. The BoK-owned model, CNCF resource DSL normalization,
 provider-neutral SIE replacement, and domain matching states have executable
-specifications. Operator and developer documentation is the current priority
-before MCP exposure.
+specifications, and packaged operator/reference plus repository developer
+documentation define ingestion, matching, MCP policy, and CBD handoff. Phase 4
+BoK MCP migration is the current priority.
