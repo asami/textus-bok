@@ -1,0 +1,6 @@
+apps:
+  - name: textus-bok
+    path: /web/textus-bok
+    kind: static-form
+    root: /web/textus-bok
+    route: /web/{component}/textus-bok

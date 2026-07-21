@@ -1,0 +1,163 @@
+# COMPONENT
+
+## Bok
+
+### PACKAGE
+
+org.simplemodeling.textus.bok
+
+### DESCRIPTION
+
+Bok CAR bundle root.
+
+### COMPONENTLET
+
+#### public-bok-retrieval
+
+#### bok-retrieval-admin
+
+# COMPONENTLET
+
+## public-bok-retrieval
+
+- component :: Bok
+- kind :: participant
+
+### DESCRIPTION
+
+Public BokRetrieval participant.
+
+# COMPONENTLET
+
+## bok-retrieval-admin
+
+- component :: Bok
+- kind :: participant
+
+### DESCRIPTION
+
+Administrative BokRetrieval participant.
+
+# SERVICE
+
+## BokRetrieval
+
+### DESCRIPTION
+
+Operations for BokRetrieval.
+
+### OPERATION
+
+#### replaceKnowledgeSource
+
+##### TYPE
+
+COMMAND
+
+##### INPUT
+
+###### TYPE
+ReplaceKnowledgeSource
+
+##### OUTPUT
+
+###### TYPE
+ReplaceKnowledgeSourceResult
+
+##### IMPLEMENTATION
+entity-create
+
+##### ENTITY
+BokTerm
+
+#### searchTerms
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+SearchTerms
+
+##### OUTPUT
+
+###### TYPE
+SearchTermsResult
+
+##### IMPLEMENTATION
+entity-search
+
+##### ENTITY
+BokTerm
+
+# ENTITY
+
+## BokTerm
+
+### Attribute
+
+| name        | type     | multiplicity |
+|-------------+----------+--------------|
+| id          | entityid | 1            |
+| name        | name     | 1            |
+| description | BokTermDescription | ?            |
+
+# VALUE
+
+## ReplaceKnowledgeSource
+
+- input-kind :: COMMAND
+
+### Attribute
+
+| name        | type   | multiplicity |
+|-------------+--------+--------------|
+| name        | name   | 1            |
+| description | BokTermDescription | ?            |
+
+## SearchTerms
+
+- input-kind :: QUERY
+
+### Attribute
+
+| name   | type   | multiplicity |
+|--------+--------+--------------|
+| text   | BokTermSearchText | ?            |
+| offset | int    | ?            |
+| limit  | int    | ?            |
+
+## BokTermDescription
+
+### Attribute
+
+| name  | type   | multiplicity |
+|-------+--------+--------------|
+| value | string | 1            |
+
+## BokTermSearchText
+
+### Attribute
+
+| name  | type   | multiplicity |
+|-------+--------+--------------|
+| value | string | 1            |
+
+## ReplaceKnowledgeSourceResult
+
+### Attribute
+
+| name | type     | multiplicity |
+|------+----------+--------------|
+| id   | entityid | 1            |
+| name | name     | 1            |
+
+## SearchTermsResult
+
+### Attribute
+
+| name  | type                   | multiplicity |
+|-------+------------------------+--------------|
+| items | BokTerm | *            |
