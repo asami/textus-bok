@@ -12,7 +12,7 @@
 - [x] Metadata is normalized deterministically without rendered HTML scraping.
 - [ ] Exact, candidate, ambiguity, conflict, insufficient-evidence, and no-match
   states have executable specifications.
-- [ ] Source replacement removes stale domain records deterministically.
+- [x] Source replacement removes stale domain records deterministically.
 
 Phase 2 closes only when every item is checked and verification evidence is
 recorded in `phase-2.md`.

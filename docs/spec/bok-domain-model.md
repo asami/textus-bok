@@ -36,9 +36,9 @@ warnings. The operation declarations are not MCP Ready in this phase.
 
 ## Exclusions
 
-This contract does not implement SIE dataset publication, matching behavior,
-MCP publication, or CBD detail resolution. It exposes no Fuseki, Chroma,
-embedding, filesystem, or network type.
+This contract does not implement matching behavior, MCP publication, or CBD
+detail resolution. It exposes no Fuseki, Chroma, embedding, filesystem, or
+network type.
 
 ## Resource Normalization
 
@@ -54,3 +54,18 @@ existence-only `ComponentReference` values whose evidence identifies the
 canonical catalog resource. Results are sorted by stable identity and duplicate
 identities fail. No rendered page, CAR/SAR archive, host file, or direct network
 resource is opened by the normalizer.
+
+## Federation Publication
+
+`replaceKnowledgeSource` maps each normalized term and component reference to
+one provider-neutral SIE document and assertion. Evidence resources are
+deduplicated by stable attributable identity, and deterministic SHA-256 IDs
+connect every document and assertion to its evidence. BoK meaning remains in
+opaque structured metadata interpreted by `textus-bok`; it does not enter the
+SIE CML domain.
+
+Publication resolves the `SemanticIntegrationEngine` component in the current
+subsystem and invokes the generated `KnowledgeFederation.replaceDataset`
+operation. Absence of that component is a structured service failure. There is
+no direct provider or SIE runtime fallback. `project.yaml` declares both the
+exact development JVM coordinate and the CAR ABI range.

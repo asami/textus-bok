@@ -17,7 +17,7 @@ direct filesystem or network access.
 
 On 2026-07-21, `sbt --batch test cozyBuildCAR` resolved CNCF
 `0.5.1-SNAPSHOT` through the normal dependency route, reused 38 generated
-Scala sources, passed 10 tests in 3 suites, and built
+Scala sources, passed 12 tests in 4 suites, and built
 `target/textus-bok-0.1.0-SNAPSHOT.car`.
 
 `BokDomainModelSpec` verifies the five typed operation contracts, generated
@@ -27,10 +27,13 @@ exclusion of CBD-owned detail, and deny-by-default MCP policy.
 resource DSL, safe relative child references, canonical repository-index
 validation, deterministic ordering, empty-source warnings, and duplicate
 identity rejection without rendered HTML or host filesystem access. Matching
-and source replacement behavior remain unimplemented.
+behavior remains unimplemented. `BokFederationPublicationSpec` verifies the
+generated SIE component boundary, identical-generation retry, complete
+generation replacement, stale document/assertion/evidence removal, and
+fail-closed behavior when SIE is absent.
 
 ## Next Boundary
 
-Generic SIE dataset publication is the next cross-component boundary. Matching,
-source replacement, BoK MCP publication, and CBD detail resolution remain
-outside the completed normalization slice.
+Exact, candidate, ambiguity, conflict, insufficient-evidence, and no-match
+classification is the next boundary. BoK MCP publication and CBD detail
+resolution remain outside this phase slice.

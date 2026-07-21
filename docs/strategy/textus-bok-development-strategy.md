@@ -26,6 +26,7 @@ guidance belongs to Textus CBD Support.
 
 ## Current Priority
 
-Phase 2 is active. The BoK-owned terminology, component-existence, evidence,
-source, request, and response model is defined first; CNCF resource DSL source
-normalization follows before any SIE publication or MCP exposure.
+Phase 2 is active. The BoK-owned model, CNCF resource DSL normalization, and
+the first provider-neutral SIE replacement boundary are implemented. Exact,
+candidate, ambiguity, conflict, insufficient-evidence, and no-match semantics
+are the current priority before MCP exposure.

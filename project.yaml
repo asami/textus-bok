@@ -16,6 +16,7 @@ build:
   dependencies:
     compile:
       - "org.goldenport::goldenport-cncf:0.5.1-SNAPSHOT"
+      - "org.textus::textus-semantic-integration-engine:0.2.0-SNAPSHOT"
     test:
       - "org.scalatest::scalatest:3.2.19"
 
@@ -27,7 +28,9 @@ packaging:
   kind: car
   car:
     abi:
-      dependencies: []
+      dependencies:
+        - name: "textus-semantic-integration-engine"
+          abiRange: "[0.2.0,0.3.0)"
     manifest_metadata:
       boundedContext: "body-of-knowledge"
       domain: "bok"

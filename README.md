@@ -22,6 +22,11 @@ sbt --batch test cozyBuildCAR
 
 Generated Scala sources are written under `target/scala-3.3.8/src_managed/main/scala`.
 
+`replaceKnowledgeSource` reads logical metadata through the CNCF resource DSL
+and replaces the complete source generation through SIE's generated
+`KnowledgeFederation` component contract. The CAR ABI dependency and exact
+development compile coordinate are declared separately in `project.yaml`.
+
 ## Documentation
 
 - [Development strategy](docs/strategy/textus-bok-development-strategy.md)
