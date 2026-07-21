@@ -25,7 +25,9 @@ Generated Scala sources are written under `target/scala-3.3.8/src_managed/main/s
 `replaceKnowledgeSource` reads logical metadata through the CNCF resource DSL
 and replaces the complete source generation through SIE's generated
 `KnowledgeFederation` component contract. The CAR ABI dependency and exact
-development compile coordinate are declared separately in `project.yaml`.
+development `provided` coordinate are declared separately in `project.yaml`,
+so SIE API classes are available while compiling but are not duplicated in the
+BoK CAR.
 
 Typed matching remains inside Textus BoK. Exact knowledge is distinct from
 provider-backed candidates, and complete source generations remove stale
@@ -45,6 +47,7 @@ replacement is permanently excluded.
 - [Phase 3 checklist](docs/phase/phase-3-checklist.md)
 - [Phase 4](docs/phase/phase-4.md)
 - [Phase 4 checklist](docs/phase/phase-4-checklist.md)
+- [Temporary migration SAR](examples/bok-migration-sar/README.md)
 - [Developer guide](docs/developer-guide.md)
 - [Packaged reference manual](src/main/car/manual/index.md)
 - [Packaged operator guide](src/main/car/manual/user-guide.md)

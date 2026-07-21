@@ -1,0 +1,22 @@
+{
+  "terms": [
+    {
+      "id": "architecture:runtime",
+      "slug": "runtime",
+      "title": "Runtime",
+      "reading": "runtime",
+      "source_path": "glossary/architecture/runtime.dox",
+      "public_path": "glossary/architecture/runtime.html",
+      "definition_html": "<p>Runtime execution environment for reusable components.</p>",
+      "definition_text": "Runtime execution environment for reusable components.",
+      "summary": "Runtime execution environment.",
+      "category": "architecture",
+      "aliases": ["Execution Runtime"],
+      "term_type": "concept",
+      "term_refs": [],
+      "article_refs": [],
+      "rdf_refs": [],
+      "video_refs": []
+    }
+  ]
+}

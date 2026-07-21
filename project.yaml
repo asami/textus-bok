@@ -16,9 +16,11 @@ build:
   dependencies:
     compile:
       - "org.goldenport::goldenport-cncf:0.5.1-SNAPSHOT"
+    provided:
       - "org.textus::textus-semantic-integration-engine:0.2.0-SNAPSHOT"
     test:
       - "org.scalatest::scalatest:3.2.19"
+      - "org.textus::textus-scraper:0.1.1-SNAPSHOT"
 
 publication:
   source_manifest:

@@ -8,7 +8,11 @@
   with existence-only results.
 - [x] `replaceKnowledgeSource` and every mutation/administration operation are
   proven unavailable through MCP after CAR/SAR policy application.
-- [ ] A migration SAR proves old/new operation parity and CBD handoff.
+- [x] A migration SAR proves old/new operation parity with deterministic,
+  collision-free tool identities.
+
+CBD handoff remains Phase 5 scope and is not claimed by this migration parity
+ledger.
 
 Phase 4 closes only when every item is checked and verification evidence is
 recorded in `phase-4.md`.

@@ -2,8 +2,8 @@
 
 ## Stage Status
 
-- Status: `IN_PROGRESS`
-- Current step: Verify old/new operation parity in a temporary migration SAR.
+- Status: `COMPLETE`
+- Current step: Begin Phase 5 representative SAR and CBD handoff verification.
 - Closure basis: Every Phase 4 checklist item is complete and migration/runtime
   evidence is recorded below.
 
@@ -45,5 +45,31 @@ through the public MCP catalog and JSON-RPC adapter. A hostile attempt to name
 it, while operation, service, and global disable controls only reduced the four
 declared read tools. This completes P6-32.
 
-P6-33 now verifies deterministic old/new operation parity in a temporary
-migration SAR.
+## Migration SAR Evidence
+
+On 2026-07-21, `scripts/check-bok-migration-sar.sh` built current SIE, BoK, and
+Scraper CARs and ran a temporary SAR on CNCF `0.5.1-SNAPSHOT`. One canonical
+metadata superset was loaded through the legacy SIE path and the BoK replacement
+path. The probe verified:
+
+- four old/new operation pairs with equal generated input schemas;
+- sorted, deterministic, collision-free component-qualified tool identities;
+- equivalent term search, term explanation, component search, and exact lookup
+  semantic projections; and
+- clean server ownership and shutdown, reported as `BOK_MIGRATION_SAR_OK` and
+  `BOK_MIGRATION_SAR_LIFECYCLE_OK`.
+
+The runtime integration specification also verifies the generated SIE Component
+API binding, source replacement, idempotent retry, semantic query, stale
+removal, and structured failure when SIE is absent. SIE is a `provided` build
+dependency, preventing its Component API classes from being duplicated in the
+BoK CAR.
+
+Final validation passed 16 tests in six suites and built
+`target/textus-bok-0.1.0-SNAPSHOT.car`. CAR lint reported no failure; its only
+warnings were the absent released ABI baseline and the intentional development
+`sbt-cozy 0.1.15-SNAPSHOT` selection. Archive inspection found no duplicated
+SIE Component API class in the BoK CAR.
+
+Every Phase 4 checklist item is complete. The three-component representative
+SAR and CBD handoff remain Phase 5 scope.

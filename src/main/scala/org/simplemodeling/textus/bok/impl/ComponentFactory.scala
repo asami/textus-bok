@@ -4,12 +4,15 @@ import org.goldenport.Consequence
 import org.goldenport.cncf.action.ActionCall
 import org.simplemodeling.textus.bok.BokComponent
 import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentId}
+import org.goldenport.cncf.context.ExecutionContext
+import org.goldenport.cncf.spi.ComponentSelector
 import org.goldenport.cncf.unitofwork.ExecUowM
 import org.goldenport.protocol.operation.OperationResponse
 import org.goldenport.record.Record
 import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.runtime.{BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokSourceReader}
 import org.simplemodeling.textus.bok.value.*
+import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 
 /*
  * @since   Jul. 21, 2026
@@ -186,6 +189,11 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
 }
 
 final class BokPrimaryComponent extends BokComponent {
+  private[bok] def semanticIntegrationFederation(
+    selector: ComponentSelector = ComponentSelector()
+  )(using ExecutionContext): Consequence[SemanticIntegrationFederationApi] =
+    semantic_integration_federation(selector)
+
   override def mcpReadyOperations: Set[String] = Set(
     "BokRetrieval.searchTerms",
     "BokRetrieval.explainTerm",

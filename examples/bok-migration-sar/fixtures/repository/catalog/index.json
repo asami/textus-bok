@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "cncf.component-repository-index.v1",
+  "generatedAt": "2026-07-21T00:00:00Z",
+  "artifacts": [
+    {
+      "kind": "car",
+      "artifactId": "textus-runtime",
+      "catalog": "car/textus-runtime.yaml",
+      "status": "active",
+      "recommended": "1.0.0"
+    }
+  ]
+}

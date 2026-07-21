@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "cncf.component-reference-index.v1",
+  "kind": "car",
+  "entries": [
+    {
+      "name": "textus-runtime",
+      "title": "textus-runtime",
+      "recommended": "1.0.0",
+      "versions": [
+        {
+          "version": "1.0.0"
+        }
+      ]
+    }
+  ]
+}

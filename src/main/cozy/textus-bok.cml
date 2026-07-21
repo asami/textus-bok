@@ -10,6 +10,15 @@ org.simplemodeling.textus.bok
 
 BoK terminology and CAR/SAR existence knowledge component.
 
+### SERVICE
+
+#### SemanticIntegrationFederation
+
+- spi-direction :: requires
+- spi-component-api :: org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
+- spi-multiplicity :: "*"
+- spi-required :: true
+
 ### COMPONENTLET
 
 #### public-bok-retrieval

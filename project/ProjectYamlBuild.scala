@@ -10,6 +10,7 @@ object ProjectYamlBuild {
 
   def dependencies(config: CozyProjectConfig): Seq[ModuleID] =
     _dependencies(config, "compile", None) ++
+      _dependencies(config, "provided", Some(Provided)) ++
       _dependencies(config, "test", Some(Test))
 
   private def _dependencies(

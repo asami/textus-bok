@@ -1,12 +1,11 @@
 package org.simplemodeling.textus.bok
-
 import org.goldenport.Consequence
 import org.goldenport.cncf.action.ActionCall
 import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentOrigin}
 import org.goldenport.cncf.context.ExecutionContext
 import org.goldenport.cncf.resource.{InMemoryTextusUrnResourceProvider, ResourceAccessTestProfile}
+import org.goldenport.cncf.spi.SpiResolver
 import org.goldenport.cncf.subsystem.Subsystem
-import org.goldenport.cncf.unitofwork.ExecUowM
 import org.goldenport.configuration.{Configuration, ConfigurationTrace, ResolvedConfiguration}
 import org.goldenport.protocol.{Property, Request}
 import org.goldenport.protocol.operation.OperationResponse
@@ -15,9 +14,11 @@ import org.scalatest.GivenWhenThen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.simplemodeling.textus.bok.datatype.*
+import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
+import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublisher, BokFederationRetriever, BokSourceReader}
 import org.simplemodeling.textus.bok.value.BokKnowledgeSource
-import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent
-import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.{KnowledgeFederationService, SemanticRetrievalService}
+import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.KnowledgeFederationService
+import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetQueryRequest, FederationDatasetQueryResult}
 
 /*
  * @since   Jul. 21, 2026
@@ -48,15 +49,37 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       firstinspection.getInt("assertionCount") shouldBe Some(4)
       firstinspection.getInt("evidenceCount") shouldBe Some(3)
 
-      When("a semantic term candidate is hidden behind unrelated generic SIE results")
-      val candidate = _search_terms(assembly.bok, firstcontext, "execution environment", 1)
+      When("a semantic term candidate is requested through the generated federation API")
+      val federationresults = _query_federation(assembly.bok, firstcontext, "runtime environment", "simplemodeling")
+      val candidate = _search_terms(assembly.bok, firstcontext, "runtime environment", 1)
 
-      Then("the generated SIE query contract is overfetched and the BoK candidate remains source-scoped")
+      Then("the BoK candidate remains source-scoped after generic SIE retrieval")
+      val normalized = BokSourceReader.read(firstcontext, firstsource).TAKE
+      val runtime = normalized.terms.find(_.title.value == "Runtime").get
+      val runtimecandidate = federationresults.find(
+        _.documentId.value == BokFederationPublisher.termDocumentId(runtime)
+      ).get
+      val runtimekey = BokCandidateKey(
+        firstsource.datasetId.value,
+        firstsource.sourceId.value,
+        runtimecandidate.documentId.value
+      )
+      val candidatescores = _candidate_scores(
+        assembly.bok,
+        firstcontext,
+        "runtime environment",
+        runtimekey
+      )
+      runtimecandidate.score should be >= 0.2
+      runtimecandidate.metadata.get.value should include ("\"datasetId\":\"simplemodeling-bok\"")
+      federationresults.map(_.sourceId.value) should contain ("simplemodeling")
+      federationresults should not be empty
+      federationresults.exists(_.metadata.exists(_.value.contains("\"domain\":\"bok\""))) shouldBe true
+      candidatescores.keySet should contain (runtimekey)
       candidate.getString("status") shouldBe Some("matched")
       val matched = candidate.getVector("results").get.collect { case x: Record => x }
       matched should have size 1
       matched.head.getString("matchKind") shouldBe Some("candidate")
-      assembly.recorder.get.queryLimits shouldBe Vector(10, 20)
 
       When("a later complete generation contains one term and no component references")
       val secondcontext = _context(_second_resources)
@@ -95,10 +118,19 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     )
     val params = ComponentCreate(subsystem, ComponentOrigin.Main)
     val bok = new impl.ComponentFactory().create(params).primary
-    val recorder = Option.when(includeSie)(new RecordingSieFactory())
-    val sie = recorder.map(_.create(params).primary)
-    subsystem.add(sie.toVector :+ bok)
-    Assembly(bok, sie, recorder)
+    val scraper = Option.when(includeSie)(
+      new org.simplemodeling.textus.scraper.impl.ComponentFactory().create(params).primary
+    )
+    val sie = Option.when(includeSie)(
+      new org.simplemodeling.textus.semanticintegration.impl.ComponentFactory().create(params).primary
+    )
+    subsystem.add(scraper.toVector ++ sie.toVector :+ bok)
+    if (includeSie) {
+      given ExecutionContext = ExecutionContext.create()
+      val resolution = SpiResolver.resolveAssembly(subsystem.components.toVector).TAKE
+      subsystem.withComponentApiResolver(resolution.componentApiResolver)
+    }
+    Assembly(bok, sie)
   }
 
   private def _replace(
@@ -149,6 +181,38 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       Record.dataAuto("query" -> query, "limit" -> limit)
     )
     _record(action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute().TAKE)
+  }
+
+  private def _query_federation(
+    bok: Component,
+    context: ExecutionContext,
+    query: String,
+    sourceid: String
+  ): Vector[FederationDatasetQueryResult] = {
+    val component = bok.asInstanceOf[BokPrimaryComponent]
+    val api = component.semanticIntegrationFederation()(using context).TAKE
+    val request = FederationDatasetQueryRequest.createC(
+      Record.dataAuto(
+        "text" -> query,
+        "sourceId" -> sourceid,
+        "limit" -> 10
+      )
+    ).TAKE
+    api.queryDataset(request)(using context).TAKE.results
+  }
+
+  private def _candidate_scores(
+    bok: Component,
+    context: ExecutionContext,
+    query: String,
+    candidate: BokCandidateKey
+  ): Map[BokCandidateKey, Double] = {
+    val action = BokComponent.BokRetrievalService.SearchTermsRequest.unsafeForTest(
+      null,
+      Record.dataAuto("query" -> query, "limit" -> 1)
+    )
+    val core = ActionCall.Core(action, context, Some(bok), None)
+    BokFederationRetriever.candidateScores(core, query, Set(candidate), 1).TAKE
   }
 
   private def _record(response: OperationResponse): Record =
@@ -206,139 +270,6 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
 
   private final case class Assembly(
     bok: Component,
-    sie: Option[Component],
-    recorder: Option[RecordingSieFactory]
+    sie: Option[Component]
   )
-
-  private final class RecordingSieFactory extends SemanticIntegrationEngineComponent.Factory {
-    private var _replacement: Option[Record] = None
-    private var _query_limits = Vector.empty[Int]
-
-    def queryLimits: Vector[Int] = _query_limits
-
-    override protected def create_Component(params: ComponentCreate): Component =
-      new RecordingSieComponent()
-
-    override val KnowledgeFederation: SemanticIntegrationEngineComponent.KnowledgeFederationServiceFactory =
-      new RecordingKnowledgeFederationServiceFactory()
-
-    override val SemanticRetrieval: SemanticIntegrationEngineComponent.SemanticRetrievalServiceFactory =
-      new RecordingSemanticRetrievalServiceFactory()
-
-    private final class RecordingSemanticRetrievalServiceFactory
-      extends SemanticIntegrationEngineComponent.SemanticRetrievalServiceFactory {
-      import SemanticRetrievalService.*
-
-      override def createQueryActionCall(
-        core: ActionCall.Core,
-        action: SemanticQueryRequest
-      ): QueryActionCall =
-        RecordingQueryActionCall(core, action)
-    }
-
-    private final case class RecordingQueryActionCall(
-      core: ActionCall.Core,
-      override val action: SemanticRetrievalService.SemanticQueryRequest
-    ) extends SemanticRetrievalService.QueryActionCall {
-      protected def build_Program: ExecUowM[OperationResponse] =
-        exec_from {
-          val limit = action.record.getInt("limit").getOrElse(10)
-          _query_limits = _query_limits :+ limit
-          val sourceid = action.record.getString("sourceId").getOrElse("")
-          val decoys = Vector.tabulate(12) { index =>
-            Record.dataAuto(
-              "documentId" -> s"generic-$index",
-              "sourceId" -> sourceid,
-              "score" -> 0.99,
-              "metadata" -> "{\"domain\":\"other\"}"
-            )
-          }
-          val published = _replacement.toVector.flatMap(
-            _.getVector("documents").toVector.flatten.collect { case x: Record => x }
-          ).map { document =>
-            Record.dataAuto(
-              "documentId" -> document.getString("id").getOrElse(""),
-              "sourceId" -> document.getString("sourceId").getOrElse(""),
-              "score" -> (if (document.getString("title").contains("Runtime")) 0.9 else 0.1),
-              "metadata" -> document.getString("metadata").getOrElse("{}")
-            )
-          }
-          Consequence.success(OperationResponse(Record.dataAuto(
-            "query" -> action.record.getString("text").getOrElse(""),
-            "results" -> (decoys ++ published).take(limit),
-            "rdfResults" -> Vector.empty[Record]
-          )))
-        }
-    }
-
-    private final class RecordingKnowledgeFederationServiceFactory
-      extends SemanticIntegrationEngineComponent.KnowledgeFederationServiceFactory {
-      import KnowledgeFederationService.*
-
-      override def createReplaceDatasetActionCall(
-        core: ActionCall.Core,
-        action: FederationDatasetReplacementRequest
-      ): ReplaceDatasetActionCall =
-        RecordingReplaceActionCall(core, action)
-
-      override def createInspectDatasetActionCall(
-        core: ActionCall.Core,
-        action: FederationDatasetInspectionRequest
-      ): InspectDatasetActionCall =
-        RecordingInspectActionCall(core, action)
-    }
-
-    private final case class RecordingReplaceActionCall(
-      core: ActionCall.Core,
-      override val action: KnowledgeFederationService.FederationDatasetReplacementRequest
-    ) extends KnowledgeFederationService.ReplaceDatasetActionCall {
-      protected def build_Program: ExecUowM[OperationResponse] =
-        exec_from {
-          _replacement = Some(action.record)
-          Consequence.success(OperationResponse(_response(action.record, "complete")))
-        }
-    }
-
-    private final case class RecordingInspectActionCall(
-      core: ActionCall.Core,
-      override val action: KnowledgeFederationService.FederationDatasetInspectionRequest
-    ) extends KnowledgeFederationService.InspectDatasetActionCall {
-      protected def build_Program: ExecUowM[OperationResponse] =
-        exec_from {
-          val response = _replacement.filter { replacement =>
-            replacement.getString("datasetId") == action.record.getString("datasetId") &&
-              replacement.getString("sourceId") == action.record.getString("sourceId")
-          }.map(_response(_, "complete")).getOrElse(
-            Record.dataAuto(
-              "datasetId" -> action.record.getString("datasetId").getOrElse(""),
-              "sourceId" -> action.record.getString("sourceId").getOrElse(""),
-              "state" -> "absent",
-              "documentCount" -> 0,
-              "assertionCount" -> 0,
-              "evidenceCount" -> 0,
-              "rdfStatus" -> "absent",
-              "vectorStatus" -> "absent",
-              "failedProviders" -> Vector.empty[String]
-            )
-          )
-          Consequence.success(OperationResponse(response))
-        }
-    }
-
-    private def _response(replacement: Record, state: String): Record =
-      Record.dataAuto(
-        "datasetId" -> replacement.getString("datasetId").getOrElse(""),
-        "sourceId" -> replacement.getString("sourceId").getOrElse(""),
-        "generation" -> replacement.getString("generation"),
-        "state" -> state,
-        "documentCount" -> replacement.getVector("documents").fold(0)(_.size),
-        "assertionCount" -> replacement.getVector("assertions").fold(0)(_.size),
-        "evidenceCount" -> replacement.getVector("evidence").fold(0)(_.size),
-        "rdfStatus" -> "ready",
-        "vectorStatus" -> "ready",
-        "failedProviders" -> Vector.empty[String]
-      )
-  }
-
-  private final class RecordingSieComponent extends Component
 }

@@ -5,13 +5,11 @@ import java.security.MessageDigest
 import io.circe.Json
 import org.goldenport.Consequence
 import org.goldenport.cncf.action.ActionCall
-import org.goldenport.cncf.component.Component
-import org.goldenport.protocol.{Property, Request}
-import org.goldenport.protocol.operation.OperationResponse
 import org.goldenport.record.Record
+import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
 import org.simplemodeling.textus.bok.value.{BokEvidence, BokTerm, ComponentReference}
-import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent
-import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.KnowledgeFederationService
+import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
+import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetReplacementRequest, FederationDatasetResponse}
 
 /*
  * BoK-owned projection into the provider-neutral SIE component contract.
@@ -26,8 +24,6 @@ final case class BokFederationPublication(
 )
 
 object BokFederationPublisher {
-  private val _service_name = "KnowledgeFederation"
-  private val _operation_name = "replaceDataset"
   private val _term_predicate = "urn:textus:bok:predicate:definition"
   private val _component_predicate = "urn:textus:bok:predicate:kind"
 
@@ -36,9 +32,9 @@ object BokFederationPublisher {
     normalized: NormalizedBokSource
   ): Consequence[BokFederationPublication] =
     for {
-      target <- _target(core)
-      request <- _request(target, normalized)
-      response <- target.logic.executeAction(request, core.executionContext)
+      api <- _api(core)
+      request <- _request(normalized)
+      response <- api.replaceDataset(request)(using core.executionContext)
       publication <- _publication(response)
     } yield publication
 
@@ -48,22 +44,19 @@ object BokFederationPublisher {
   private[bok] def componentDocumentId(component: ComponentReference): String =
     _stable_id("bok-component-document", component.kind.value, component.name.value)
 
-  private def _target(core: ActionCall.Core): Consequence[Component] =
-    core.component.flatMap(_.subsystem).flatMap { subsystem =>
-      subsystem.components.find { component =>
-        component.name.equalsIgnoreCase(SemanticIntegrationEngineComponent.name)
-      }
-    } match {
-      case Some(component) => Consequence.success(component)
-      case None => Consequence.serviceUnavailable(
-        s"${SemanticIntegrationEngineComponent.name} component is not available in the current subsystem"
-      )
+  private def _api(core: ActionCall.Core): Consequence[SemanticIntegrationFederationApi] =
+    core.component match {
+      case Some(component: BokPrimaryComponent) =>
+        component.semanticIntegrationFederation()(using core.executionContext)
+      case Some(component) =>
+        Consequence.stateInvalid(s"BoK action is bound to an unsupported component: ${component.getClass.getName}")
+      case None =>
+        Consequence.serviceUnavailable("BoK component is not available in the current action context")
     }
 
   private def _request(
-    target: Component,
     normalized: NormalizedBokSource
-  ): Consequence[KnowledgeFederationService.FederationDatasetReplacementRequest] = {
+  ): Consequence[FederationDatasetReplacementRequest] = {
     val evidences = _evidences(normalized)
     val evidenceids = evidences.map { case (evidence, id) => _evidence_key(evidence) -> id }.toMap
     val documents = normalized.terms.map(_term_document(_, evidenceids)) ++
@@ -78,13 +71,7 @@ object BokFederationPublisher {
       "assertions" -> assertions,
       "evidence" -> evidences.map { case (evidence, id) => _evidence_record(evidence, id) }
     )
-    val request = Request.of(
-      component = target.name,
-      service = _service_name,
-      operation = _operation_name,
-      properties = _properties(record)
-    )
-    KnowledgeFederationService.FederationDatasetReplacementRequest.create(request)
+    FederationDatasetReplacementRequest.createC(record)
   }
 
   private def _evidences(
@@ -217,17 +204,6 @@ object BokFederationPublisher {
       .map(byte => f"${byte & 0xff}%02x")
       .mkString
 
-  private def _properties(record: Record): List[Property] =
-    record.fields.map(field => Property(field.key, field.value.single, None)).toList
-
-  private def _publication(response: OperationResponse): Consequence[BokFederationPublication] =
-    response match {
-      case OperationResponse.RecordResponse(record) =>
-        record.getString("state") match {
-          case Some(state) => Consequence.success(BokFederationPublication(state, record))
-          case None => Consequence.stateInvalid("SIE federation response has no state")
-        }
-      case other =>
-        Consequence.stateInvalid(s"SIE federation returned an unsupported response: ${other.getClass.getName}")
-    }
+  private def _publication(response: FederationDatasetResponse): Consequence[BokFederationPublication] =
+    Consequence.success(BokFederationPublication(response.state.value, response.toRecord()))
 }
