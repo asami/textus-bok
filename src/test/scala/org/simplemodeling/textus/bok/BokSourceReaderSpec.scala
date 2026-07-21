@@ -46,6 +46,60 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       result.warnings shouldBe empty
     }
 
+    "normalize current Cozy CAR and SAR reference indexes without CBD detail" in {
+      Given("a current Cozy KnowledgeSource with separate CAR and SAR component-reference indexes")
+      val context = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _reference_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/metadata/cncf/component-references/car.json" -> _car_reference_index,
+        "fixture/metadata/cncf/component-references/sar.json" -> _sar_reference_index
+      ))
+
+      When("the metadata-only source is normalized")
+      val result = BokSourceReader.read(context, _source).TAKE
+
+      Then("CAR and SAR existence retain current versions and public metadata evidence")
+      result.components.map(x => (x.kind.value, x.name.value, x.version.map(_.value))) shouldBe Vector(
+        ("car", "nict-knowledgehub", Some("0.1.0-smoke")),
+        ("sar", "nict-knowledgehub", Some("0.1.0-smoke"))
+      )
+      result.components.map(_.evidence.uri.value) shouldBe Vector(
+        "urn:textus:bok:fixture/repository/car/nict-knowledgehub/index.html",
+        "urn:textus:bok:fixture/repository/sar/nict-knowledgehub/index.html"
+      )
+      result.warnings shouldBe empty
+    }
+
+    "reject incompatible current Cozy component reference contracts" in {
+      Given("one unsupported index schema and one entry whose kind conflicts with its index")
+      val unsupported = _car_reference_index.replace(
+        "cncf.component-reference-index.v1",
+        "cncf.component-reference-index.v2"
+      )
+      val mismatched = _car_reference_index.replace(
+        "\"kind\": \"car\",\n    \"recommended\"",
+        "\"kind\": \"sar\",\n    \"recommended\""
+      )
+
+      When("each malformed component-reference index is normalized")
+      val unsupportedresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _reference_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/metadata/cncf/component-references/car.json" -> unsupported,
+        "fixture/metadata/cncf/component-references/sar.json" -> _sar_reference_index
+      )), _source)
+      val mismatchedresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _reference_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/metadata/cncf/component-references/car.json" -> mismatched,
+        "fixture/metadata/cncf/component-references/sar.json" -> _sar_reference_index
+      )), _source)
+
+      Then("neither incompatible contract is accepted")
+      unsupportedresult should matchPattern { case Consequence.Failure(_) => }
+      mismatchedresult should matchPattern { case Consequence.Failure(_) => }
+    }
+
     "reject non-relative and unsupported source contracts before reading child content" in {
       Given("manifests with an absolute child reference and an unsupported schema")
       val absolute = _manifest.replace(
@@ -159,6 +213,16 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       |  ]
       |}""".stripMargin
 
+  private val _reference_manifest =
+    """{
+      |  "schemaVersion": "cncf.knowledge-source.v1",
+      |  "resources": [
+      |    {"kind": "component-reference-index", "href": "metadata/cncf/component-references/car.json"},
+      |    {"kind": "component-reference-index", "href": "metadata/cncf/component-references/sar.json"},
+      |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"}
+      |  ]
+      |}""".stripMargin
+
   private val _terms =
     """{
       |  "terms": [
@@ -195,5 +259,35 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       |  "schemaVersion": "cncf.component-repository-index.v1",
       |  "generatedAt": "2026-07-21T00:00:00Z",
       |  "artifacts": []
+      |}""".stripMargin
+
+  private val _car_reference_index =
+    """{
+      |  "schemaVersion": "cncf.component-reference-index.v1",
+      |  "kind": "car",
+      |  "entries": [{
+      |    "name": "nict-knowledgehub",
+      |    "title": "nict-knowledgehub",
+      |    "kind": "car",
+      |    "recommended": "0.1.0-smoke",
+      |    "latest_stable": "0.1.0-smoke",
+      |    "latest_snapshot": null,
+      |    "public_path": "repository/car/nict-knowledgehub/index.html"
+      |  }]
+      |}""".stripMargin
+
+  private val _sar_reference_index =
+    """{
+      |  "schemaVersion": "cncf.component-reference-index.v1",
+      |  "kind": "sar",
+      |  "entries": [{
+      |    "name": "nict-knowledgehub",
+      |    "title": "nict-knowledgehub",
+      |    "kind": "sar",
+      |    "recommended": "0.1.0-smoke",
+      |    "latest_stable": "0.1.0-smoke",
+      |    "latest_snapshot": null,
+      |    "public_path": "repository/sar/nict-knowledgehub/index.html"
+      |  }]
       |}""".stripMargin
 }

@@ -65,3 +65,18 @@ Provider-backed SAR verification completed on 2026-07-21 JST:
   page and reported `SIE_HTML_INDEX_BOUNDARY_OK`.
 - After provider verification, the in-memory BoK Codex SAR was restored on
   `http://127.0.0.1:18005/mcp` for normal development use.
+
+Actual Cozy BoK trial compatibility verified on 2026-07-21 JST:
+
+- `BokSourceReader` now accepts Cozy's current
+  `cncf.component-reference-index.v1` CAR and SAR resources while preserving
+  the older component repository index contract.
+- The projection retains only existence identity, kind, version, and public
+  metadata evidence. CBD capabilities, dependencies, and usage detail are not
+  imported into BoK.
+- A focused executable specification passed seven reader behaviors, and the
+  rebuilt BoK CAR served a live Fuseki/Chroma trial at the SIE standard
+  `18005` endpoint.
+- The actual KnowledgeHub source published two terms, one CAR, and one SAR;
+  an independent trial check repeated BoK reads and the CBD usage handoff
+  before all owned launchd jobs were stopped.

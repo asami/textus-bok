@@ -30,6 +30,10 @@ Cold multi-CAR loading may take several minutes; the default startup timeout is
 900 seconds and can be overridden with `TEXTUS_BOK_CODEX_STARTUP_TIMEOUT_SECONDS`.
 The live replacement/read probe allows 120 seconds by default and can be
 overridden with `TEXTUS_BOK_CODEX_PROBE_TIMEOUT_SECONDS` for slower providers.
+Operational trials may set `TEXTUS_BOK_CODEX_VIRTUAL_START_AT` to a CNCF
+offset-clock start instant. `TEXTUS_BOK_CODEX_PROBE_QUERY` and
+`TEXTUS_BOK_CODEX_PROBE_CATEGORY` adapt the readiness probe to another
+metadata-only fixture without changing the four-tool BoK contract.
 
 The default provider mode is external-service-free: RDF and Vector DB both use
 `in-memory`. Provider-backed verification may set `TEXTUS_SIE_RDF_DB=fuseki`

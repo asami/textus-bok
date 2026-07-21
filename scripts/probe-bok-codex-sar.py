@@ -58,6 +58,11 @@ def _run(
     source_uri: str,
     expected_rdf_provider: str,
     expected_vector_provider: str,
+    probe_query: str,
+    probe_category: str,
+    source_id: str,
+    dataset_id: str,
+    generation: str,
     timeout: float,
 ) -> None:
     listed = _post_json(
@@ -79,15 +84,16 @@ def _run(
         "/rest/v1/bok/bok-retrieval/replace-knowledge-source",
         {
             "source": {
-                "sourceId": "codex-bok",
-                "datasetId": "codex-bok",
-                "generation": "2026-07-21T00:00:00Z",
+                "sourceId": source_id,
+                "datasetId": dataset_id,
+                "generation": generation,
                 "resource": source_uri,
             }
         },
         timeout,
     )
     _require(replacement.get("status") == "complete", f"BoK replacement failed: {replacement}")
+    _require(replacement.get("term_count", 0) > 0, f"BoK replacement normalized no terms: {replacement}")
 
     provider_status = _call_tool(
         base_url,
@@ -108,10 +114,13 @@ def _run(
         f"Provider status is not healthy: {provider_status}",
     )
 
+    search_arguments = {"query": probe_query, "limit": 10}
+    if probe_category:
+        search_arguments["category"] = probe_category
     search = _call_tool(
         base_url,
         "Bok.BokRetrieval.searchTerms",
-        {"query": "Component", "category": "architecture", "limit": 10},
+        search_arguments,
         timeout,
     )
     _require(search.get("status") == "matched", f"BoK terminology search failed: {search}")
@@ -129,6 +138,11 @@ def main() -> int:
     parser.add_argument("--source-uri", required=True)
     parser.add_argument("--expected-rdf-provider", default="in-memory-rdf")
     parser.add_argument("--expected-vector-provider", default="in-memory-vector")
+    parser.add_argument("--probe-query", default="Component")
+    parser.add_argument("--probe-category", default="architecture")
+    parser.add_argument("--source-id", default="codex-bok")
+    parser.add_argument("--dataset-id", default="codex-bok")
+    parser.add_argument("--generation", default="2026-07-21T00:00:00Z")
     parser.add_argument("--timeout", type=float, default=10.0)
     arguments = parser.parse_args()
     try:
@@ -137,6 +151,11 @@ def main() -> int:
             arguments.source_uri,
             arguments.expected_rdf_provider,
             arguments.expected_vector_provider,
+            arguments.probe_query,
+            arguments.probe_category,
+            arguments.source_id,
+            arguments.dataset_id,
+            arguments.generation,
             arguments.timeout,
         )
         return 0
