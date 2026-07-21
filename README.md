@@ -29,9 +29,9 @@ development compile coordinate are declared separately in `project.yaml`.
 
 Typed matching remains inside Textus BoK. Exact knowledge is distinct from
 provider-backed candidates, and complete source generations remove stale
-records only after SIE confirms publication. MCP currently publishes typed
-`searchTerms` and `explainTerm` tools. Component-reference reads remain private
-until their migration slice, and source replacement is permanently excluded.
+records only after SIE confirms publication. MCP publishes the four typed BoK
+read operations, including existence-only component references. Source
+replacement is permanently excluded.
 
 ## Documentation
 

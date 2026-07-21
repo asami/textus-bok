@@ -29,6 +29,6 @@ guidance belongs to Textus CBD Support.
 Phase 4 is active. The BoK-owned model, CNCF resource DSL normalization,
 provider-neutral SIE replacement, and domain matching states have executable
 specifications, and packaged operator/reference plus repository developer
-documentation define ingestion, matching, MCP policy, and CBD handoff.
-Terminology search and explanation are MCP ready; existence-only component
-reference publication is the current priority.
+documentation define ingestion, matching, MCP policy, and CBD handoff. All four
+typed BoK reads are MCP ready. Proving that CAR/SAR policy cannot expose source
+replacement is the current priority.

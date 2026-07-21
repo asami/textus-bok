@@ -3,7 +3,7 @@
 ## Stage Status
 
 - Status: `IN_PROGRESS`
-- Current step: Publish existence-only component-reference reads.
+- Current step: Prove mutation remains unavailable after CAR/SAR MCP policy.
 - Closure basis: Every Phase 4 checklist item is complete and migration/runtime
   evidence is recorded below.
 
@@ -32,6 +32,11 @@ that both responses retain typed BoK terms and attributable evidence.
 
 ## Next Boundary
 
-Publish the two existence-only component-reference reads as P6-31 without
-making the service as a whole ready. P6-32 then proves that CAR/SAR policy
-cannot expose source replacement.
+On 2026-07-21, operation-level readiness added
+`BokRetrieval.searchComponentReferences` and
+`BokRetrieval.getComponentReference` without making `BokRetrieval` as a whole
+ready. `BokMcpProjectionSpec` verifies their `query`/`kind`/`limit` and
+`name`/`version`/`kind` schemas, their existence-only response contracts, and
+continued absence of `replaceKnowledgeSource`.
+
+P6-32 now proves that CAR/SAR policy cannot expose source replacement.

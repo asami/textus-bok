@@ -27,8 +27,8 @@ embedding provider, the host filesystem, or the network.
 | `replaceKnowledgeSource` | command | Replace one complete source-owned generation | never ready |
 | `searchTerms` | query | Search typed terminology | ready |
 | `explainTerm` | query | Resolve one exact term and reliability state | ready |
-| `searchComponentReferences` | query | Search existence-only CAR/SAR references | not ready yet |
-| `getComponentReference` | query | Resolve one exact CAR/SAR identity | not ready yet |
+| `searchComponentReferences` | query | Search existence-only CAR/SAR references | ready |
+| `getComponentReference` | query | Resolve one exact CAR/SAR identity | ready |
 
 CAR or SAR configuration may disable an MCP-ready operation but may never make
 `replaceKnowledgeSource` or another undeclared operation visible through MCP.

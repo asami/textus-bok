@@ -114,16 +114,17 @@ cncf command Bok.BokRetrieval.getComponentReference \
 
 ## MCP Use
 
-The current component publishes two terminology tools:
+The current component publishes four read tools:
 
 - `Bok.BokRetrieval.searchTerms`;
-- `Bok.BokRetrieval.explainTerm`.
+- `Bok.BokRetrieval.explainTerm`;
+- `Bok.BokRetrieval.searchComponentReferences`;
+- `Bok.BokRetrieval.getComponentReference`.
 
 Use the runtime's MCP `tools/list` result as the authoritative names and input
-schemas. `searchComponentReferences` and `getComponentReference` remain private
-until the next migration slice. `replaceKnowledgeSource` remains absent
-permanently. A CAR/SAR deployment may narrow the tool list but cannot broaden
-it to private or administration operations.
+schemas. `replaceKnowledgeSource` remains absent permanently. A CAR/SAR
+deployment may narrow the tool list but cannot broaden it to private or
+administration operations.
 
 ## CBD Handoff
 

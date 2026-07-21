@@ -4,7 +4,7 @@
   evidence-bearing `SearchTermsResponse` contract.
 - [x] `explainTerm` is MCP ready with typed term input and an evidence-bearing
   `ExplainTermResponse` contract.
-- [ ] `searchComponentReferences` and `getComponentReference` are MCP ready
+- [x] `searchComponentReferences` and `getComponentReference` are MCP ready
   with existence-only results.
 - [ ] `replaceKnowledgeSource` and every mutation/administration operation are
   proven unavailable through MCP after CAR/SAR policy application.

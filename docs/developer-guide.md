@@ -62,8 +62,8 @@ term or component reference.
 ## MCP Policy
 
 MCP publication is default-deny. The component currently marks only
-`BokRetrieval.searchTerms` and `BokRetrieval.explainTerm` ready at operation
-level. The component-reference reads remain private until P6-31.
+the four BoK read operations ready at operation level: terminology search and
+explanation plus existence-only component-reference search and lookup.
 `replaceKnowledgeSource` and future mutation or administration operations must
 remain non-ready at both service and operation policy levels. CAR/SAR
 configuration may only disable declared tools.
