@@ -32,6 +32,9 @@ embedding provider, the host filesystem, or the network.
 
 CAR or SAR configuration may disable an MCP-ready operation but may never make
 `replaceKnowledgeSource` or another undeclared operation visible through MCP.
+`cncf.mcp.enabled`, `cncf.mcp.disabled-services`, and
+`cncf.mcp.disabled-operations` are narrowing controls, not readiness
+declarations.
 
 ## Knowledge Source
 

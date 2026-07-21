@@ -30,5 +30,6 @@ Phase 4 is active. The BoK-owned model, CNCF resource DSL normalization,
 provider-neutral SIE replacement, and domain matching states have executable
 specifications, and packaged operator/reference plus repository developer
 documentation define ingestion, matching, MCP policy, and CBD handoff. All four
-typed BoK reads are MCP ready. Proving that CAR/SAR policy cannot expose source
-replacement is the current priority.
+typed BoK reads are MCP ready, and executable specifications prove that CAR/SAR
+policy can narrow but not broaden publication. A temporary migration SAR for
+old/new operation parity is the current priority.

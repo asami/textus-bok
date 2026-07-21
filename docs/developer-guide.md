@@ -66,7 +66,9 @@ the four BoK read operations ready at operation level: terminology search and
 explanation plus existence-only component-reference search and lookup.
 `replaceKnowledgeSource` and future mutation or administration operations must
 remain non-ready at both service and operation policy levels. CAR/SAR
-configuration may only disable declared tools.
+configuration may only disable declared tools through `cncf.mcp.enabled`,
+`cncf.mcp.disabled-services`, and `cncf.mcp.disabled-operations`; configuration
+must never be treated as an operation readiness declaration.
 
 ## CBD Handoff
 

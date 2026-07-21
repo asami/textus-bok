@@ -3,7 +3,7 @@
 ## Stage Status
 
 - Status: `IN_PROGRESS`
-- Current step: Prove mutation remains unavailable after CAR/SAR MCP policy.
+- Current step: Verify old/new operation parity in a temporary migration SAR.
 - Closure basis: Every Phase 4 checklist item is complete and migration/runtime
   evidence is recorded below.
 
@@ -39,4 +39,11 @@ ready. `BokMcpProjectionSpec` verifies their `query`/`kind`/`limit` and
 `name`/`version`/`kind` schemas, their existence-only response contracts, and
 continued absence of `replaceKnowledgeSource`.
 
-P6-32 now proves that CAR/SAR policy cannot expose source replacement.
+On 2026-07-21, `BokMcpProjectionSpec` applied CNCF component configuration
+through the public MCP catalog and JSON-RPC adapter. A hostile attempt to name
+`replaceKnowledgeSource` in enable-like configuration did not publish or invoke
+it, while operation, service, and global disable controls only reduced the four
+declared read tools. This completes P6-32.
+
+P6-33 now verifies deterministic old/new operation parity in a temporary
+migration SAR.

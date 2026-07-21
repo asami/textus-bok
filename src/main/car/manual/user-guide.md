@@ -126,6 +126,11 @@ schemas. `replaceKnowledgeSource` remains absent permanently. A CAR/SAR
 deployment may narrow the tool list but cannot broaden it to private or
 administration operations.
 
+Use `cncf.mcp.enabled=false` to disable component publication, or list declared
+service/operation identities in `cncf.mcp.disabled-services` and
+`cncf.mcp.disabled-operations`. Configuration cannot make an undeclared
+operation MCP ready.
+
 ## CBD Handoff
 
 A component reference proves existence, not suitability. Pass `name`, `kind`,

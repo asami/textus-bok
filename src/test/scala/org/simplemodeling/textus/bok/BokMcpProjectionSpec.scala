@@ -1,8 +1,10 @@
 package org.simplemodeling.textus.bok
 
-import org.goldenport.cncf.component.{ComponentCreate, ComponentOrigin}
-import org.goldenport.cncf.mcp.McpToolCatalog
+import io.circe.parser.parse
+import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentOrigin}
+import org.goldenport.cncf.mcp.{McpJsonRpcAdapter, McpToolCatalog}
 import org.goldenport.cncf.subsystem.DefaultSubsystemFactory
+import org.goldenport.configuration.{Configuration, ConfigurationValue}
 import org.scalatest.GivenWhenThen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -65,6 +67,62 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       outputs.get("explainTerm") shouldBe Some("ExplainTermResponse")
       outputs.get("searchComponentReferences") shouldBe Some("ComponentReferenceSearchResponse")
       outputs.get("getComponentReference") shouldBe Some("ComponentReferenceLookupResponse")
+    }
+
+    "allow deployment policy to narrow reads without publishing source mutation" in {
+      Given("a BoK component with hostile enable keys and one read disabled")
+      val subsystem = DefaultSubsystemFactory.default(Some("server"))
+      val bundle = new impl.ComponentFactory().create(
+        ComponentCreate(subsystem, ComponentOrigin.Repository("bok-mcp-policy-spec"))
+      )
+      val component = bundle.primary
+      component.withApplicationConfig(Component.ApplicationConfig(config = Some(Configuration(Map(
+        "cncf.mcp.enabled" -> ConfigurationValue.StringValue("true"),
+        "cncf.mcp.enabled-services" -> ConfigurationValue.StringValue("BokRetrieval"),
+        "cncf.mcp.enabled-operations" -> ConfigurationValue.StringValue(
+          "BokRetrieval.replaceKnowledgeSource"
+        ),
+        "cncf.mcp.disabled-operations" -> ConfigurationValue.StringValue(
+          "BokRetrieval.searchTerms"
+        )
+      )))))
+      subsystem.add(bundle)
+      val adapter = new McpJsonRpcAdapter(subsystem)
+
+      When("the configured catalog is listed and source replacement is called")
+      val listed = parse(adapter.handle(
+        """{"jsonrpc":"2.0","id":"policy-list","method":"tools/list","params":{}}"""
+      )).fold(error => fail(s"response is not valid JSON: ${error.getMessage}"), identity)
+      val narrowednames = listed.hcursor.downField("result").downField("tools").focus
+        .flatMap(_.asArray)
+        .getOrElse(Vector.empty)
+        .flatMap(_.hcursor.get[String]("name").toOption)
+        .toSet
+      val called = parse(adapter.handle(
+        """{"jsonrpc":"2.0","id":"mutation-call","method":"tools/call","params":{"name":"Bok.BokRetrieval.replaceKnowledgeSource","arguments":{}}}"""
+      )).fold(error => fail(s"response is not valid JSON: ${error.getMessage}"), identity)
+
+      Then("configuration removes declared reads but cannot add source mutation")
+      narrowednames shouldBe Set(
+        "Bok.BokRetrieval.explainTerm",
+        "Bok.BokRetrieval.searchComponentReferences",
+        "Bok.BokRetrieval.getComponentReference"
+      )
+      called.hcursor.downField("error").get[Int]("code") shouldBe Right(-32602)
+
+      When("service and global disable policies are applied")
+      component.withApplicationConfig(Component.ApplicationConfig(config = Some(Configuration(Map(
+        "cncf.mcp.disabled-services" -> ConfigurationValue.StringValue("BokRetrieval")
+      )))))
+      val servicedisabled = McpToolCatalog.toolsForComponent(component)
+      component.withApplicationConfig(Component.ApplicationConfig(config = Some(Configuration(Map(
+        "cncf.mcp.enabled" -> ConfigurationValue.StringValue("false")
+      )))))
+      val globallydisabled = McpToolCatalog.toolsForComponent(component)
+
+      Then("both policies can only reduce the published catalog")
+      servicedisabled shouldBe empty
+      globallydisabled shouldBe empty
     }
   }
 }

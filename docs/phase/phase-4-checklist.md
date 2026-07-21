@@ -6,7 +6,7 @@
   `ExplainTermResponse` contract.
 - [x] `searchComponentReferences` and `getComponentReference` are MCP ready
   with existence-only results.
-- [ ] `replaceKnowledgeSource` and every mutation/administration operation are
+- [x] `replaceKnowledgeSource` and every mutation/administration operation are
   proven unavailable through MCP after CAR/SAR policy application.
 - [ ] A migration SAR proves old/new operation parity and CBD handoff.
 
