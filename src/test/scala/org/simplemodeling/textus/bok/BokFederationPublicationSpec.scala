@@ -17,7 +17,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent
-import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.KnowledgeFederationService
+import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.{KnowledgeFederationService, SemanticRetrievalService}
 
 /*
  * @since   Jul. 21, 2026
@@ -47,6 +47,16 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       firstinspection.getInt("documentCount") shouldBe Some(4)
       firstinspection.getInt("assertionCount") shouldBe Some(4)
       firstinspection.getInt("evidenceCount") shouldBe Some(3)
+
+      When("a semantic term candidate is hidden behind unrelated generic SIE results")
+      val candidate = _search_terms(assembly.bok, firstcontext, "execution environment", 1)
+
+      Then("the generated SIE query contract is overfetched and the BoK candidate remains source-scoped")
+      candidate.getString("status") shouldBe Some("matched")
+      val matched = candidate.getVector("results").get.collect { case x: Record => x }
+      matched should have size 1
+      matched.head.getString("matchKind") shouldBe Some("candidate")
+      assembly.recorder.get.queryLimits shouldBe Vector(10, 20)
 
       When("a later complete generation contains one term and no component references")
       val secondcontext = _context(_second_resources)
@@ -85,11 +95,10 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     )
     val params = ComponentCreate(subsystem, ComponentOrigin.Main)
     val bok = new impl.ComponentFactory().create(params).primary
-    val sie = Option.when(includeSie)(
-      new RecordingSieFactory().create(params).primary
-    )
+    val recorder = Option.when(includeSie)(new RecordingSieFactory())
+    val sie = recorder.map(_.create(params).primary)
     subsystem.add(sie.toVector :+ bok)
-    Assembly(bok, sie)
+    Assembly(bok, sie, recorder)
   }
 
   private def _replace(
@@ -127,6 +136,19 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     )
     val action = KnowledgeFederationService.FederationDatasetInspectionRequest.create(request).TAKE
     _record(action.createCall(ActionCall.Core(action, context, Some(sie), None)).execute().TAKE)
+  }
+
+  private def _search_terms(
+    bok: Component,
+    context: ExecutionContext,
+    query: String,
+    limit: Int
+  ): Record = {
+    val action = BokComponent.BokRetrievalService.SearchTermsRequest.unsafeForTest(
+      null,
+      Record.dataAuto("query" -> query, "limit" -> limit)
+    )
+    _record(action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute().TAKE)
   }
 
   private def _record(response: OperationResponse): Record =
@@ -184,17 +206,70 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
 
   private final case class Assembly(
     bok: Component,
-    sie: Option[Component]
+    sie: Option[Component],
+    recorder: Option[RecordingSieFactory]
   )
 
   private final class RecordingSieFactory extends SemanticIntegrationEngineComponent.Factory {
     private var _replacement: Option[Record] = None
+    private var _query_limits = Vector.empty[Int]
+
+    def queryLimits: Vector[Int] = _query_limits
 
     override protected def create_Component(params: ComponentCreate): Component =
       new RecordingSieComponent()
 
     override val KnowledgeFederation: SemanticIntegrationEngineComponent.KnowledgeFederationServiceFactory =
       new RecordingKnowledgeFederationServiceFactory()
+
+    override val SemanticRetrieval: SemanticIntegrationEngineComponent.SemanticRetrievalServiceFactory =
+      new RecordingSemanticRetrievalServiceFactory()
+
+    private final class RecordingSemanticRetrievalServiceFactory
+      extends SemanticIntegrationEngineComponent.SemanticRetrievalServiceFactory {
+      import SemanticRetrievalService.*
+
+      override def createQueryActionCall(
+        core: ActionCall.Core,
+        action: SemanticQueryRequest
+      ): QueryActionCall =
+        RecordingQueryActionCall(core, action)
+    }
+
+    private final case class RecordingQueryActionCall(
+      core: ActionCall.Core,
+      override val action: SemanticRetrievalService.SemanticQueryRequest
+    ) extends SemanticRetrievalService.QueryActionCall {
+      protected def build_Program: ExecUowM[OperationResponse] =
+        exec_from {
+          val limit = action.record.getInt("limit").getOrElse(10)
+          _query_limits = _query_limits :+ limit
+          val sourceid = action.record.getString("sourceId").getOrElse("")
+          val decoys = Vector.tabulate(12) { index =>
+            Record.dataAuto(
+              "documentId" -> s"generic-$index",
+              "sourceId" -> sourceid,
+              "score" -> 0.99,
+              "metadata" -> "{\"domain\":\"other\"}"
+            )
+          }
+          val published = _replacement.toVector.flatMap(
+            _.getVector("documents").toVector.flatten.collect { case x: Record => x }
+          ).map { document =>
+            Record.dataAuto(
+              "documentId" -> document.getString("id").getOrElse(""),
+              "sourceId" -> document.getString("sourceId").getOrElse(""),
+              "score" -> (if (document.getString("title").contains("Runtime")) 0.9 else 0.1),
+              "metadata" -> document.getString("metadata").getOrElse("{}")
+            )
+          }
+          Consequence.success(OperationResponse(Record.dataAuto(
+            "query" -> action.record.getString("text").getOrElse(""),
+            "results" -> (decoys ++ published).take(limit),
+            "rdfResults" -> Vector.empty[Record]
+          )))
+        }
+    }
 
     private final class RecordingKnowledgeFederationServiceFactory
       extends SemanticIntegrationEngineComponent.KnowledgeFederationServiceFactory {

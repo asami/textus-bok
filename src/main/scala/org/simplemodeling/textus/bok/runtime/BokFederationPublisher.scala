@@ -42,6 +42,12 @@ object BokFederationPublisher {
       publication <- _publication(response)
     } yield publication
 
+  private[bok] def termDocumentId(term: BokTerm): String =
+    _stable_id("bok-term-document", term.termId.value)
+
+  private[bok] def componentDocumentId(component: ComponentReference): String =
+    _stable_id("bok-component-document", component.kind.value, component.name.value)
+
   private def _target(core: ActionCall.Core): Consequence[Component] =
     core.component.flatMap(_.subsystem).flatMap { subsystem =>
       subsystem.components.find { component =>
@@ -61,7 +67,7 @@ object BokFederationPublisher {
     val evidences = _evidences(normalized)
     val evidenceids = evidences.map { case (evidence, id) => _evidence_key(evidence) -> id }.toMap
     val documents = normalized.terms.map(_term_document(_, evidenceids)) ++
-      normalized.components.map(_component_document(_, evidenceids))
+      normalized.components.map(_component_document(normalized.source.datasetId.value, _, evidenceids))
     val assertions = normalized.terms.map(_term_assertion(_, evidenceids)) ++
       normalized.components.map(_component_assertion(_, evidenceids))
     val record = Record.dataAuto(
@@ -98,7 +104,7 @@ object BokFederationPublisher {
     evidenceids: Map[String, String]
   ): Record =
     Record.dataAuto(
-      "id" -> _stable_id("bok-term-document", term.termId.value),
+      "id" -> termDocumentId(term),
       "sourceId" -> term.evidence.sourceId.value,
       "title" -> term.title.value,
       "uri" -> term.evidence.uri.value,
@@ -134,11 +140,12 @@ object BokFederationPublisher {
     )
 
   private def _component_document(
+    datasetid: String,
     component: ComponentReference,
     evidenceids: Map[String, String]
   ): Record =
     Record.dataAuto(
-      "id" -> _stable_id("bok-component-document", component.kind.value, component.name.value),
+      "id" -> componentDocumentId(component),
       "sourceId" -> component.evidence.sourceId.value,
       "title" -> component.title.value,
       "uri" -> component.evidence.uri.value,
@@ -147,6 +154,7 @@ object BokFederationPublisher {
       "metadata" -> Json.obj(
         "domain" -> Json.fromString("bok"),
         "recordKind" -> Json.fromString("component-reference"),
+        "datasetId" -> Json.fromString(datasetid),
         "kind" -> Json.fromString(component.kind.value),
         "name" -> Json.fromString(component.name.value),
         "version" -> component.version.map(x => Json.fromString(x.value)).getOrElse(Json.Null),

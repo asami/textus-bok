@@ -36,9 +36,8 @@ warnings. The operation declarations are not MCP Ready in this phase.
 
 ## Exclusions
 
-This contract does not implement matching behavior, MCP publication, or CBD
-detail resolution. It exposes no Fuseki, Chroma, embedding, filesystem, or
-network type.
+This contract does not implement MCP publication or CBD detail resolution. It
+exposes no Fuseki, Chroma, embedding, filesystem, or network type.
 
 ## Resource Normalization
 
@@ -69,3 +68,19 @@ subsystem and invokes the generated `KnowledgeFederation.replaceDataset`
 operation. Absence of that component is a structured service failure. There is
 no direct provider or SIE runtime fallback. `project.yaml` declares both the
 exact development JVM coordinate and the CAR ABI range.
+
+## Matching And Replacement
+
+`BokKnowledgeCatalog` owns typed BoK generations. A generation becomes visible
+only after SIE reports complete provider-neutral publication; degraded
+publication retains the previous complete generation. Complete replacement
+removes stale terms and component references from the BoK view.
+
+Exact matches are determined from BoK-owned identities and titles. Semantic
+candidates are accepted only from generic SIE query document IDs and scores,
+scoped by dataset and source identity, and remain marked `candidate`. Retrieval
+overfetches bounded provider pages until domain filtering satisfies the caller's
+limit or the provider result set is exhausted. Classification occurs before
+result limiting, so a limit cannot hide ambiguity or conflicting definitions.
+Missing definitions or evidence remain `insufficient-evidence`, and unknown
+identities remain `no-match` without synthetic knowledge.

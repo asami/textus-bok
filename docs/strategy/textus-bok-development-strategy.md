@@ -26,7 +26,7 @@ guidance belongs to Textus CBD Support.
 
 ## Current Priority
 
-Phase 2 is active. The BoK-owned model, CNCF resource DSL normalization, and
-the first provider-neutral SIE replacement boundary are implemented. Exact,
-candidate, ambiguity, conflict, insufficient-evidence, and no-match semantics
-are the current priority before MCP exposure.
+Phase 2 is complete. The BoK-owned model, CNCF resource DSL normalization,
+provider-neutral SIE replacement, and domain matching states have executable
+specifications. Operator and developer documentation is the current priority
+before MCP exposure.

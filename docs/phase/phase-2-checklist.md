@@ -10,7 +10,7 @@
   retrieval have typed request and response models.
 - [x] Logical BoK resources are read exclusively through the CNCF resource DSL.
 - [x] Metadata is normalized deterministically without rendered HTML scraping.
-- [ ] Exact, candidate, ambiguity, conflict, insufficient-evidence, and no-match
+- [x] Exact, candidate, ambiguity, conflict, insufficient-evidence, and no-match
   states have executable specifications.
 - [x] Source replacement removes stale domain records deterministically.
 
