@@ -22,6 +22,7 @@ TEXTUS_SIE_EMBEDDING_MODEL="${TEXTUS_SIE_EMBEDDING_MODEL:-deterministic-sha256-v
 TEXTUS_SIE_EMBEDDING_DIMENSIONS="${TEXTUS_SIE_EMBEDDING_DIMENSIONS:-128}"
 TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE="${TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE:-128}"
 TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS="${TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS:-30}"
+PROBE_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_PROBE_TIMEOUT_SECONDS:-120}"
 STARTUP_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_STARTUP_TIMEOUT_SECONDS:-900}"
 SHUTDOWN_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_SHUTDOWN_TIMEOUT_SECONDS:-30}"
 RUN_DIR="${TEXTUS_BOK_CODEX_RUN_DIR:-$HOME/.cncf/textus-bok-codex}"
@@ -29,6 +30,7 @@ LAUNCH_LABEL="${TEXTUS_BOK_CODEX_LAUNCH_LABEL:-org.textus.bok-codex-sar}"
 PID_FILE="$RUN_DIR/server.pid"
 READY_FILE="$RUN_DIR/ready"
 CONFIG_FILE="$RUN_DIR/config"
+FAILURE_FILE="$RUN_DIR/failure"
 SERVER_LOG="$RUN_DIR/server.log"
 COMPONENT_DIR="$RUN_DIR/component.d"
 SAR_ROOT="$RUN_DIR/textus-bok-codex.sar.d"
@@ -69,6 +71,7 @@ _requested_config() {
     "embedding-dimensions=$TEXTUS_SIE_EMBEDDING_DIMENSIONS" \
     "embedding-request-batch-size=$TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE" \
     "embedding-timeout-seconds=$TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS" \
+    "probe-timeout-seconds=$PROBE_TIMEOUT_SECONDS" \
     "fixture-root=$FIXTURE_ROOT"
 }
 
@@ -84,7 +87,7 @@ _build_cars() {
 
 _cleanup_failed_start() {
   launchctl remove "$LAUNCH_LABEL" >/dev/null 2>&1 || true
-  rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE"
+  rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE" "$FAILURE_FILE"
 }
 
 _start() {
@@ -105,7 +108,7 @@ _start() {
     _build_cars
   fi
   : >"$SERVER_LOG"
-  rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE"
+  rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE" "$FAILURE_FILE"
   launchctl remove "$LAUNCH_LABEL" >/dev/null 2>&1 || true
   local launch_command=(
     /usr/bin/env
@@ -127,6 +130,7 @@ _start() {
     "TEXTUS_SIE_EMBEDDING_DIMENSIONS=$TEXTUS_SIE_EMBEDDING_DIMENSIONS"
     "TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE=$TEXTUS_SIE_EMBEDDING_REQUEST_BATCH_SIZE"
     "TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS=$TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS"
+    "TEXTUS_BOK_CODEX_PROBE_TIMEOUT_SECONDS=$PROBE_TIMEOUT_SECONDS"
     "TEXTUS_SIE_ROOT=$SIE_ROOT"
     "TEXTUS_SCRAPER_ROOT=$SCRAPER_ROOT"
     "TEXTUS_BOK_CODEX_RUN_DIR=$RUN_DIR"
@@ -147,6 +151,12 @@ _start() {
     -- "${launch_command[@]}"
   local deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
   until [[ -s "$READY_FILE" ]]; do
+    if [[ -s "$FAILURE_FILE" ]]; then
+      echo "Textus BoK Codex SAR failed before readiness." >&2
+      tail -n 300 "$SERVER_LOG" >&2
+      _cleanup_failed_start
+      return 1
+    fi
     if ! _is_running; then
       echo "Textus BoK Codex SAR exited before readiness." >&2
       tail -n 300 "$SERVER_LOG" >&2
@@ -168,11 +178,16 @@ _serve() {
   cd "$PROJECT_ROOT"
   echo "$$" >"$PID_FILE"
   _cleanup_serve() {
+    local result=$?
     if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" >/dev/null 2>&1; then
       kill "$SERVER_PID" >/dev/null 2>&1 || true
       wait "$SERVER_PID" >/dev/null 2>&1 || true
     fi
     rm -f "$READY_FILE" "$PID_FILE" "$CONFIG_FILE"
+    if ((result != 0)); then
+      printf 'serve-exit=%s\n' "$result" >"$FAILURE_FILE"
+    fi
+    return "$result"
   }
   trap _cleanup_serve EXIT INT TERM
 
@@ -203,7 +218,8 @@ _serve() {
     "$CNCF_BIN" \
       "${CNCF_RUNTIME_ARGS[@]}" \
       "--textus.resource.url.file.roots=$FIXTURE_ROOT" \
-      "--textus.subsystem=textus-bok-codex" \
+      "--textus.subsystem.file=$SAR_FILE" \
+      "--textus.repository.dir=component-dir:$COMPONENT_DIR" \
       "--textus.sie.rdf-db=$TEXTUS_SIE_RDF_DB" \
       "--textus.sie.vector-db=$TEXTUS_SIE_VECTOR_DB" \
       "--textus.sie.fuseki.endpoint=$TEXTUS_SIE_FUSEKI_ENDPOINT" \
@@ -218,7 +234,7 @@ _serve() {
       "--textus.sie.embedding.timeout-seconds=$TEXTUS_SIE_EMBEDDING_TIMEOUT_SECONDS" \
       server \
       --no-project-classpath \
-      --component-dir "$COMPONENT_DIR" &
+      --no-default-components &
   SERVER_PID=$!
 
   local deadline=$((SECONDS + STARTUP_TIMEOUT_SECONDS))
@@ -227,9 +243,20 @@ _serve() {
     ((SECONDS < deadline)) || return 1
     sleep 0.5
   done
+  local expected_rdf_provider="$TEXTUS_SIE_RDF_DB"
+  local expected_vector_provider="$TEXTUS_SIE_VECTOR_DB"
+  if [[ "$expected_rdf_provider" == "in-memory" ]]; then
+    expected_rdf_provider="in-memory-rdf"
+  fi
+  if [[ "$expected_vector_provider" == "in-memory" ]]; then
+    expected_vector_provider="in-memory-vector"
+  fi
   "$SCRIPT_DIR/probe-bok-codex-sar.py" \
     --base-url "$CNCF_HTTP_BASEURL" \
-    --source-uri "$(cd "$FIXTURE_ROOT" && pwd -P | sed 's#^#file://#')/"
+    --source-uri "$(cd "$FIXTURE_ROOT" && pwd -P | sed 's#^#file://#')/" \
+    --expected-rdf-provider "$expected_rdf_provider" \
+    --expected-vector-provider "$expected_vector_provider" \
+    --timeout "$PROBE_TIMEOUT_SECONDS"
   _requested_config_fingerprint >"$CONFIG_FILE"
   printf 'Textus BoK Codex SAR ready: %s/mcp\n' "$CNCF_HTTP_BASEURL" >"$READY_FILE"
   wait "$SERVER_PID"
@@ -237,7 +264,7 @@ _serve() {
 
 _stop() {
   if ! _is_running; then
-    rm -f "$PID_FILE" "$READY_FILE" "$CONFIG_FILE"
+    rm -f "$PID_FILE" "$READY_FILE" "$CONFIG_FILE" "$FAILURE_FILE"
     echo "Textus BoK Codex SAR is not running."
     return 0
   fi

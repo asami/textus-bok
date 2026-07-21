@@ -33,6 +33,16 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       val firstcontext = _context(_first_resources)
       val firstsource = _source("generation-1")
 
+      val replacement = BokFederationPublisher.replacementRequest(
+        BokSourceReader.read(firstcontext, firstsource).TAKE
+      ).TAKE
+      replacement.assertions.flatMap(_.objectType).map(_.value).distinct shouldBe Vector("literal")
+      val externalassertions = replacement.toRecord().getVector("assertions").get.collect {
+        case assertion: Record => assertion
+      }
+      externalassertions.flatMap(_.getAny("objectType")).map(_.toString).distinct shouldBe
+        Vector("literal")
+
       When("the first generation and its identical retry are replaced through the BoK action")
       val first = _replace(assembly.bok, firstcontext, firstsource)
       val repeated = _replace(assembly.bok, firstcontext, firstsource)

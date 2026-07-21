@@ -51,3 +51,17 @@ Provider-configurable SAR boundary implemented on 2026-07-21 JST:
   without a component failure. The operational bound is temporarily 900
   seconds so initialization can finish; discovery latency remains an explicit
   runtime-hardening concern rather than being hidden by repeated restarts.
+
+Provider-backed SAR verification completed on 2026-07-21 JST:
+
+- The runner now makes its owned current-CAR directory the SAR descriptor's
+  sole component search repository. This prevents an older same-version CAR in
+  `~/.cncf/local/repository` from shadowing the artifacts built for the run.
+- The KS-14 Fuseki and Chroma smoke passed on SIE's standard `18005` endpoint
+  with `BOK_CODEX_SAR_OK`, exposing four BoK-owned tools and no legacy SIE BoK
+  tools. RDF assertion object types remained literals across the CAR boundary.
+- Replacing metadata-only BoK knowledge caused zero HTML fetches and created no
+  HTML dataset. A separate explicit SIE `HtmlIndexer` request then indexed one
+  page and reported `SIE_HTML_INDEX_BOUNDARY_OK`.
+- After provider verification, the in-memory BoK Codex SAR was restored on
+  `http://127.0.0.1:18005/mcp` for normal development use.

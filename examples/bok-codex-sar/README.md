@@ -19,11 +19,17 @@ CARs, assembles the SAR, starts CNCF `0.5.1-SNAPSHOT`, replaces the canonical
 metadata-only fixture through Textus BoK, and verifies a live terminology read.
 Runtime state and logs are kept under
 `${TEXTUS_BOK_CODEX_RUN_DIR:-$HOME/.cncf/textus-bok-codex}`.
+The runner places all three current CARs in its owned component directory,
+disables CNCF default component repositories, and selects its generated SAR by
+explicit file path. This prevents a same-version SNAPSHOT in
+`~/.cncf/local/repository` from shadowing the CARs built for the current run.
 The server process is registered as the user launchd job
 `${TEXTUS_BOK_CODEX_LAUNCH_LABEL:-org.textus.bok-codex-sar}`, so it remains
 available after the starting shell exits and is removed by `stop`.
 Cold multi-CAR loading may take several minutes; the default startup timeout is
 900 seconds and can be overridden with `TEXTUS_BOK_CODEX_STARTUP_TIMEOUT_SECONDS`.
+The live replacement/read probe allows 120 seconds by default and can be
+overridden with `TEXTUS_BOK_CODEX_PROBE_TIMEOUT_SECONDS` for slower providers.
 
 The default provider mode is external-service-free: RDF and Vector DB both use
 `in-memory`. Provider-backed verification may set `TEXTUS_SIE_RDF_DB=fuseki`

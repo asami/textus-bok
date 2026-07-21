@@ -33,7 +33,7 @@ object BokFederationPublisher {
   ): Consequence[BokFederationPublication] =
     for {
       api <- _api(core)
-      request <- _request(normalized)
+      request <- replacementRequest(normalized)
       response <- api.replaceDataset(request)(using core.executionContext)
       publication <- _publication(response)
     } yield publication
@@ -54,7 +54,7 @@ object BokFederationPublisher {
         Consequence.serviceUnavailable("BoK component is not available in the current action context")
     }
 
-  private def _request(
+  private[bok] def replacementRequest(
     normalized: NormalizedBokSource
   ): Consequence[FederationDatasetReplacementRequest] = {
     val evidences = _evidences(normalized)

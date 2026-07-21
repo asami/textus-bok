@@ -53,7 +53,13 @@ def _call_tool(base_url: str, name: str, arguments: dict, timeout: float) -> dic
     return json.loads(content[0]["text"])
 
 
-def _run(base_url: str, source_uri: str, timeout: float) -> None:
+def _run(
+    base_url: str,
+    source_uri: str,
+    expected_rdf_provider: str,
+    expected_vector_provider: str,
+    timeout: float,
+) -> None:
     listed = _post_json(
         base_url,
         "/mcp",
@@ -83,6 +89,25 @@ def _run(base_url: str, source_uri: str, timeout: float) -> None:
     )
     _require(replacement.get("status") == "complete", f"BoK replacement failed: {replacement}")
 
+    provider_status = _call_tool(
+        base_url,
+        "SemanticIntegrationEngine.SemanticRetrieval.status",
+        {},
+        timeout,
+    )
+    _require(
+        provider_status.get("graph") == expected_rdf_provider,
+        f"Unexpected RDF provider: {provider_status}",
+    )
+    _require(
+        provider_status.get("vector") == expected_vector_provider,
+        f"Unexpected Vector provider: {provider_status}",
+    )
+    _require(
+        provider_status.get("overall") == "healthy",
+        f"Provider status is not healthy: {provider_status}",
+    )
+
     search = _call_tool(
         base_url,
         "Bok.BokRetrieval.searchTerms",
@@ -93,7 +118,8 @@ def _run(base_url: str, source_uri: str, timeout: float) -> None:
     _require(search.get("results"), f"BoK terminology search returned no result: {search}")
     print(
         f"BOK_CODEX_SAR_OK endpoint={base_url}/mcp "
-        f"bok_tools={len(BOK_TOOLS)} legacy_sie_bok_tools=0"
+        f"bok_tools={len(BOK_TOOLS)} legacy_sie_bok_tools=0 "
+        f"rdf={expected_rdf_provider} vector={expected_vector_provider}"
     )
 
 
@@ -101,10 +127,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap and verify the BoK Codex SAR.")
     parser.add_argument("--base-url", default="http://127.0.0.1:18005")
     parser.add_argument("--source-uri", required=True)
+    parser.add_argument("--expected-rdf-provider", default="in-memory-rdf")
+    parser.add_argument("--expected-vector-provider", default="in-memory-vector")
     parser.add_argument("--timeout", type=float, default=10.0)
     arguments = parser.parse_args()
     try:
-        _run(arguments.base_url.rstrip("/"), arguments.source_uri, arguments.timeout)
+        _run(
+            arguments.base_url.rstrip("/"),
+            arguments.source_uri,
+            arguments.expected_rdf_provider,
+            arguments.expected_vector_provider,
+            arguments.timeout,
+        )
         return 0
     except (AssertionError, json.JSONDecodeError, OSError, KeyError) as error:
         print(f"BOK_CODEX_SAR_FAILED: {error}")
