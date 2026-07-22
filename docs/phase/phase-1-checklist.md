@@ -12,6 +12,9 @@
   layout.
 - [x] README, strategy, phase, and checklist navigation describe the baseline
   and its next boundary.
+- [x] Release publication of the development `sbt-cozy` coordinate is deferred
+  as a (Future Development Candidate: DP-01) to
+  `docs/phase/deferred-release-work.md`.
 
 Phase 1 closes only while every item remains checked and the verification
 evidence remains recorded in `phase-1.md`.

@@ -12,6 +12,11 @@
 - [x] CBD handoff documentation passes only portable existence identity and
   evidence to Textus CBD Support for usage and compatibility detail.
 - [x] README navigation reaches every public Phase 3 document.
+- [x] Released ABI baseline and `sbt-cozy` coordinate verification are deferred
+  as a (Future Development Candidate: DP-01) to
+  `docs/phase/deferred-release-work.md`.
+- [x] Representative live `meta.help` verification is deferred as a (Future
+  Development Candidate: DP-02) to `docs/phase/deferred-release-work.md`.
 
 Phase 3 closes only when every item is checked and verification evidence is
 recorded in `phase-3.md`.

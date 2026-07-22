@@ -14,6 +14,8 @@
   exact identities to Textus CBD Support for detail and usage guidance.
 - [x] The complete BoK-to-CBD component-development workflow passes from current
   CAR artifacts and documented operator commands.
+- [x] Cold-discovery timeout hardening is deferred as a (Future Development
+  Candidate: DP-03) to `docs/phase/deferred-release-work.md`.
 
 Phase 5 closes only when every item is checked and validation evidence is
 recorded in `phase-5.md`.

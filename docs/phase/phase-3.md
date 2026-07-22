@@ -34,13 +34,15 @@ operations. `sbt --batch test cozyBuildCAR` passed 14 tests in 5 suites and
 built `target/textus-bok-0.1.0-SNAPSHOT.car`. Archive inspection confirmed
 `manual/index.md` and `manual/user-guide.md`. Normal CAR lint and the documented
 portable `cozy lint car .` command reported no failure; the missing released ABI
-baseline and SNAPSHOT sbt-cozy dependency remain release-readiness warnings.
+baseline and SNAPSHOT sbt-cozy dependency are deferred release-readiness work
+under DP-01 in `docs/phase/deferred-release-work.md`.
 
-Runtime `meta.help` execution remains unverified in this documentation slice.
+Runtime `meta.help` execution was not verified in this documentation slice.
 The launcher selected project development mode without a generated component
 runtime classpath, while disabling that mode could not resolve a compatible
-`main-target` runtime. The documented selectors are verified from generated
-component metadata, not claimed as executed runtime evidence.
+`main-target` runtime. The live verification is deferred under DP-02 in
+`docs/phase/deferred-release-work.md`; the documented selectors are verified
+from generated component metadata, not claimed as executed runtime evidence.
 
 ## Next Boundary
 

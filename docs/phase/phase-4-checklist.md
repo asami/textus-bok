@@ -10,6 +10,9 @@
   proven unavailable through MCP after CAR/SAR policy application.
 - [x] A migration SAR proves old/new operation parity with deterministic,
   collision-free tool identities.
+- [x] Released ABI baseline and non-SNAPSHOT build-plugin verification are
+  deferred as a (Future Development Candidate: DP-01) to
+  `docs/phase/deferred-release-work.md`.
 
 CBD handoff remains Phase 5 scope and is not claimed by this migration parity
 ledger.

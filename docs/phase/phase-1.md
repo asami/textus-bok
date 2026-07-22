@@ -27,8 +27,8 @@ model metadata, ABI manifest, and CAR artifact end to end.
 
 The development scaffold declares sbt-cozy `0.1.15-SNAPSHOT`, which is required
 for the current metadata packaging contract. Publishing that plugin coordinate
-is a release-track responsibility and is not represented as completed baseline
-work.
+is deferred release-track work under DP-01 in
+`docs/phase/deferred-release-work.md`; it is not baseline implementation work.
 
 ## Next Boundary
 

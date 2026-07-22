@@ -37,9 +37,9 @@ Provider-configurable SAR boundary implemented on 2026-07-21 JST:
 - The operational runner retains in-memory RDF and Vector defaults but now
   forwards the established SIE Fuseki, Chroma, provider timeout, and embedding
   settings through launchd and explicit CNCF arguments.
-- This removes the configuration blocker for moving KS-14 provider-backed
-  smoke to the BoK-owned SAR. The provider-backed lifecycle itself remains open
-  until that smoke runs against current artifacts.
+- This removed the configuration blocker for moving KS-14 provider-backed
+  smoke to the BoK-owned SAR. The provider-backed lifecycle was still open at
+  this checkpoint and was completed by the later smoke recorded below.
 - `scripts/check-bok-codex-provider-config.sh` verifies the in-memory defaults
   and captures Fuseki, Chroma, endpoint, and embedding overrides at the CNCF
   process boundary without starting external providers.
@@ -48,8 +48,8 @@ Provider-configurable SAR boundary implemented on 2026-07-21 JST:
   unknown or different fingerprint was rejected without stopping it.
 - Subsequent cold discovery exceeded both 240-second and 360-second bounds
   without a component failure. The operational bound is temporarily 900
-  seconds so initialization can finish; discovery latency remains an explicit
-  runtime-hardening concern rather than being hidden by repeated restarts.
+  seconds so initialization can finish. Cold-discovery hardening is deferred
+  release work under DP-03 in `docs/phase/deferred-release-work.md`.
 
 Provider-backed SAR verification completed on 2026-07-21 JST:
 

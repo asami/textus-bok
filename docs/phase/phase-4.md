@@ -68,8 +68,9 @@ BoK CAR.
 Final validation passed 16 tests in six suites and built
 `target/textus-bok-0.1.0-SNAPSHOT.car`. CAR lint reported no failure; its only
 warnings were the absent released ABI baseline and the intentional development
-`sbt-cozy 0.1.15-SNAPSHOT` selection. Archive inspection found no duplicated
-SIE Component API class in the BoK CAR.
+`sbt-cozy 0.1.15-SNAPSHOT` selection. They are deferred release-readiness work
+under DP-01 in `docs/phase/deferred-release-work.md`. Archive inspection found
+no duplicated SIE Component API class in the BoK CAR.
 
 Every Phase 4 checklist item is complete. The three-component representative
 SAR and CBD handoff remain Phase 5 scope.
