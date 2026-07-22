@@ -29,6 +29,14 @@ boundaries.
 The journal and note are not normative. P6-01 promotes the accepted behavior
 into stable design and specification documents before implementation.
 
+## Decision Record
+
+P6-DEC-01 was accepted on 2026-07-23: Cozy publishes a versioned
+`cozy.rdf-graph-summary.v1` producer contract before Textus BoK consumes graph
+topology. The accepted design and specification are
+`docs/design/bok-knowledge-map.md` and
+`docs/spec/bok-knowledge-map-contract.md`.
+
 ## Scope
 
 1. Freeze the Cozy structured topology handoff and Textus BoK ownership

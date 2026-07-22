@@ -79,6 +79,19 @@ ownership boundaries.
 
 Proceed with the Textus BoK Knowledge Map projection.
 
+### P6-DEC-01: versioned Cozy graph-summary handoff
+
+Decision recorded: 2026-07-23
+
+The Phase 6 owner selected the versioned Cozy producer contract. Cozy publishes
+`metadata/rdf/graph.json` as `cozy.rdf-graph-summary.v1` before Textus BoK
+consumes it. Textus BoK therefore rejects an unversioned graph summary rather
+than treating the generated dashboard payload as a stable component contract.
+
+This decision expands the Phase 6 producer boundary to the Cozy implementation
+and its executable specification. It does not transfer RDF, SIE, or CBD domain
+ownership to Textus BoK.
+
 The initial product surface should contain:
 
 - an overview that summarizes the selected dataset by category and knowledge
