@@ -37,13 +37,13 @@ current step are recorded in `phase-6.md`.
 
 ## P6-04: Knowledge Map Query
 
-- [ ] CML defines typed Knowledge Map node, relationship, request, response,
+- [x] CML defines typed Knowledge Map node, relationship, request, response,
   status, limit, and warning contracts.
-- [ ] A public read operation supports bounded dataset/source, category, term
+- [x] A public read operation supports bounded dataset/source, category, term
   type, and focus selection with explicit no-match and truncation behavior.
-- [ ] Operation implementation reads the selected catalog generation and never
+- [x] Operation implementation reads the selected catalog generation and never
   turns provider candidate scores into factual edges.
-- [ ] MCP readiness remains unchanged, or a separately documented bounded MCP
+- [x] MCP readiness remains unchanged, or a separately documented bounded MCP
   decision and executable projection evidence explicitly authorize the new
   operation.
 

@@ -16,7 +16,7 @@ import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFede
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Jul. 23, 2026
  * @author  ASAMI, Tomoharu
  */
 
@@ -73,6 +73,12 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       action: ComponentReferenceLookupRequest
     ): GetComponentReferenceActionCall =
       GetComponentReferenceActionCallImpl(core, action)
+
+    override def createGetKnowledgeMapActionCall(
+      core: ActionCall.Core,
+      action: GetKnowledgeMapRequest
+    ): GetKnowledgeMapActionCall =
+      GetKnowledgeMapActionCallImpl(core, action)
   }
 
   private final case class ReplaceKnowledgeSourceActionCallImpl(
@@ -160,6 +166,24 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       }
   }
 
+  private final case class GetKnowledgeMapActionCallImpl(
+    core: ActionCall.Core,
+    override val action: BokComponent.BokRetrievalService.GetKnowledgeMapRequest
+  ) extends BokComponent.BokRetrievalService.GetKnowledgeMapActionCall {
+    protected def build_Program: ExecUowM[OperationResponse] =
+      exec_from {
+        Consequence.success(OperationResponse(_catalog.getKnowledgeMap(
+          _optional_string(action.record, "datasetId"),
+          _optional_string(action.record, "sourceId"),
+          _optional_string(action.record, "category"),
+          _optional_string(action.record, "termType"),
+          _optional_string(action.record, "focus"),
+          action.record.getInt("nodeLimit"),
+          action.record.getInt("relationshipLimit")
+        ).toRecord()))
+      }
+  }
+
   private def _source(record: Record): Consequence[BokKnowledgeSource] =
     record.getAny("source") match {
       case Some(source: BokKnowledgeSource) => Consequence.success(source)
@@ -182,6 +206,10 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     record.getAny(name).flatMap {
       case value: String => Some(value)
       case value: BokTermCategory => Some(value.value)
+      case value: BokDatasetId => Some(value.value)
+      case value: BokSourceId => Some(value.value)
+      case value: BokTermType => Some(value.value)
+      case value: BokKnowledgeMapFocus => Some(value.value)
       case value: ComponentKind => Some(value.value)
       case value: ComponentVersion => Some(value.value)
       case _ => None

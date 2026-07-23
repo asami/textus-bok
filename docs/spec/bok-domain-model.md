@@ -30,10 +30,11 @@ and may record source version, observed time, and freshness.
 ## Requests And Responses
 
 The component defines typed request and response models for source replacement,
-term search and explanation, and component-reference search and lookup. Query
-responses use explicit status, evidence-bearing result types, and typed
-warnings. MCP readiness is operation-scoped: all four reads are ready, while
-source mutation remains private.
+term search and explanation, component-reference search and lookup, and the
+factual Knowledge Map query. Query responses use explicit status,
+evidence-bearing result types, and typed warnings. MCP readiness is
+operation-scoped: the four terminology/component reads are ready, while source
+mutation and the public Knowledge Map query remain outside the MCP catalog.
 
 ## Exclusions
 

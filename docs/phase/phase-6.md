@@ -2,7 +2,7 @@
 
 Stage Status:
 - Current status: IN PROGRESS
-- Current step: P6-04 public query contract planning
+- Current step: P6-05 Component Web Application planning
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-6-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -42,8 +42,12 @@ the full Textus BoK suite after the local SIE artifact was rebuilt against the
 current CNCF SNAPSHOT. The source reader admits only the versioned graph summary
 through CNCF resource access, preserves attributable reference-node metadata and
 truncation, and commits topology with the selected complete generation. The
-next stage is P6-C public-query planning; no query, MCP projection, or Web
-surface is implemented yet.
+P6-C public query contract is now complete: `getKnowledgeMap` projects only
+the selected catalog generation with bounded filtering, focus, no-match,
+truncation, source-reference, and selected-term detail. The operation remains
+public but outside MCP, with fresh review, generated-contract checks, focused
+operation specifications, and `Test/compile` evidence. The next stage is P6-D
+Static Form Web application planning; no Web surface is implemented yet.
 
 ## Scope
 

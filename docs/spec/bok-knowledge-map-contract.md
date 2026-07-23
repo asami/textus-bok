@@ -62,10 +62,34 @@ prior generation and its warnings.
 
 ## Query and Web Consequences
 
-The later `getKnowledgeMap` operation accepts bounded dataset, source,
-category, term type, and focus selection. It returns explicit no-match and
-truncation states. It is public read-only but not MCP-ready in Phase 6 unless a
-separate decision and projection specification authorize it.
+`BokRetrieval.getKnowledgeMap` is a public, read-only operation. Its generated
+request accepts optional `datasetId`, `sourceId`, `category`, `termType`, and
+`focus` values plus optional `nodeLimit` and `relationshipLimit` values. An
+omitted source selector means all selected complete generations. A category or
+term-type match supplies the neighborhood seed; the returned result includes
+the factual relationships directly incident to a seed and their endpoints. A
+focus matches a source node identifier, retained term identifier, or normalized
+node label after the other selectors have been applied.
+
+The result has selected source/dataset/generation summaries, including the
+admitted source-reference kind, value, and optional URI. Each node retains its
+source term identifiers and the selected complete `BokTerm` records that match
+those identifiers, so one result can provide attributed definitions without a
+second retrieval. Nodes and relationships are deterministic, with effective
+limits, a result `truncated` flag, per-source truncation, and typed warnings.
+For selector-scoped queries, matching seed nodes come first, followed by their
+sorted adjacent endpoints; unscoped nodes and all relationships are sorted by
+dataset identity and stable source identity.
+Requested limits are clamped to
+the Phase 6 defaults of 128 nodes and 256 relationships, with an explicit
+warning when clamping or result omission occurs. A focus or selector that
+matches no selected node returns `no-match` with empty node and relationship
+collections; it does not synthesize a node or relationship.
+
+The operation reads only the selected `BokKnowledgeCatalog` generation. It
+does not invoke SIE candidate retrieval, and no candidate score, inferred
+association, or shared tag becomes a factual edge. It is not MCP-ready in
+Phase 6 unless a separate decision and projection specification authorize it.
 
 The Static Form Web surface uses that one result for filters, graph, detail,
 warnings, and the no-JavaScript list/table fallback. It presents component

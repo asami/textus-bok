@@ -22,7 +22,7 @@ import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetQue
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Jul. 23, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -58,6 +58,20 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       firstinspection.getInt("documentCount") shouldBe Some(4)
       firstinspection.getInt("assertionCount") shouldBe Some(4)
       firstinspection.getInt("evidenceCount") shouldBe Some(3)
+
+      When("the public Knowledge Map operation projects the selected catalog topology")
+      val map = _knowledge_map(assembly.bok, firstcontext, firstsource)
+
+      Then("the typed operation returns factual nodes and relationships without semantic retrieval")
+      map.getString("status") shouldBe Some("matched")
+      map.getVector("sources").get should have size 1
+      map.getVector("nodes").get.collect { case node: Record => node.getString("nodeId") } shouldBe
+        Vector(Some("term:runtime"), Some("article:runtime"))
+      map.getVector("nodes").get.collect { case node: Record =>
+        node.getVector("terms").getOrElse(Vector.empty).collect { case term: Record => term.getString("definition") }
+      } shouldBe Vector(Vector(Some("Runtime environment.")), Vector.empty)
+      map.getVector("relationships").get.collect { case relationship: Record => relationship.getString("predicate") } shouldBe
+        Vector(Some("references"))
 
       When("a semantic term candidate is requested through the generated federation API")
       val federationresults = _query_federation(assembly.bok, firstcontext, "runtime environment", "simplemodeling")
@@ -193,6 +207,22 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     _record(action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute().TAKE)
   }
 
+  private def _knowledge_map(
+    bok: Component,
+    context: ExecutionContext,
+    source: BokKnowledgeSource
+  ): Record = {
+    val action = BokComponent.BokRetrievalService.GetKnowledgeMapRequest.unsafeForTest(
+      null,
+      Record.dataAuto(
+        "datasetId" -> source.datasetId.value,
+        "sourceId" -> source.sourceId.value,
+        "focus" -> "runtime"
+      )
+    )
+    _record(action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute().TAKE)
+  }
+
   private def _query_federation(
     bok: Component,
     context: ExecutionContext,
@@ -254,8 +284,18 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       |  ]
       |}""".stripMargin
 
+  private val _first_manifest =
+    """{
+      |  "schemaVersion": "cncf.knowledge-source.v1",
+      |  "resources": [
+      |    {"kind": "component-repository-index", "href": "repository/catalog/index.json"},
+      |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"},
+      |    {"kind": "rdf-graph-summary", "href": "metadata/rdf/graph.json"}
+      |  ]
+      |}""".stripMargin
+
   private val _first_resources = Map(
-    "fixture/metadata/cncf/knowledge-source.json" -> _manifest,
+    "fixture/metadata/cncf/knowledge-source.json" -> _first_manifest,
     "fixture/metadata/glossary/terms.json" ->
       """{"terms":[
         |{"id":"architecture:runtime","title":"Runtime","definition_text":"Runtime environment.","term_type":"concept"},
@@ -265,7 +305,21 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       """{"schemaVersion":"cncf.component-repository-index.v1","generatedAt":"2026-07-21T00:00:00Z","artifacts":[
         |{"kind":"car","artifactId":"textus-account","catalog":"car/textus-account.yaml","status":"active","recommended":"0.2.0"},
         |{"kind":"sar","artifactId":"textus-runtime","catalog":"sar/textus-runtime.yaml","status":"active","latestSnapshot":"1.0.0-SNAPSHOT"}
-        |]}""".stripMargin
+        |]}""".stripMargin,
+    "fixture/metadata/rdf/graph.json" ->
+      """{
+        |  "schemaVersion": "cozy.rdf-graph-summary.v1",
+        |  "kind": "rdf-graph-summary",
+        |  "sourceRef": {"kind": "bok-site", "value": "knowledgehub", "uri": "https://example.test/knowledgehub"},
+        |  "nodes": [
+        |    {"id": "term:runtime", "label": "Runtime", "node_type": "term", "category": "architecture", "terms": ["architecture:runtime"]},
+        |    {"id": "article:runtime", "label": "Runtime Article", "node_type": "article"}
+        |  ],
+        |  "edges": [
+        |    {"source": "term:runtime", "predicate": "references", "target": "article:runtime", "label": "References"}
+        |  ],
+        |  "truncated": false
+        |}""".stripMargin
   )
 
   private val _second_resources = Map(

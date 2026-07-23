@@ -11,7 +11,7 @@ import org.simplemodeling.textus.bok.impl
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Jul. 23, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -40,6 +40,7 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "Bok.BokRetrieval.getComponentReference"
       )
       names.exists(_.endsWith(".replaceKnowledgeSource")) shouldBe false
+      names.exists(_.endsWith(".getKnowledgeMap")) shouldBe false
 
       And("the tool inputs and operation outputs retain their typed BoK contracts")
       searchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
@@ -66,6 +67,7 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       outputs.get("explainTerm") shouldBe Some("ExplainTermResponse")
       outputs.get("searchComponentReferences") shouldBe Some("ComponentReferenceSearchResponse")
       outputs.get("getComponentReference") shouldBe Some("ComponentReferenceLookupResponse")
+      outputs.get("getKnowledgeMap") shouldBe Some("GetKnowledgeMapResponse")
     }
 
     "allow deployment policy to narrow reads without publishing source mutation" in {

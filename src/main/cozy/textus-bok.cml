@@ -168,6 +168,29 @@ ComponentReferenceLookupResponse
 
 Return one exact existence-only CAR or SAR reference.
 
+#### getKnowledgeMap
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+
+GetKnowledgeMapRequest
+
+##### OUTPUT
+
+###### TYPE
+
+GetKnowledgeMapResponse
+
+##### DESCRIPTION
+
+Return a bounded factual topology from selected complete BoK generations. This
+public read is not MCP Ready.
+
 # DATATYPE
 
 ## BokTermId
@@ -314,6 +337,78 @@ Return one exact existence-only CAR or SAR reference.
 |------|------|--------------|
 | value | string | 1 |
 
+## BokKnowledgeMapNodeId
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapNodeLabel
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapNodeKind
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapPredicate
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapTag
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapFocus
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapSourceReferenceKind
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapSourceReferenceValue
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokKnowledgeMapSourceReferenceUri
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
 ## ComponentSourceId
 
 ### ATTRIBUTE
@@ -442,6 +537,22 @@ Input command identifying one logical BoK source generation.
 | version | ComponentVersion | ? |
 | kind | ComponentKind | ? |
 
+## GetKnowledgeMapRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| datasetId | BokDatasetId | ? |
+| sourceId | BokSourceId | ? |
+| category | BokTermCategory | ? |
+| termType | BokTermType | ? |
+| focus | BokKnowledgeMapFocus | ? |
+| nodeLimit | int | ? |
+| relationshipLimit | int | ? |
+
 # VALUE
 
 ## BokKnowledgeSource
@@ -543,6 +654,79 @@ Search evidence associated with one existence-only component reference.
 | score | double | 1 |
 | rationale | BokMatchRationale | 1 |
 
+## BokKnowledgeMapSelectedSource
+
+### DESCRIPTION
+
+One selected complete source generation contributing to a Knowledge Map result.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| datasetId | BokDatasetId | 1 |
+| sourceId | BokSourceId | 1 |
+| generation | BokSourceGeneration | 1 |
+| sourceReference | BokKnowledgeMapSourceReference | ? |
+| sourceTruncated | boolean | 1 |
+| warnings | BokWarning | * |
+
+## BokKnowledgeMapSourceReference
+
+### DESCRIPTION
+
+Attributable source reference admitted with one selected topology generation.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| kind | BokKnowledgeMapSourceReferenceKind | 1 |
+| value | BokKnowledgeMapSourceReferenceValue | 1 |
+| uri | BokKnowledgeMapSourceReferenceUri | ? |
+
+## BokKnowledgeMapNode
+
+### DESCRIPTION
+
+Attributable factual node from one selected complete generation.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| datasetId | BokDatasetId | 1 |
+| sourceId | BokSourceId | 1 |
+| nodeId | BokKnowledgeMapNodeId | 1 |
+| label | BokKnowledgeMapNodeLabel | 1 |
+| kind | BokKnowledgeMapNodeKind | 1 |
+| category | BokTermCategory | ? |
+| termIds | BokTermId | * |
+| terms | BokTerm | * |
+| tags | BokKnowledgeMapTag | * |
+| evidence | BokEvidence | 1 |
+
+## BokKnowledgeMapRelationship
+
+### DESCRIPTION
+
+Attributable factual relationship whose endpoints are returned map nodes.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| datasetId | BokDatasetId | 1 |
+| sourceId | BokSourceId | 1 |
+| subjectId | BokKnowledgeMapNodeId | 1 |
+| predicate | BokKnowledgeMapPredicate | 1 |
+| objectId | BokKnowledgeMapNodeId | 1 |
+| label | BokKnowledgeMapNodeLabel | ? |
+| category | BokTermCategory | ? |
+| termIds | BokTermId | * |
+| tags | BokKnowledgeMapTag | * |
+| evidence | BokEvidence | 1 |
+
 ## ReplaceKnowledgeSourceResponse
 
 ### ATTRIBUTE
@@ -598,4 +782,19 @@ Search evidence associated with one existence-only component reference.
 |------|------|--------------|
 | status | BokQueryStatus | 1 |
 | reference | ComponentReference | ? |
+| warnings | BokWarning | * |
+
+## GetKnowledgeMapResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| sources | BokKnowledgeMapSelectedSource | * |
+| nodes | BokKnowledgeMapNode | * |
+| relationships | BokKnowledgeMapRelationship | * |
+| nodeLimit | int | 1 |
+| relationshipLimit | int | 1 |
+| truncated | boolean | 1 |
 | warnings | BokWarning | * |

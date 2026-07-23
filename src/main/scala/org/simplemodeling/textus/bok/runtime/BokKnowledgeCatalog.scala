@@ -14,6 +14,10 @@ import org.simplemodeling.textus.bok.value.*
 final class BokKnowledgeCatalog {
   private final case class TermEntry(datasetId: String, sourceId: String, term: BokTerm)
   private final case class ComponentEntry(datasetId: String, sourceId: String, reference: ComponentReference)
+  private final case class MapSource(normalized: NormalizedBokSource)
+  private final case class MapNode(source: MapSource, node: BokKnowledgeNode)
+  private final case class MapRelationship(source: MapSource, relationship: BokKnowledgeRelationship)
+  private final case class MapLimit(value: Int, warning: Option[BokWarning])
 
   private var _datasets = Map.empty[String, NormalizedBokSource]
 
@@ -31,6 +35,71 @@ final class BokKnowledgeCatalog {
 
   def selectedTopology(datasetId: String): Option[BokKnowledgeTopology] = synchronized {
     _datasets.get(datasetId).map(_.topology)
+  }
+
+  def getKnowledgeMap(
+    datasetid: Option[String],
+    sourceid: Option[String],
+    category: Option[String],
+    termtype: Option[String],
+    focus: Option[String],
+    nodelimit: Option[Int],
+    relationshiplimit: Option[Int]
+  ): GetKnowledgeMapResponse = synchronized {
+    val nodebound = _map_limit(nodelimit, BokKnowledgeCatalog.DEFAULT_KNOWLEDGE_MAP_NODE_LIMIT, "node")
+    val relationshipbound = _map_limit(relationshiplimit, BokKnowledgeCatalog.DEFAULT_KNOWLEDGE_MAP_RELATIONSHIP_LIMIT, "relationship")
+    val sources = _map_sources(datasetid, sourceid)
+    val nodes = sources.flatMap(_map_nodes)
+    val relationships = sources.flatMap(_map_relationships)
+    val filtered = nodes.filter(_matches_map_filters(_, category, termtype))
+    val seeds = focus match {
+      case Some(value) => filtered.filter(_matches_map_focus(_, value))
+      case None => filtered
+    }
+    val scoped = category.nonEmpty || termtype.nonEmpty || focus.nonEmpty
+    val seedkeys = seeds.map(_map_node_key).toSet
+    val projectedrelationships =
+      if (scoped) relationships.filter { relationship =>
+        seedkeys.contains(_map_subject_key(relationship)) || seedkeys.contains(_map_object_key(relationship))
+      }
+      else relationships
+    val candidatekeys =
+      if (scoped) seedkeys ++ projectedrelationships.flatMap(x => Vector(_map_subject_key(x), _map_object_key(x)))
+      else nodes.map(_map_node_key).toSet
+    val candidatenodes = nodes.filter(x => candidatekeys.contains(_map_node_key(x))).sortBy(_map_node_key)
+    val orderednodes =
+      if (scoped)
+        candidatenodes.filter(x => seedkeys.contains(_map_node_key(x))) ++
+          candidatenodes.filterNot(x => seedkeys.contains(_map_node_key(x)))
+      else
+        candidatenodes
+    val resultnodes = orderednodes.take(nodebound.value)
+    val resultkeys = resultnodes.map(_map_node_key).toSet
+    val endpointrelationships = projectedrelationships
+      .filter(x => resultkeys.contains(_map_subject_key(x)) && resultkeys.contains(_map_object_key(x)))
+      .sortBy(_map_relationship_key)
+    val resultrelationships = endpointrelationships.take(relationshipbound.value)
+    val truncated = sources.exists(_.normalized.topology.truncated) ||
+      candidatenodes.size > resultnodes.size ||
+      projectedrelationships.size > endpointrelationships.size ||
+      endpointrelationships.size > resultrelationships.size
+    val warnings = (
+      sources.flatMap(_.normalized.warnings) ++
+        nodebound.warning.toVector ++
+        relationshipbound.warning.toVector ++
+        Option.when(truncated)(BokWarning("Knowledge Map result is truncated"))
+    ).distinct
+    val status = if (resultnodes.nonEmpty) "matched" else "no-match"
+    GetKnowledgeMapResponse(
+      BokQueryStatus(status),
+      sources.map(_map_selected_source),
+      resultnodes.map(_map_node),
+      resultrelationships.map(_map_relationship),
+      nodebound.value,
+      relationshipbound.value,
+      truncated,
+      warnings
+    )
   }
 
   def searchTerms(
@@ -124,6 +193,111 @@ final class BokKnowledgeCatalog {
       source.components.map(ComponentEntry(datasetid, source.source.sourceId.value, _))
     }
   }
+
+  private def _map_sources(datasetid: Option[String], sourceid: Option[String]): Vector[MapSource] =
+    _datasets.values.toVector
+      .filter(x => datasetid.forall(y => _normalize(x.source.datasetId.value) == _normalize(y)))
+      .filter(x => sourceid.forall(y => _normalize(x.source.sourceId.value) == _normalize(y)))
+      .sortBy(x => (x.source.datasetId.value, x.source.sourceId.value))
+      .map(MapSource.apply)
+
+  private def _map_nodes(source: MapSource): Vector[MapNode] =
+    source.normalized.topology.nodes.map(MapNode(source, _))
+
+  private def _map_relationships(source: MapSource): Vector[MapRelationship] =
+    source.normalized.topology.relationships.map(MapRelationship(source, _))
+
+  private def _matches_map_filters(
+    node: MapNode,
+    category: Option[String],
+    termtype: Option[String]
+  ): Boolean =
+    category.forall(x => node.node.category.exists(y => _normalize(y) == _normalize(x))) &&
+      termtype.forall(x => _map_term_types(node).contains(_normalize(x)))
+
+  private def _matches_map_focus(node: MapNode, focus: String): Boolean =
+    _map_focus_values(node).contains(_normalize(focus))
+
+  private def _map_term_types(node: MapNode): Set[String] =
+    if (_normalize(node.node.kind) != "term") Set.empty
+    else _map_terms(node).map(x => _normalize(x.termType.value)).filter(_.nonEmpty).toSet
+
+  private def _map_terms(node: MapNode): Vector[BokTerm] = {
+    val references = (node.node.terms :+ node.node.id).map(_normalize).toSet
+    node.source.normalized.terms.filter(x => references.contains(_normalize(x.termId.value)))
+  }
+
+  private def _map_focus_values(node: MapNode): Set[String] =
+    (node.node.id +: node.node.label +: node.node.terms).map(_normalize).filter(_.nonEmpty).toSet
+
+  private def _map_node_key(node: MapNode): (String, String) =
+    (node.source.normalized.source.datasetId.value, node.node.id)
+
+  private def _map_subject_key(relationship: MapRelationship): (String, String) =
+    (relationship.source.normalized.source.datasetId.value, relationship.relationship.subjectId)
+
+  private def _map_object_key(relationship: MapRelationship): (String, String) =
+    (relationship.source.normalized.source.datasetId.value, relationship.relationship.objectId)
+
+  private def _map_relationship_key(relationship: MapRelationship): (String, String, String, String) =
+    (
+      relationship.source.normalized.source.datasetId.value,
+      relationship.relationship.subjectId,
+      relationship.relationship.predicate,
+      relationship.relationship.objectId
+    )
+
+  private def _map_limit(requested: Option[Int], default: Int, label: String): MapLimit = {
+    val effective = requested.map(_.max(1).min(default)).getOrElse(default)
+    val warning = requested.filter(_ != effective).map { value =>
+      BokWarning(s"Knowledge Map $label limit $value is clamped to $effective")
+    }
+    MapLimit(effective, warning)
+  }
+
+  private def _map_selected_source(source: MapSource): BokKnowledgeMapSelectedSource =
+    BokKnowledgeMapSelectedSource(
+      source.normalized.source.datasetId,
+      source.normalized.source.sourceId,
+      source.normalized.source.generation,
+      source.normalized.topology.sourceRef.map { x =>
+        BokKnowledgeMapSourceReference(
+          BokKnowledgeMapSourceReferenceKind(x.kind),
+          BokKnowledgeMapSourceReferenceValue(x.value),
+          x.uri.map(BokKnowledgeMapSourceReferenceUri.apply)
+        )
+      },
+      source.normalized.topology.truncated,
+      source.normalized.warnings
+    )
+
+  private def _map_node(node: MapNode): BokKnowledgeMapNode =
+    BokKnowledgeMapNode(
+      node.source.normalized.source.datasetId,
+      node.source.normalized.source.sourceId,
+      BokKnowledgeMapNodeId(node.node.id),
+      BokKnowledgeMapNodeLabel(node.node.label),
+      BokKnowledgeMapNodeKind(node.node.kind),
+      node.node.category.map(BokTermCategory.apply),
+      node.node.terms.map(BokTermId.apply),
+      _map_terms(node),
+      node.node.tags.map(BokKnowledgeMapTag.apply),
+      node.node.evidence
+    )
+
+  private def _map_relationship(relationship: MapRelationship): BokKnowledgeMapRelationship =
+    BokKnowledgeMapRelationship(
+      relationship.source.normalized.source.datasetId,
+      relationship.source.normalized.source.sourceId,
+      BokKnowledgeMapNodeId(relationship.relationship.subjectId),
+      BokKnowledgeMapPredicate(relationship.relationship.predicate),
+      BokKnowledgeMapNodeId(relationship.relationship.objectId),
+      relationship.relationship.label.map(BokKnowledgeMapNodeLabel.apply),
+      relationship.relationship.category.map(BokTermCategory.apply),
+      relationship.relationship.terms.map(BokTermId.apply),
+      relationship.relationship.tags.map(BokKnowledgeMapTag.apply),
+      relationship.relationship.evidence
+    )
 
   private def _term_identities(term: BokTerm): Set[String] =
     Set(_normalize(term.termId.value), _normalize(term.title.value)).filter(_.nonEmpty)
@@ -224,4 +398,6 @@ final class BokKnowledgeCatalog {
 
 object BokKnowledgeCatalog {
   val MinimumCandidateScore = 0.2
+  val DEFAULT_KNOWLEDGE_MAP_NODE_LIMIT = 128
+  val DEFAULT_KNOWLEDGE_MAP_RELATIONSHIP_LIMIT = 256
 }

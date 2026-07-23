@@ -89,6 +89,80 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
       isolated.results.map(_.term.evidence.sourceId.value) shouldBe Vector("source-a")
     }
 
+    "project selected factual topology with deterministic filters and bounded results" in {
+      Given("a complete selected generation with term and adjacent article topology")
+      val catalog = new BokKnowledgeCatalog()
+      val runtime = _term("architecture:runtime", "Runtime", "Runtime definition.", "source-a", "dataset-a")
+      val topology = BokKnowledgeTopology(
+        Vector(
+          BokKnowledgeNode("term:runtime", "Runtime", "term", _evidence("term-runtime"), Some("architecture"), Vector("architecture:runtime"), Vector("core")),
+          BokKnowledgeNode("article:runtime", "Runtime Article", "article", _evidence("article-runtime"), Some("documentation")),
+          BokKnowledgeNode("rdf:runtime", "Runtime RDF", "rdf", _evidence("rdf-runtime"))
+        ),
+        Vector(BokKnowledgeRelationship(
+          "term:runtime",
+          "references",
+          "article:runtime",
+          Some("References"),
+          _evidence("runtime-reference"),
+          Some("architecture"),
+          Vector("architecture:runtime"),
+          Vector("core")
+        )),
+        false,
+        Some(BokKnowledgeSourceReference("bok-site", "knowledgehub", Some("https://example.test/knowledgehub")))
+      )
+      _commit(catalog, _normalized("source-a", "dataset-a", "g1", Vector(runtime), Vector.empty, topology))
+
+      When("the term type, category, and focus select one seed with a one-node bound")
+      val bounded = catalog.getKnowledgeMap(
+        Some("dataset-a"),
+        Some("source-a"),
+        Some("architecture"),
+        Some("concept"),
+        Some("runtime"),
+        Some(1),
+        Some(1)
+      )
+
+      Then("the adjacent factual closure is bounded deterministically and reports truncation")
+      bounded.status.value shouldBe "matched"
+      bounded.sources.map(_.generation.value) shouldBe Vector("g1")
+      bounded.sources.head.sourceReference.map(_.kind.value) shouldBe Some("bok-site")
+      bounded.sources.head.sourceReference.map(_.value.value) shouldBe Some("knowledgehub")
+      bounded.sources.head.sourceReference.flatMap(_.uri.map(_.value)) shouldBe Some("https://example.test/knowledgehub")
+      bounded.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime")
+      bounded.nodes.head.terms.map(_.definition.value) shouldBe Vector("Runtime definition.")
+      bounded.relationships shouldBe empty
+      bounded.truncated shouldBe true
+      bounded.warnings.map(_.value) should contain ("Knowledge Map result is truncated")
+
+      When("the same selected topology is requested without a constraining node bound")
+      val complete = catalog.getKnowledgeMap(
+        Some("dataset-a"),
+        Some("source-a"),
+        Some("architecture"),
+        Some("concept"),
+        Some("runtime"),
+        Some(10),
+        Some(10)
+      )
+      val missing = catalog.getKnowledgeMap(None, None, None, None, Some("missing"), None, None)
+      val clamped = catalog.getKnowledgeMap(None, None, None, None, None, Some(999), Some(-1))
+
+      Then("the complete closure, no-match response, and effective limits remain explicit")
+      complete.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime", "article:runtime")
+      complete.relationships.map(_.predicate.value) shouldBe Vector("references")
+      complete.truncated shouldBe false
+      missing.status.value shouldBe "no-match"
+      missing.nodes shouldBe empty
+      missing.relationships shouldBe empty
+      clamped.nodeLimit shouldBe BokKnowledgeCatalog.DEFAULT_KNOWLEDGE_MAP_NODE_LIMIT
+      clamped.relationshipLimit shouldBe 1
+      clamped.warnings.map(_.value) should contain ("Knowledge Map node limit 999 is clamped to 128")
+      clamped.warnings.map(_.value) should contain ("Knowledge Map relationship limit -1 is clamped to 1")
+    }
+
     "replace complete generations, remove stale records, and retain the previous generation after degradation" in {
       Given("one committed source generation")
       val catalog = new BokKnowledgeCatalog()

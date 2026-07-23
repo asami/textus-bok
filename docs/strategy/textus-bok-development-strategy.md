@@ -36,10 +36,11 @@ Scraper SAR, the four BoK-owned MCP reads, source ownership, and the
 existence-to-detail CBD handoff without crossing component boundaries.
 
 Phase 6 is in progress. P6-A promoted the ownership and handoff contracts, and
-P6-B now holds the reviewed, fully tested bounded and attributable topology in
-the selected complete generation. The next work is P6-C planning for a single
-public query contract; no query, MCP projection, or Static Form page has been
-implemented yet.
+P6-B holds the reviewed, fully tested bounded and attributable topology in the
+selected complete generation. P6-C now provides the reviewed public, bounded
+Knowledge Map query with typed source references and selected `BokTerm` detail;
+it remains outside MCP. The next work is P6-D: the component-owned Static Form
+application that renders that one query result as the accessible map view.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside Phase 6 until a

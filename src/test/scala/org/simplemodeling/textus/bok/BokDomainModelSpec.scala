@@ -19,13 +19,14 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
         }
       }.toMap
 
-      Then("the administration and four read boundaries use owned response models")
+      Then("the administration and five read boundaries use owned response models")
       responses shouldBe Map(
         "replaceKnowledgeSource" -> List("ReplaceKnowledgeSourceResponse"),
         "searchTerms" -> List("SearchTermsResponse"),
         "explainTerm" -> List("ExplainTermResponse"),
         "searchComponentReferences" -> List("ComponentReferenceSearchResponse"),
-        "getComponentReference" -> List("ComponentReferenceLookupResponse")
+        "getComponentReference" -> List("ComponentReferenceLookupResponse"),
+        "getKnowledgeMap" -> List("GetKnowledgeMapResponse")
       )
     }
 
@@ -39,7 +40,10 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
         classOf[org.simplemodeling.textus.bok.value.BokTerm],
         classOf[org.simplemodeling.textus.bok.value.BokTermMatch],
         classOf[org.simplemodeling.textus.bok.value.ComponentReference],
-        classOf[org.simplemodeling.textus.bok.value.ComponentReferenceMatch]
+        classOf[org.simplemodeling.textus.bok.value.ComponentReferenceMatch],
+        classOf[org.simplemodeling.textus.bok.value.BokKnowledgeMapSelectedSource],
+        classOf[org.simplemodeling.textus.bok.value.BokKnowledgeMapNode],
+        classOf[org.simplemodeling.textus.bok.value.BokKnowledgeMapRelationship]
       )
 
       Then("each BoK-owned boundary has a distinct generated type")
@@ -49,7 +53,10 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
         "BokTerm",
         "BokTermMatch",
         "ComponentReference",
-        "ComponentReferenceMatch"
+        "ComponentReferenceMatch",
+        "BokKnowledgeMapSelectedSource",
+        "BokKnowledgeMapNode",
+        "BokKnowledgeMapRelationship"
       )
 
       And("the generated term and evidence attributes retain their CML types and multiplicities")
@@ -65,6 +72,11 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
       evidencemethods("uri") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokEvidenceUri]
       evidencemethods("sourceId") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokSourceId]
       evidencemethods("sourceVersion") shouldBe classOf[Option[?]]
+
+      And("the Knowledge Map node keeps its stable identity as a typed nodeId")
+      val mapnodemethods = classOf[org.simplemodeling.textus.bok.value.BokKnowledgeMapNode]
+        .getMethods.map(method => method.getName -> method.getReturnType).toMap
+      mapnodemethods("nodeId") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokKnowledgeMapNodeId]
     }
 
     "exclude CBD-owned detail from the generated component reference" in {
@@ -99,7 +111,7 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
       referencemethods.keySet.intersect(cbdfields) shouldBe empty
     }
 
-    "publish all BoK reads without exposing source replacement" in {
+    "keep Knowledge Map public but outside the MCP-ready reads" in {
       Given("the Phase 4 primary component")
       val component = new impl.BokPrimaryComponent()
       val operations = Vector(
@@ -107,19 +119,21 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
         "searchTerms",
         "explainTerm",
         "searchComponentReferences",
-        "getComponentReference"
+        "getComponentReference",
+        "getKnowledgeMap"
       )
 
       When("the component MCP policy is evaluated")
       val readiness = operations.map(operation => operation -> component.isMcpReady("BokRetrieval", operation))
 
-      Then("all four typed reads are ready while source mutation remains private")
+      Then("the four existing MCP reads are ready while mutation and Knowledge Map remain private to MCP")
       readiness.toMap shouldBe Map(
         "replaceKnowledgeSource" -> false,
         "searchTerms" -> true,
         "explainTerm" -> true,
         "searchComponentReferences" -> true,
-        "getComponentReference" -> true
+        "getComponentReference" -> true,
+        "getKnowledgeMap" -> false
       )
     }
   }
