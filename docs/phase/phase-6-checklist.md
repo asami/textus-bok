@@ -49,16 +49,16 @@ current step are recorded in `phase-6.md`.
 
 ## P6-05: Component Web Application
 
-- [ ] The `textus-bok` Static Form app packages authored overview and map pages,
+- [x] The `textus-bok` Static Form app packages authored overview and map pages,
   private layout/partials where needed, and local CSS/JavaScript assets.
-- [ ] One bounded operation result drives filters, graph, selected-node detail,
+- [x] One bounded operation result drives filters, graph, selected-node detail,
   warnings, and the complete no-JavaScript list/table fallback.
-- [ ] The Web view exposes definitions, relationship predicates, source
+- [x] The Web view exposes definitions, relationship predicates, source
   generation, and evidence while keeping component nodes existence-only with
   an explicit CBD handoff.
-- [ ] Browser behavior is responsive, keyboard accessible, safe for HTML and
+- [x] Browser behavior is responsive, keyboard accessible, safe for HTML and
   JavaScript contexts, and permits navigation only for admitted URI schemes.
-- [ ] Normal CNCF operation authorization protects the query; the Web app has
+- [x] Normal CNCF operation authorization protects the query; the Web app has
   no source-replacement or other mutation control.
 
 ## P6-06: Verification, Documentation, and Closure

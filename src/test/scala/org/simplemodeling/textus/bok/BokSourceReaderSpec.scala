@@ -10,7 +10,7 @@ import org.scalatest.GivenWhenThen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.simplemodeling.textus.bok.datatype.*
-import org.simplemodeling.textus.bok.runtime.BokSourceReader
+import org.simplemodeling.textus.bok.runtime.{BokKnowledgeComponentReference, BokSourceReader}
 import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 
 /*
@@ -94,6 +94,43 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
         ("term:runtime", "references", "article:runtime", Vector("architecture:runtime"), Vector("source"))
       )
       result.warnings.map(_.value) should contain("BoK graph summary is truncated")
+    }
+
+    "retain an explicit Cozy componentRef only when it exactly matches the selected component index" in {
+      Given("a component-reference graph node with the current Cozy componentRef contract")
+      val graph = _topology_graph.replace(
+        """    {"id": "article:runtime", "label": "Runtime Article", "node_type": "article", "tags": ["doc"]}""",
+        """    {"id": "component:account", "label": "Account", "node_type": "component-reference", "componentRef": {"kind": "car", "name": "textus-account"}, "tags": ["doc"]}"""
+      ).replace("article:runtime", "component:account")
+      val missing = graph.replace("textus-account", "missing-account")
+      val inferred = graph.replace("\"componentRef\": {\"kind\": \"car\", \"name\": \"textus-account\"}", "\"componentRef\": {\"kind\": \"car\"}")
+      val context = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> graph
+      ))
+
+      When("the graph is normalized without label or identifier inference")
+      val result = BokSourceReader.read(context, _source).TAKE
+      val missingresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> missing
+      )), _source)
+      val inferredresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> inferred
+      )), _source)
+
+      Then("only the declared CAR identity is retained and malformed or unmatched handoffs fail")
+      result.topology.nodes.find(_.id == "component:account").flatMap(_.componentReference) shouldBe
+        Some(BokKnowledgeComponentReference("car", "textus-account"))
+      missingresult should matchPattern { case Consequence.Failure(_) => }
+      inferredresult should matchPattern { case Consequence.Failure(_) => }
     }
 
     "reject malformed, incompatible, dangling, conflicting, and every finite graph-summary limit without reading referenced pages" in {

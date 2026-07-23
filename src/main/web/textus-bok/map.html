@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Textus BoK Knowledge Map</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/web/textus-bok/assets/knowledge-map.css">
+  <script defer src="/web/textus-bok/assets/knowledge-map.js"></script>
+</head>
+<body class="bok-map-app">
+<a class="bok-skip-link" href="#knowledge-map-result">Skip to map results</a>
+<main class="bok-map-shell">
+  <header class="bok-map-header">
+    <p class="bok-map-eyebrow">Textus BoK</p>
+    <h1>Knowledge Map</h1>
+    <p>One bounded, attributable view of the selected Cozy BoK generation.</p>
+    <nav aria-label="Knowledge Map navigation"><a href="/web/textus-bok/index.html">Overview</a></nav>
+  </header>
+  <form class="bok-map-filters" method="get" action="/web/textus-bok/map.html" aria-label="Knowledge Map filters">
+    <label>Dataset <input name="datasetId" autocomplete="off"></label>
+    <label>Source <input name="sourceId" autocomplete="off"></label>
+    <label>Category <input name="category" autocomplete="off"></label>
+    <label>Term type <input name="termType" autocomplete="off"></label>
+    <label>Focus <input name="focus" autocomplete="off"></label>
+    <label>Node limit <input name="nodeLimit" type="number" min="1" max="128" inputmode="numeric"></label>
+    <label>Relationship limit <input name="relationshipLimit" type="number" min="1" max="256" inputmode="numeric"></label>
+    <button type="submit">Apply filters</button>
+  </form>
+  <textus:operation-result component="textus-bok" service="bok-retrieval" operation="get-knowledge-map">
+    <section id="knowledge-map-result" class="bok-map-panel" aria-labelledby="map-result-title">
+      <header class="bok-map-section-header">
+        <div><h2 id="map-result-title">Map result</h2><p>Status: ${result.body.status}</p></div>
+        <p id="bok-knowledge-map-summary">Node and relationship totals are available in the complete tables below.</p>
+      </header>
+      <script type="application/json" id="bok-knowledge-map-data">${result.body}</script>
+      <div id="bok-knowledge-map-graph" class="bok-map-graph" aria-label="Interactive Knowledge Map"></div>
+      <section id="bok-knowledge-map-detail" class="bok-map-detail" aria-live="polite" tabindex="-1">
+        <h3>Selected node</h3><p>Select a node in the graph to read its attributed details.</p>
+      </section>
+    </section>
+    <section class="bok-map-panel" aria-labelledby="sources-title">
+      <h2 id="sources-title">Selected source generations</h2>
+      <textus:table source="result.body.sources" columns="datasetId:Dataset,sourceId:Source,generation:Generation,sourceReference:Source evidence,sourceTruncated:Source truncated,warnings:Warnings" empty="No selected source generation"></textus:table>
+    </section>
+    <section class="bok-map-panel" aria-labelledby="nodes-title">
+      <h2 id="nodes-title">Nodes and definitions</h2>
+      <p class="bok-map-fallback-note">This complete table remains available when JavaScript is disabled.</p>
+      <textus:table source="result.body.nodes" columns="nodeId:Node,label:Label,kind:Kind,category:Category,terms:Definitions,componentReferences:CBD handoff,tags:Tags,evidence:Evidence" empty="No matching nodes"></textus:table>
+    </section>
+    <section class="bok-map-panel" aria-labelledby="relationships-title">
+      <h2 id="relationships-title">Factual relationships</h2>
+      <textus:table source="result.body.relationships" columns="subjectId:Source,predicate:Predicate,objectId:Target,label:Label,terms:Definitions,evidence:Evidence" empty="No factual relationships"></textus:table>
+    </section>
+    <section class="bok-map-panel bok-map-warnings" aria-labelledby="warnings-title">
+      <h2 id="warnings-title">Warnings</h2>
+      <textus:table source="result.body.warnings" columns="value:Warning" empty="No warnings"></textus:table>
+    </section>
+  </textus:operation-result>
+</main>
+</body>
+</html>

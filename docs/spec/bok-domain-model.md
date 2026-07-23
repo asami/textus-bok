@@ -36,6 +36,12 @@ evidence-bearing result types, and typed warnings. MCP readiness is
 operation-scoped: the four terminology/component reads are ready, while source
 mutation and the public Knowledge Map query remain outside the MCP catalog.
 
+A `BokKnowledgeMapNode` retains zero or more `ComponentReference` values only
+when Cozy explicitly declares `componentRef.kind` and `componentRef.name` and
+they exactly match a CAR/SAR index entry in the same selected generation. This
+is a portable existence handoff; a node ID, title, label, tag, or candidate
+score never produces a component reference.
+
 ## Exclusions
 
 This contract does not implement MCP publication or CBD detail resolution. It

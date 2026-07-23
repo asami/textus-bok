@@ -93,10 +93,12 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
       Given("a complete selected generation with term and adjacent article topology")
       val catalog = new BokKnowledgeCatalog()
       val runtime = _term("architecture:runtime", "Runtime", "Runtime definition.", "source-a", "dataset-a")
+      val component = _component("textus-account", "Account Component", "car", "source-a")
       val topology = BokKnowledgeTopology(
         Vector(
           BokKnowledgeNode("term:runtime", "Runtime", "term", _evidence("term-runtime"), Some("architecture"), Vector("architecture:runtime"), Vector("core")),
           BokKnowledgeNode("article:runtime", "Runtime Article", "article", _evidence("article-runtime"), Some("documentation")),
+          BokKnowledgeNode("component:account", "Account", "component-reference", _evidence("component-account"), componentReference = Some(BokKnowledgeComponentReference("car", "textus-account"))),
           BokKnowledgeNode("rdf:runtime", "Runtime RDF", "rdf", _evidence("rdf-runtime"))
         ),
         Vector(BokKnowledgeRelationship(
@@ -112,7 +114,7 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
         false,
         Some(BokKnowledgeSourceReference("bok-site", "knowledgehub", Some("https://example.test/knowledgehub")))
       )
-      _commit(catalog, _normalized("source-a", "dataset-a", "g1", Vector(runtime), Vector.empty, topology))
+      _commit(catalog, _normalized("source-a", "dataset-a", "g1", Vector(runtime), Vector(component), topology))
 
       When("the term type, category, and focus select one seed with a one-node bound")
       val bounded = catalog.getKnowledgeMap(
@@ -133,6 +135,7 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
       bounded.sources.head.sourceReference.flatMap(_.uri.map(_.value)) shouldBe Some("https://example.test/knowledgehub")
       bounded.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime")
       bounded.nodes.head.terms.map(_.definition.value) shouldBe Vector("Runtime definition.")
+      bounded.nodes.head.componentReferences shouldBe empty
       bounded.relationships shouldBe empty
       bounded.truncated shouldBe true
       bounded.warnings.map(_.value) should contain ("Knowledge Map result is truncated")
@@ -147,11 +150,22 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
         Some(10),
         Some(10)
       )
+      val allnodes = catalog.getKnowledgeMap(
+        Some("dataset-a"),
+        Some("source-a"),
+        None,
+        None,
+        None,
+        Some(10),
+        Some(10)
+      )
       val missing = catalog.getKnowledgeMap(None, None, None, None, Some("missing"), None, None)
       val clamped = catalog.getKnowledgeMap(None, None, None, None, None, Some(999), Some(-1))
 
       Then("the complete closure, no-match response, and effective limits remain explicit")
       complete.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime", "article:runtime")
+      allnodes.nodes.find(_.nodeId.value == "component:account").map(_.componentReferences.map(x => x.kind.value -> x.name.value)) shouldBe
+        Some(Vector("car" -> "textus-account"))
       complete.relationships.map(_.predicate.value) shouldBe Vector("references")
       complete.truncated shouldBe false
       missing.status.value shouldBe "no-match"

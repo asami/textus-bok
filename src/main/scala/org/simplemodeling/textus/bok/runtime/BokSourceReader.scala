@@ -25,6 +25,7 @@ final case class NormalizedBokSource(
 )
 
 final case class BokKnowledgeSourceReference(kind: String, value: String, uri: Option[String])
+final case class BokKnowledgeComponentReference(kind: String, name: String)
 final case class BokKnowledgeNode(
   id: String,
   label: String,
@@ -32,7 +33,8 @@ final case class BokKnowledgeNode(
   evidence: BokEvidence,
   category: Option[String] = None,
   terms: Vector[String] = Vector.empty,
-  tags: Vector[String] = Vector.empty
+  tags: Vector[String] = Vector.empty,
+  componentReference: Option[BokKnowledgeComponentReference] = None
 )
 final case class BokKnowledgeRelationship(
   subjectId: String,
@@ -102,6 +104,7 @@ object BokSourceReader {
       )
       components = repositorycomponents ++ referencecomponents
       topology <- _read_topology(context, source, references.filter(_._1 == _graph_kind).map(_._2))
+      _ <- _validate_topology_component_references(topology, components)
       warnings = _warnings(manifest, terms, components) ++ Option.when(topology.truncated)(BokWarning("BoK graph summary is truncated"))
     } yield NormalizedBokSource(
       source,
@@ -168,8 +171,25 @@ object BokSourceReader {
         category <- _optional_label(objectvalue, "category", s"nodes[$index].category")
         terms <- _optional_identifiers(objectvalue, "terms", s"nodes[$index].terms", _maximum_term_references)
         tags <- _optional_labels(objectvalue, "tags", s"nodes[$index].tags", _maximum_tags)
-      } yield BokKnowledgeNode(id, label, kind, evidence, category, terms, tags)
+        componentreference <- _decode_component_reference(objectvalue, kind, s"nodes[$index].componentRef")
+      } yield BokKnowledgeNode(id, label, kind, evidence, category, terms, tags, componentreference)
     })
+
+  private def _decode_component_reference(
+    objectvalue: JsonObject,
+    nodekind: String,
+    label: String
+  ): Either[String, Option[BokKnowledgeComponentReference]] =
+    objectvalue("componentRef") match {
+      case None | Some(Json.Null) => Right(None)
+      case Some(value) => for {
+        reference <- value.asObject.toRight(s"$label must be an object")
+        kind <- _required_identifier(reference, "kind", s"$label.kind")
+        _ <- _require_either(Set("car", "sar").contains(kind), s"$label.kind must be car or sar")
+        _ <- _require_either(nodekind == "component-reference", s"$label requires node_type component-reference")
+        name <- _required_identifier(reference, "name", s"$label.name")
+      } yield Some(BokKnowledgeComponentReference(kind, name))
+    }
 
   private def _decode_relationships(values: Vector[Json], evidence: BokEvidence): Either[String, Vector[BokKnowledgeRelationship]] =
     _sequence_either(values.zipWithIndex.map { case (value, index) =>
@@ -201,6 +221,20 @@ object BokSourceReader {
       _ <- _require_either(dangling.isEmpty, "edges contain dangling endpoints")
     } yield ()
   }
+
+  private def _validate_topology_component_references(
+    topology: BokKnowledgeTopology,
+    components: Vector[ComponentReference]
+  ): Consequence[Unit] =
+    _sequence(topology.nodes.flatMap(_.componentReference).distinct.map { reference =>
+      val matches = components.filter(component =>
+        component.kind.value == reference.kind && component.name.value == reference.name
+      )
+      _require(
+        matches.size == 1,
+        s"BoK graph componentRef ${reference.kind}:${reference.name} must match exactly one selected component index entry"
+      )
+    }).map(_ => ())
 
   private def _required_array(graph: JsonObject, field: String): Either[String, Vector[Json]] =
     graph(field).flatMap(_.asArray).toRight(s"$field must be an array")

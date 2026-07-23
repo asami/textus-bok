@@ -703,6 +703,7 @@ Attributable factual node from one selected complete generation.
 | category | BokTermCategory | ? |
 | termIds | BokTermId | * |
 | terms | BokTerm | * |
+| componentReferences | ComponentReference | * |
 | tags | BokKnowledgeMapTag | * |
 | evidence | BokEvidence | 1 |
 

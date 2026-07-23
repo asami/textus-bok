@@ -77,6 +77,7 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
       val mapnodemethods = classOf[org.simplemodeling.textus.bok.value.BokKnowledgeMapNode]
         .getMethods.map(method => method.getName -> method.getReturnType).toMap
       mapnodemethods("nodeId") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokKnowledgeMapNodeId]
+      mapnodemethods("componentReferences") shouldBe classOf[Vector[?]]
     }
 
     "exclude CBD-owned detail from the generated component reference" in {

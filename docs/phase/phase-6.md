@@ -2,7 +2,7 @@
 
 Stage Status:
 - Current status: IN PROGRESS
-- Current step: P6-05 Component Web Application planning
+- Current step: P6-E Representative Verification and Closure
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-6-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -46,8 +46,13 @@ P6-C public query contract is now complete: `getKnowledgeMap` projects only
 the selected catalog generation with bounded filtering, focus, no-match,
 truncation, source-reference, and selected-term detail. The operation remains
 public but outside MCP, with fresh review, generated-contract checks, focused
-operation specifications, and `Test/compile` evidence. The next stage is P6-D
-Static Form Web application planning; no Web surface is implemented yet.
+operation specifications, and `Test/compile` evidence. P6-D is now complete:
+the authorized `textus-bok` Static Form surface packages an overview and map,
+one bounded result drives the no-JavaScript tables and progressive SVG detail,
+and explicit Cozy `componentRef` values become only validated existence-only
+CBD handoffs. P6-D passed focused source/catalog/domain/Web specifications,
+clean re-review, and normal CAR lint. The next stage is P6-E representative
+SAR verification and phase-closure evidence.
 
 ## Scope
 

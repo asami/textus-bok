@@ -281,9 +281,17 @@ final class BokKnowledgeCatalog {
       node.node.category.map(BokTermCategory.apply),
       node.node.terms.map(BokTermId.apply),
       _map_terms(node),
+      _map_component_references(node),
       node.node.tags.map(BokKnowledgeMapTag.apply),
       node.node.evidence
     )
+
+  private def _map_component_references(node: MapNode): Vector[ComponentReference] =
+    node.node.componentReference.toVector.flatMap { reference =>
+      node.source.normalized.components.filter(component =>
+        component.kind.value == reference.kind && component.name.value == reference.name
+      )
+    }.sortBy(component => (component.kind.value, component.name.value, component.version.map(_.value).getOrElse("")))
 
   private def _map_relationship(relationship: MapRelationship): BokKnowledgeMapRelationship =
     BokKnowledgeMapRelationship(

@@ -78,6 +78,12 @@ or usage guidance belong in Textus CBD Support. The portable handoff identity
 is `name`, `kind`, optional organization/version, and evidence URI; local source
 and catalog IDs are contextual evidence only.
 
+For an admitted Cozy graph node, accept a CBD handoff only from explicit
+`componentRef.kind` and `componentRef.name` after exact same-generation
+CAR/SAR-index validation. Do not recover a handoff from a node ID, label,
+title, tag, relationship, or SIE candidate. Web pages may display that
+existence identity but must not invoke CBD Support or render CBD-owned detail.
+
 ## Verification
 
 Run:

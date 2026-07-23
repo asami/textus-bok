@@ -34,7 +34,10 @@ Articles, scenarios, projects, bibliography entries, tags, and RDF resources
 are reference nodes. They retain their declared identifier, label, category,
 term references, tags, and source evidence only; their full domain models stay
 with their source owners. CAR/SAR nodes remain existence-only and hand readers
-to CBD Support for detail.
+to CBD Support for detail. A CAR/SAR handoff is admitted only from Cozy's
+explicit `componentRef.kind` and `componentRef.name` when those values exactly
+match one selected-generation component-index entry; Textus BoK never infers a
+handoff from a node label or identifier.
 
 ## Knowledge Semantics
 
