@@ -1,8 +1,8 @@
 # Phase 6: Knowledge Map Web Application
 
 Stage Status:
-- Current status: OPEN
-- Current step: P6-01 design and specification promotion
+- Current status: IN PROGRESS
+- Current step: P6-04 public query contract planning
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-6-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -36,6 +36,14 @@ P6-DEC-01 was accepted on 2026-07-23: Cozy publishes a versioned
 topology. The accepted design and specification are
 `docs/design/bok-knowledge-map.md` and
 `docs/spec/bok-knowledge-map-contract.md`.
+
+P6-A and P6-B are complete. P6-B passed fresh re-review, normal CAR lint, and
+the full Textus BoK suite after the local SIE artifact was rebuilt against the
+current CNCF SNAPSHOT. The source reader admits only the versioned graph summary
+through CNCF resource access, preserves attributable reference-node metadata and
+truncation, and commits topology with the selected complete generation. The
+next stage is P6-C public-query planning; no query, MCP projection, or Web
+surface is implemented yet.
 
 ## Scope
 

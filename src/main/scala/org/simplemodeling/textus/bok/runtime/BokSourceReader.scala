@@ -1,6 +1,6 @@
 package org.simplemodeling.textus.bok.runtime
 
-import io.circe.{Decoder, HCursor}
+import io.circe.{Decoder, HCursor, Json, JsonObject}
 import io.circe.parser
 import org.goldenport.Consequence
 import org.goldenport.cncf.context.ExecutionContext
@@ -13,15 +13,46 @@ import org.simplemodeling.textus.bok.value.*
  * Metadata-only BoK source reader over the CNCF ResourceAccess DSL.
  *
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Jul. 23, 2026
  * @author  ASAMI, Tomoharu
  */
 final case class NormalizedBokSource(
   source: BokKnowledgeSource,
   terms: Vector[BokTerm],
   components: Vector[ComponentReference],
-  warnings: Vector[BokWarning]
+  warnings: Vector[BokWarning],
+  topology: BokKnowledgeTopology = BokKnowledgeTopology.empty
 )
+
+final case class BokKnowledgeSourceReference(kind: String, value: String, uri: Option[String])
+final case class BokKnowledgeNode(
+  id: String,
+  label: String,
+  kind: String,
+  evidence: BokEvidence,
+  category: Option[String] = None,
+  terms: Vector[String] = Vector.empty,
+  tags: Vector[String] = Vector.empty
+)
+final case class BokKnowledgeRelationship(
+  subjectId: String,
+  predicate: String,
+  objectId: String,
+  label: Option[String],
+  evidence: BokEvidence,
+  category: Option[String] = None,
+  terms: Vector[String] = Vector.empty,
+  tags: Vector[String] = Vector.empty
+)
+final case class BokKnowledgeTopology(
+  nodes: Vector[BokKnowledgeNode],
+  relationships: Vector[BokKnowledgeRelationship],
+  truncated: Boolean,
+  sourceRef: Option[BokKnowledgeSourceReference] = None
+)
+object BokKnowledgeTopology {
+  val empty = BokKnowledgeTopology(Vector.empty, Vector.empty, false)
+}
 
 object BokSourceReader {
   private val _manifest_path = "metadata/cncf/knowledge-source.json"
@@ -30,6 +61,14 @@ object BokSourceReader {
   private val _repository_kind = "component-repository-index"
   private val _reference_kind = "component-reference-index"
   private val _reference_schema = "cncf.component-reference-index.v1"
+  private val _graph_kind = "rdf-graph-summary"
+  private val _graph_schema = "cozy.rdf-graph-summary.v1"
+  private val _maximum_graph_nodes = 512
+  private val _maximum_graph_relationships = 2048
+  private val _maximum_identifier_length = 1024
+  private val _maximum_label_length = 512
+  private val _maximum_term_references = 32
+  private val _maximum_tags = 32
 
   def read(
     context: ExecutionContext,
@@ -62,13 +101,168 @@ object BokSourceReader {
         references.filter(_._1 == _reference_kind).map(_._2)
       )
       components = repositorycomponents ++ referencecomponents
-      warnings = _warnings(manifest, terms, components)
+      topology <- _read_topology(context, source, references.filter(_._1 == _graph_kind).map(_._2))
+      warnings = _warnings(manifest, terms, components) ++ Option.when(topology.truncated)(BokWarning("BoK graph summary is truncated"))
     } yield NormalizedBokSource(
       source,
       terms.sortBy(_.termId.value),
       components.sortBy(x => (x.kind.value, x.name.value, x.version.map(_.value).getOrElse(""))),
-      warnings
+      warnings,
+      topology
     )
+
+  private def _read_topology(context: ExecutionContext, source: BokKnowledgeSource, references: Vector[ResourceReference]): Consequence[BokKnowledgeTopology] =
+    if (references.isEmpty) Consequence.success(BokKnowledgeTopology.empty)
+    else if (references.size != 1) Consequence.resourceInvalid("BoK KnowledgeSource has multiple rdf-graph-summary resources")
+    else context.resources.readText(references.head).flatMap(_parse_topology(source, references.head, _))
+
+  private def _parse_topology(source: BokKnowledgeSource, reference: ResourceReference, value: String): Consequence[BokKnowledgeTopology] =
+    parser.parse(value).left.map(_.message).flatMap(json => json.asObject.toRight("graph summary must be a JSON object")) match {
+      case Right(graph) if graph("schemaVersion").flatMap(_.asString).contains(_graph_schema) && graph("kind").flatMap(_.asString).contains(_graph_kind) =>
+        _decode_topology(source, reference, graph) match {
+          case Right(topology) => Consequence.success(topology)
+          case Left(message) => Consequence.resourceInvalid(s"Invalid BoK graph summary: $message")
+        }
+      case Right(_) => Consequence.resourceInvalid("Unsupported BoK graph summary schemaVersion or kind")
+      case Left(message) => Consequence.resourceInvalid(s"Invalid BoK graph summary: $message")
+    }
+
+  private def _decode_topology(
+    source: BokKnowledgeSource,
+    reference: ResourceReference,
+    graph: JsonObject
+  ): Either[String, BokKnowledgeTopology] =
+    for {
+      sourceref <- _decode_source_reference(graph)
+      nodesjson <- _required_array(graph, "nodes")
+      edgesjson <- _required_array(graph, "edges")
+      _ <- _require_either(nodesjson.size <= _maximum_graph_nodes, s"nodes exceeds maximum $_maximum_graph_nodes")
+      _ <- _require_either(edgesjson.size <= _maximum_graph_relationships, s"edges exceeds maximum $_maximum_graph_relationships")
+      decodednodes <- _decode_nodes(nodesjson, _evidence(source, reference))
+      decodedrelationships <- _decode_relationships(edgesjson, _evidence(source, reference))
+      truncated <- _required_boolean(graph, "truncated")
+      _ <- _validate_topology(decodednodes, decodedrelationships)
+    } yield BokKnowledgeTopology(
+      decodednodes.distinct.sortBy(_.id),
+      decodedrelationships.distinct.sortBy(x => (x.subjectId, x.predicate, x.objectId)),
+      truncated,
+      Some(sourceref)
+    )
+
+  private def _decode_source_reference(graph: JsonObject): Either[String, BokKnowledgeSourceReference] =
+    for {
+      objectvalue <- graph("sourceRef").flatMap(_.asObject).toRight("sourceRef must be an object")
+      kind <- _required_identifier(objectvalue, "kind", "sourceRef.kind")
+      _ <- _require_either(kind == "bok-site", "sourceRef.kind must be bok-site")
+      value <- _required_identifier(objectvalue, "value", "sourceRef.value")
+      uri <- _optional_label(objectvalue, "uri", "sourceRef.uri")
+    } yield BokKnowledgeSourceReference(kind, value, uri)
+
+  private def _decode_nodes(values: Vector[Json], evidence: BokEvidence): Either[String, Vector[BokKnowledgeNode]] =
+    _sequence_either(values.zipWithIndex.map { case (value, index) =>
+      for {
+        objectvalue <- value.asObject.toRight(s"nodes[$index] must be an object")
+        id <- _required_identifier(objectvalue, "id", s"nodes[$index].id")
+        label <- _required_label(objectvalue, "label", s"nodes[$index].label")
+        kind <- _required_identifier(objectvalue, "node_type", s"nodes[$index].node_type")
+        category <- _optional_label(objectvalue, "category", s"nodes[$index].category")
+        terms <- _optional_identifiers(objectvalue, "terms", s"nodes[$index].terms", _maximum_term_references)
+        tags <- _optional_labels(objectvalue, "tags", s"nodes[$index].tags", _maximum_tags)
+      } yield BokKnowledgeNode(id, label, kind, evidence, category, terms, tags)
+    })
+
+  private def _decode_relationships(values: Vector[Json], evidence: BokEvidence): Either[String, Vector[BokKnowledgeRelationship]] =
+    _sequence_either(values.zipWithIndex.map { case (value, index) =>
+      for {
+        objectvalue <- value.asObject.toRight(s"edges[$index] must be an object")
+        subject <- _required_identifier(objectvalue, "source", s"edges[$index].source")
+        predicate <- _required_identifier(objectvalue, "predicate", s"edges[$index].predicate")
+        obj <- _required_identifier(objectvalue, "target", s"edges[$index].target")
+        label <- _optional_label(objectvalue, "label", s"edges[$index].label")
+        category <- _optional_label(objectvalue, "category", s"edges[$index].category")
+        terms <- _optional_identifiers(objectvalue, "terms", s"edges[$index].terms", _maximum_term_references)
+        tags <- _optional_labels(objectvalue, "tags", s"edges[$index].tags", _maximum_tags)
+      } yield BokKnowledgeRelationship(subject, predicate, obj, label, evidence, category, terms, tags)
+    })
+
+  private def _validate_topology(
+    nodes: Vector[BokKnowledgeNode],
+    relationships: Vector[BokKnowledgeRelationship]
+  ): Either[String, Unit] = {
+    val nodeconflicts = nodes.groupBy(_.id).collect { case (id, values) if values.distinct.size > 1 => id }.toVector.sorted
+    val edgeconflicts = relationships.groupBy(x => (x.subjectId, x.predicate, x.objectId)).collect {
+      case (identity, values) if values.distinct.size > 1 => identity
+    }.toVector.sortBy(identity => identity.toString)
+    val nodeids = nodes.map(_.id).toSet
+    val dangling = relationships.filter(x => !nodeids.contains(x.subjectId) || !nodeids.contains(x.objectId))
+    for {
+      _ <- _require_either(nodeconflicts.isEmpty, s"conflicting node identities: ${nodeconflicts.mkString(", ")}")
+      _ <- _require_either(edgeconflicts.isEmpty, s"conflicting edge identities: ${edgeconflicts.mkString(", ")}")
+      _ <- _require_either(dangling.isEmpty, "edges contain dangling endpoints")
+    } yield ()
+  }
+
+  private def _required_array(graph: JsonObject, field: String): Either[String, Vector[Json]] =
+    graph(field).flatMap(_.asArray).toRight(s"$field must be an array")
+
+  private def _required_boolean(graph: JsonObject, field: String): Either[String, Boolean] =
+    graph(field).flatMap(_.asBoolean).toRight(s"$field must be a boolean")
+
+  private def _required_identifier(objectvalue: JsonObject, field: String, label: String): Either[String, String] =
+    _required_string(objectvalue, field, label, _maximum_identifier_length)
+
+  private def _required_label(objectvalue: JsonObject, field: String, label: String): Either[String, String] =
+    _required_string(objectvalue, field, label, _maximum_label_length)
+
+  private def _required_string(objectvalue: JsonObject, field: String, label: String, maximum: Int): Either[String, String] =
+    objectvalue(field).flatMap(_.asString).filter(_.nonEmpty).toRight(s"$label is required").flatMap { value =>
+      _require_either(value.length <= maximum, s"$label exceeds maximum $maximum").map(_ => value)
+    }
+
+  private def _optional_label(objectvalue: JsonObject, field: String, label: String): Either[String, Option[String]] =
+    objectvalue(field) match {
+      case None | Some(Json.Null) => Right(None)
+      case Some(value) => value.asString.filter(_.nonEmpty).toRight(s"$label must be a non-empty string").flatMap { text =>
+        _require_either(text.length <= _maximum_label_length, s"$label exceeds maximum $_maximum_label_length").map(_ => Some(text))
+      }
+    }
+
+  private def _optional_identifiers(objectvalue: JsonObject, field: String, label: String, maximum: Int): Either[String, Vector[String]] =
+    _optional_strings(objectvalue, field, label, maximum, _maximum_identifier_length)
+
+  private def _optional_labels(objectvalue: JsonObject, field: String, label: String, maximum: Int): Either[String, Vector[String]] =
+    _optional_strings(objectvalue, field, label, maximum, _maximum_label_length)
+
+  private def _optional_strings(
+    objectvalue: JsonObject,
+    field: String,
+    label: String,
+    maximum: Int,
+    maximumlength: Int
+  ): Either[String, Vector[String]] =
+    objectvalue(field) match {
+      case None | Some(Json.Null) => Right(Vector.empty)
+      case Some(value) => for {
+        values <- value.asArray.toRight(s"$label must be an array")
+        _ <- _require_either(values.size <= maximum, s"$label exceeds maximum $maximum")
+        result <- _sequence_either(values.zipWithIndex.map { case (entry, index) =>
+          entry.asString.filter(_.nonEmpty).toRight(s"$label[$index] must be a non-empty string").flatMap { text =>
+            _require_either(text.length <= maximumlength, s"$label[$index] exceeds maximum $maximumlength").map(_ => text)
+          }
+        })
+      } yield result.distinct.sorted
+    }
+
+  private def _require_either(condition: Boolean, message: => String): Either[String, Unit] =
+    if (condition) Right(()) else Left(message)
+
+  private def _sequence_either[A](values: Vector[Either[String, A]]): Either[String, Vector[A]] =
+    values.foldLeft(Right(Vector.empty): Either[String, Vector[A]]) { (result, value) =>
+      for {
+        collected <- result
+        element <- value
+      } yield collected :+ element
+    }
 
   private def _parse_manifest(value: String): Consequence[KnowledgeSourceManifest] =
     parser.parse(value).left.map(_.message).flatMap(_.as[KnowledgeSourceManifest]) match {

@@ -15,7 +15,7 @@ import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Jul. 23, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -68,6 +68,89 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
         "urn:textus:bok:fixture/repository/sar/nict-knowledgehub/index.html"
       )
       result.warnings shouldBe empty
+    }
+
+    "normalize a versioned Cozy graph summary with attributable metadata and truncation" in {
+      Given("a metadata-only source with one versioned graph-summary resource")
+      val context = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> _topology_graph
+      ))
+
+      When("the source reader admits the structured graph summary")
+      val result = BokSourceReader.read(context, _source).TAKE
+
+      Then("topology ordering, source attribution, retained metadata, and truncation remain explicit")
+      result.topology.sourceRef.map(x => (x.kind, x.value, x.uri)) shouldBe Some(
+        ("bok-site", "knowledgehub", Some("https://example.test/knowledgehub"))
+      )
+      result.topology.nodes.map(_.id) shouldBe Vector("article:runtime", "term:runtime")
+      result.topology.nodes.find(_.id == "term:runtime").map(x => (x.category, x.terms, x.tags)) shouldBe Some(
+        (Some("architecture"), Vector("architecture:runtime"), Vector("core", "runtime"))
+      )
+      result.topology.relationships.map(x => (x.subjectId, x.predicate, x.objectId, x.terms, x.tags)) shouldBe Vector(
+        ("term:runtime", "references", "article:runtime", Vector("architecture:runtime"), Vector("source"))
+      )
+      result.warnings.map(_.value) should contain("BoK graph summary is truncated")
+    }
+
+    "reject malformed, incompatible, dangling, conflicting, and every finite graph-summary limit without reading referenced pages" in {
+      Given("one admitted graph resource and variants that violate the producer contract")
+      val dangling = _topology_graph.replace("\"target\": \"article:runtime\"", "\"target\": \"missing:runtime\"")
+      val unsupportedsource = _topology_graph.replace("\"kind\": \"bok-site\"", "\"kind\": \"outside-site\"")
+      val unsupportedschema = _topology_graph.replace("cozy.rdf-graph-summary.v1", "cozy.rdf-graph-summary.v2")
+      val malformedtruncation = _topology_graph.replace("\"truncated\": true", "\"truncated\": \"true\"")
+      val conflicting = _topology_graph.replace(
+        """    {"id": "article:runtime", "label": "Runtime Article", "node_type": "article", "tags": ["doc"]}""",
+        """    {"id": "term:runtime", "label": "Other Runtime", "node_type": "term"}"""
+      )
+      val oversizednodes = (1 to 513).map { index =>
+        s"""{"id":"term:$index","label":"Term $index","node_type":"term"}"""
+      }.mkString(",")
+      val oversized =
+        s"""{"schemaVersion":"cozy.rdf-graph-summary.v1","kind":"rdf-graph-summary","sourceRef":{"kind":"bok-site","value":"knowledgehub"},"nodes":[$oversizednodes],"edges":[],"truncated":false}"""
+      val oversizededges = (1 to 2049).map { _ =>
+        """{"source":"term:runtime","predicate":"references","target":"term:runtime"}"""
+      }.mkString(",")
+      val oversizerelationships =
+        s"""{"schemaVersion":"cozy.rdf-graph-summary.v1","kind":"rdf-graph-summary","sourceRef":{"kind":"bok-site","value":"knowledgehub"},"nodes":[{"id":"term:runtime","label":"Runtime","node_type":"term"}],"edges":[$oversizededges],"truncated":false}"""
+      val overlongidentifier = _topology_graph.replace("term:runtime", "x" * 1025)
+      val overlonglabel = _topology_graph.replace("\"label\": \"Runtime\"", s"\"label\": \"${"x" * 513}\"")
+      val oversizedterms = _topology_graph.replace(
+        "[\"architecture:runtime\"]",
+        (1 to 33).map(index => s"\"term:$index\"").mkString("[", ",", "]")
+      )
+      val oversizedtags = _topology_graph.replace(
+        "[\"runtime\", \"core\", \"runtime\"]",
+        (1 to 33).map(index => s"\"tag-$index\"").mkString("[", ",", "]")
+      )
+
+      When("each invalid graph is normalized through an in-memory resource provider")
+      val results = Vector(
+        dangling,
+        unsupportedsource,
+        unsupportedschema,
+        malformedtruncation,
+        conflicting,
+        oversized,
+        oversizerelationships,
+        overlongidentifier,
+        overlonglabel,
+        oversizedterms,
+        oversizedtags
+      ).map { graph =>
+        BokSourceReader.read(_context(Map(
+          "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+          "fixture/metadata/glossary/terms.json" -> _terms,
+          "fixture/repository/catalog/index.json" -> _repository_index,
+          "fixture/metadata/rdf/graph.json" -> graph
+        )), _source)
+      }
+
+      Then("the reader rejects every violation without requiring a rendered page or referenced URI")
+      results.foreach(_ should matchPattern { case Consequence.Failure(_) => })
     }
 
     "reject incompatible current Cozy component reference contracts" in {
@@ -221,6 +304,31 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       |    {"kind": "component-reference-index", "href": "metadata/cncf/component-references/sar.json"},
       |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"}
       |  ]
+      |}""".stripMargin
+
+  private val _topology_manifest =
+    """{
+      |  "schemaVersion": "cncf.knowledge-source.v1",
+      |  "resources": [
+      |    {"kind": "component-repository-index", "href": "repository/catalog/index.json"},
+      |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"},
+      |    {"kind": "rdf-graph-summary", "href": "metadata/rdf/graph.json"}
+      |  ]
+      |}""".stripMargin
+
+  private val _topology_graph =
+    """{
+      |  "schemaVersion": "cozy.rdf-graph-summary.v1",
+      |  "kind": "rdf-graph-summary",
+      |  "sourceRef": {"kind": "bok-site", "value": "knowledgehub", "uri": "https://example.test/knowledgehub"},
+      |  "nodes": [
+      |    {"id": "term:runtime", "label": "Runtime", "node_type": "term", "category": "architecture", "terms": ["architecture:runtime"], "tags": ["runtime", "core", "runtime"]},
+      |    {"id": "article:runtime", "label": "Runtime Article", "node_type": "article", "tags": ["doc"]}
+      |  ],
+      |  "edges": [
+      |    {"source": "term:runtime", "predicate": "references", "target": "article:runtime", "label": "References", "category": "documentation", "terms": ["architecture:runtime"], "tags": ["source", "source"]}
+      |  ],
+      |  "truncated": true
       |}""".stripMargin
 
   private val _terms =

@@ -10,7 +10,7 @@ import org.simplemodeling.textus.bok.value.*
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Jul. 23, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -94,19 +94,34 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
       val catalog = new BokKnowledgeCatalog()
       val stale = _term("stale", "Stale Term", "Old definition.", "source-a", "dataset-a")
       val current = _term("current", "Current Term", "Current definition.", "source-a", "dataset-a")
-      _commit(catalog, _normalized("source-a", "dataset-a", "g1", Vector(stale), Vector.empty))
+      _commit(catalog, _normalized(
+        "source-a",
+        "dataset-a",
+        "g1",
+        Vector(stale),
+        Vector.empty,
+        _topology("stale-node")
+      ))
 
       When("a complete replacement is followed by a degraded replacement")
-      _commit(catalog, _normalized("source-a", "dataset-a", "g2", Vector(current), Vector.empty))
+      _commit(catalog, _normalized(
+        "source-a",
+        "dataset-a",
+        "g2",
+        Vector(current),
+        Vector.empty,
+        _topology("current-node")
+      ))
       val degraded = BokFederationPublication("degraded", org.goldenport.record.Record.empty)
       catalog.commit(
         degraded,
-        _normalized("source-a", "dataset-a", "g3", Vector(stale), Vector.empty)
+        _normalized("source-a", "dataset-a", "g3", Vector(stale), Vector.empty, _topology("degraded-node"))
       ) shouldBe false
 
-      Then("the stale first generation is absent and the last complete generation remains visible")
+      Then("the stale first generation is absent and the last complete terms and topology remain visible")
       catalog.explainTerm("Stale Term").status.value shouldBe "no-match"
       catalog.explainTerm("Current Term").status.value shouldBe "matched"
+      catalog.selectedTopology("dataset-a").map(_.nodes.map(_.id)) shouldBe Some(Vector("current-node"))
     }
   }
 
@@ -121,7 +136,8 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
     datasetid: String,
     generation: String,
     terms: Vector[BokTerm],
-    components: Vector[ComponentReference]
+    components: Vector[ComponentReference],
+    topology: BokKnowledgeTopology = BokKnowledgeTopology.empty
   ): NormalizedBokSource =
     NormalizedBokSource(
       BokKnowledgeSource(
@@ -132,8 +148,20 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
       ),
       terms,
       components,
-      Vector.empty
+      Vector.empty,
+      topology
     )
+
+  private def _topology(id: String): BokKnowledgeTopology =
+    BokKnowledgeTopology(
+      Vector(BokKnowledgeNode(id, id, "term", _evidence(id))),
+      Vector.empty,
+      false,
+      Some(BokKnowledgeSourceReference("bok-site", "knowledgehub", None))
+    )
+
+  private def _evidence(id: String): BokEvidence =
+    BokEvidence(BokEvidenceUri(s"urn:textus:bok:source-a:$id"), BokSourceId("source-a"), None, None, None)
 
   private def _term(
     id: String,

@@ -8,7 +8,7 @@ import org.simplemodeling.textus.bok.value.*
  * BoK-owned matching state, replaced only after a complete SIE publication.
  *
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Jul. 23, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalog {
@@ -27,6 +27,10 @@ final class BokKnowledgeCatalog {
     } else {
       false
     }
+  }
+
+  def selectedTopology(datasetId: String): Option[BokKnowledgeTopology] = synchronized {
+    _datasets.get(datasetId).map(_.topology)
   }
 
   def searchTerms(

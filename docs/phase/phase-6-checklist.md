@@ -5,33 +5,33 @@ current step are recorded in `phase-6.md`.
 
 ## P6-01: Ownership and Knowledge Semantics
 
-- [ ] A stable design document fixes Textus BoK, Cozy, SIE, CBD Support, and
+- [x] A stable design document fixes Textus BoK, Cozy, SIE, CBD Support, and
   CNCF responsibilities for the Knowledge Map.
-- [ ] An authoritative specification distinguishes admitted factual
+- [x] An authoritative specification distinguishes admitted factual
   relationships, evidence, semantic candidates, and unsupported inference.
-- [ ] The selected-generation invariant covers terms, component references,
+- [x] The selected-generation invariant covers terms, component references,
   Knowledge Map nodes, and relationships as one atomic catalog view.
 
 ## P6-02: Cozy Topology Handoff
 
-- [ ] A versioned Cozy source contract defines the graph-summary resource,
+- [x] A versioned Cozy source contract defines the graph-summary resource,
   schema compatibility, node/edge fields, truncation, and source evidence.
-- [ ] Default and maximum node, relationship, identifier, label, term, and tag
+- [x] Default and maximum node, relationship, identifier, label, term, and tag
   limits are fixed from representative Cozy BoK evidence.
-- [ ] Article, scenario, project, bibliography, tag, and RDF resources have an
+- [x] Article, scenario, project, bibliography, tag, and RDF resources have an
   explicit reference-node policy that does not transfer their domain ownership
   to Textus BoK.
 
 ## P6-03: Source and Catalog Read Model
 
-- [ ] `BokSourceReader` normalizes admitted topology only through CNCF resource
+- [x] `BokSourceReader` normalizes admitted topology only through CNCF resource
   access and retains required term/article/RDF/tag references.
-- [ ] Source normalization rejects unsafe paths, unsupported schema, dangling
+- [x] Source normalization rejects unsafe paths, unsupported schema, dangling
   edges, conflicting duplicates, and finite-limit violations deterministically.
-- [ ] `BokKnowledgeCatalog` replaces topology atomically on complete
+- [x] `BokKnowledgeCatalog` replaces topology atomically on complete
   publication and retains the complete prior generation after degraded
   publication.
-- [ ] Executable specifications prove deterministic identities/order,
+- [x] Executable specifications prove deterministic identities/order,
   truncation warnings, stale topology removal, and absence of rendered-page,
   host-filesystem, provider, or referenced-URI reads.
 

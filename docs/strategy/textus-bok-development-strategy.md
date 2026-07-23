@@ -35,15 +35,11 @@ Phase 5 is closed. It verified the representative SIE, BoK, CBD Support, and
 Scraper SAR, the four BoK-owned MCP reads, source ownership, and the
 existence-to-detail CBD handoff without crossing component boundaries.
 
-Phase 6 is open. Its objective is a component-owned, read-only Knowledge Map
-Web application over the last completely selected Cozy BoK generation. The
-first priority is to promote the provisional topology, query, and Web behavior
-recorded in
-`docs/notes/textus-bok-knowledge-map-web-application-spec-draft.md` into stable
-design and specification contracts. Implementation follows only after the Cozy
-graph-summary handoff, factual-versus-candidate relationship semantics, finite
-limits, generated CML/API boundary, and Static Form packaging boundary are
-fixed and executable examples are defined.
+Phase 6 is in progress. P6-A promoted the ownership and handoff contracts, and
+P6-B now holds the reviewed, fully tested bounded and attributable topology in
+the selected complete generation. The next work is P6-C planning for a single
+public query contract; no query, MCP projection, or Static Form page has been
+implemented yet.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside Phase 6 until a
