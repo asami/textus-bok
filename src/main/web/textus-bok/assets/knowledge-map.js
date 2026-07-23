@@ -9,6 +9,8 @@
     return String(value);
   };
 
+  const _field = (value, camel, snake) => value && (value[camel] ?? value[snake]);
+
   const _text = (tag, value) => {
     const element = document.createElement(tag);
     element.textContent = _scalar(value);
@@ -48,11 +50,11 @@
   const _showDetail = (detail, node) => {
     detail.replaceChildren(_text("h3", _scalar(node.label) || "Selected node"));
     const list = document.createElement("dl");
-    _appendDetail(list, "Node", node.nodeId);
+    _appendDetail(list, "Node", _field(node, "nodeId", "node_id"));
     _appendDetail(list, "Kind", node.kind);
     _appendDetail(list, "Category", node.category);
     _appendDetail(list, "Definitions", (node.terms || []).map(term => _scalar(term.definition || term.title)).join("; "));
-    _appendDetail(list, "CBD handoff", (node.componentReferences || []).map(reference => `${_scalar(reference.kind)}:${_scalar(reference.name)}`).join(", "));
+    _appendDetail(list, "CBD handoff", (_field(node, "componentReferences", "component_references") || []).map(reference => `${_scalar(reference.kind)}:${_scalar(reference.name)}`).join(", "));
     _appendDetail(list, "Evidence", node.evidence);
     detail.append(list);
     detail.focus();
@@ -73,11 +75,11 @@
     const positions = new Map(nodes.map((node, index) => {
       const column = index % 4;
       const row = Math.floor(index / 4);
-      return [_scalar(node.nodeId), { x: 130 + column * 235, y: 85 + row * 135 }];
+      return [_scalar(_field(node, "nodeId", "node_id")), { x: 130 + column * 235, y: 85 + row * 135 }];
     }));
     relationships.forEach((relationship) => {
-      const source = positions.get(_scalar(relationship.subjectId));
-      const target = positions.get(_scalar(relationship.objectId));
+      const source = positions.get(_scalar(_field(relationship, "subjectId", "subject_id")));
+      const target = positions.get(_scalar(_field(relationship, "objectId", "object_id")));
       if (!source || !target) return;
       const edge = document.createElementNS(svg.namespaceURI, "line");
       edge.setAttribute("class", "bok-map-edge");
@@ -88,7 +90,7 @@
       svg.append(edge);
     });
     nodes.forEach((node) => {
-      const position = positions.get(_scalar(node.nodeId));
+      const position = positions.get(_scalar(_field(node, "nodeId", "node_id")));
       const group = document.createElementNS(svg.namespaceURI, "g");
       group.setAttribute("class", "bok-map-node");
       group.setAttribute("role", "button");

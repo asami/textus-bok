@@ -29,6 +29,8 @@ PROBE_SOURCE_ID="${TEXTUS_BOK_CODEX_PROBE_SOURCE_ID:-codex-bok}"
 PROBE_DATASET_ID="${TEXTUS_BOK_CODEX_PROBE_DATASET_ID:-codex-bok}"
 PROBE_GENERATION="${TEXTUS_BOK_CODEX_PROBE_GENERATION:-2026-07-21T00:00:00Z}"
 PROBE_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_PROBE_TIMEOUT_SECONDS:-120}"
+SKIP_PROBE="${TEXTUS_BOK_CODEX_SKIP_PROBE:-false}"
+EMBED_COMPONENTS="${TEXTUS_BOK_CODEX_EMBED_COMPONENTS:-true}"
 STARTUP_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_STARTUP_TIMEOUT_SECONDS:-900}"
 SHUTDOWN_TIMEOUT_SECONDS="${TEXTUS_BOK_CODEX_SHUTDOWN_TIMEOUT_SECONDS:-30}"
 RUN_DIR="${TEXTUS_BOK_CODEX_RUN_DIR:-$HOME/.cncf/textus-bok-codex}"
@@ -87,6 +89,8 @@ _requested_config() {
     "probe-dataset-id=$PROBE_DATASET_ID" \
     "probe-generation=$PROBE_GENERATION" \
     "probe-timeout-seconds=$PROBE_TIMEOUT_SECONDS" \
+    "skip-probe=$SKIP_PROBE" \
+    "embed-components=$EMBED_COMPONENTS" \
     "fixture-root=$FIXTURE_ROOT"
 }
 
@@ -152,6 +156,8 @@ _start() {
     "TEXTUS_BOK_CODEX_PROBE_DATASET_ID=$PROBE_DATASET_ID"
     "TEXTUS_BOK_CODEX_PROBE_GENERATION=$PROBE_GENERATION"
     "TEXTUS_BOK_CODEX_PROBE_TIMEOUT_SECONDS=$PROBE_TIMEOUT_SECONDS"
+    "TEXTUS_BOK_CODEX_SKIP_PROBE=$SKIP_PROBE"
+    "TEXTUS_BOK_CODEX_EMBED_COMPONENTS=$EMBED_COMPONENTS"
     "TEXTUS_SIE_ROOT=$SIE_ROOT"
     "TEXTUS_SCRAPER_ROOT=$SCRAPER_ROOT"
     "TEXTUS_BOK_CODEX_RUN_DIR=$RUN_DIR"
@@ -227,9 +233,18 @@ _serve() {
   rm -rf "$COMPONENT_DIR" "$SAR_ROOT"
   mkdir -p "$COMPONENT_DIR" "$SAR_ROOT/component"
   cp "$SIE_CAR" "$BOK_CAR" "$SCRAPER_CAR" "$COMPONENT_DIR/"
-  cp "$SIE_CAR" "$BOK_CAR" "$SCRAPER_CAR" "$SAR_ROOT/component/"
   cp "$SAR_DESCRIPTOR" "$SAR_ROOT/subsystem-descriptor.yaml"
-  (cd "$SAR_ROOT" && zip -qr "$SAR_FILE" subsystem-descriptor.yaml component)
+  if [[ "$EMBED_COMPONENTS" == "true" ]]; then
+    cp "$SIE_CAR" "$BOK_CAR" "$SCRAPER_CAR" "$SAR_ROOT/component/"
+    (cd "$SAR_ROOT" && zip -qr "$SAR_FILE" subsystem-descriptor.yaml component)
+  elif [[ "$EMBED_COMPONENTS" == "false" ]]; then
+    # The Knowledge Map probe uses the descriptor with its adjacent selected
+    # CARs so the current runtime does not duplicate the BoK dispatch owner.
+    (cd "$SAR_ROOT" && zip -qr "$SAR_FILE" subsystem-descriptor.yaml)
+  else
+    echo "TEXTUS_BOK_CODEX_EMBED_COMPONENTS must be true or false" >&2
+    return 1
+  fi
 
   env \
     CNCF_SERVER_PORT="$CNCF_SERVER_PORT" \
@@ -272,17 +287,19 @@ _serve() {
   if [[ "$expected_vector_provider" == "in-memory" ]]; then
     expected_vector_provider="in-memory-vector"
   fi
-  "$SCRIPT_DIR/probe-bok-codex-sar.py" \
-    --base-url "$CNCF_HTTP_BASEURL" \
-    --source-uri "$(cd "$FIXTURE_ROOT" && pwd -P | sed 's#^#file://#')/" \
-    --expected-rdf-provider "$expected_rdf_provider" \
-    --expected-vector-provider "$expected_vector_provider" \
-    --probe-query "$PROBE_QUERY" \
-    --probe-category "$PROBE_CATEGORY" \
-    --source-id "$PROBE_SOURCE_ID" \
-    --dataset-id "$PROBE_DATASET_ID" \
-    --generation "$PROBE_GENERATION" \
-    --timeout "$PROBE_TIMEOUT_SECONDS"
+  if [[ "$SKIP_PROBE" != "true" ]]; then
+    "$SCRIPT_DIR/probe-bok-codex-sar.py" \
+      --base-url "$CNCF_HTTP_BASEURL" \
+      --source-uri "$(cd "$FIXTURE_ROOT" && pwd -P | sed 's#^#file://#')/" \
+      --expected-rdf-provider "$expected_rdf_provider" \
+      --expected-vector-provider "$expected_vector_provider" \
+      --probe-query "$PROBE_QUERY" \
+      --probe-category "$PROBE_CATEGORY" \
+      --source-id "$PROBE_SOURCE_ID" \
+      --dataset-id "$PROBE_DATASET_ID" \
+      --generation "$PROBE_GENERATION" \
+      --timeout "$PROBE_TIMEOUT_SECONDS"
+  fi
   _requested_config_fingerprint >"$CONFIG_FILE"
   printf 'Textus BoK Codex SAR ready: %s/mcp\n' "$CNCF_HTTP_BASEURL" >"$READY_FILE"
   wait "$SERVER_PID"

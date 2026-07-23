@@ -8,7 +8,7 @@ import org.simplemodeling.textus.bok.value.*
  * BoK-owned matching state, replaced only after a complete SIE publication.
  *
  * @since   Jul. 21, 2026
- * @version Jul. 23, 2026
+ * @version Jul. 24, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalog {
@@ -289,7 +289,10 @@ final class BokKnowledgeCatalog {
   private def _map_component_references(node: MapNode): Vector[ComponentReference] =
     node.node.componentReference.toVector.flatMap { reference =>
       node.source.normalized.components.filter(component =>
-        component.kind.value == reference.kind && component.name.value == reference.name
+        component.kind.value == reference.kind &&
+          component.name.value == reference.name &&
+          reference.organization.forall(value => component.organization.exists(_.value == value)) &&
+          reference.version.forall(value => component.version.exists(_.value == value))
       )
     }.sortBy(component => (component.kind.value, component.name.value, component.version.map(_.value).getOrElse("")))
 

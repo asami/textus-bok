@@ -15,7 +15,7 @@ import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 23, 2026
+ * @version Jul. 24, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -100,10 +100,13 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       Given("a component-reference graph node with the current Cozy componentRef contract")
       val graph = _topology_graph.replace(
         """    {"id": "article:runtime", "label": "Runtime Article", "node_type": "article", "tags": ["doc"]}""",
-        """    {"id": "component:account", "label": "Account", "node_type": "component-reference", "componentRef": {"kind": "car", "name": "textus-account"}, "tags": ["doc"]}"""
+        """    {"id": "component:account", "label": "Account", "node_type": "component-reference", "componentRef": {"kind": "car", "name": "textus-account", "version": "0.2.0"}, "tags": ["doc"]}"""
       ).replace("article:runtime", "component:account")
       val missing = graph.replace("textus-account", "missing-account")
-      val inferred = graph.replace("\"componentRef\": {\"kind\": \"car\", \"name\": \"textus-account\"}", "\"componentRef\": {\"kind\": \"car\"}")
+      val inferred = graph.replace("\"componentRef\": {\"kind\": \"car\", \"name\": \"textus-account\", \"version\": \"0.2.0\"}", "\"componentRef\": {\"kind\": \"car\"}")
+      val mismatchedversion = graph.replace("\"version\": \"0.2.0\"", "\"version\": \"0.3.0\"")
+      val mismatchedorganization = graph.replace("\"version\": \"0.2.0\"", "\"organization\": \"org.textus\"")
+      val malformedoptional = graph.replace("\"version\": \"0.2.0\"", "\"version\": \"\"")
       val context = _context(Map(
         "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
         "fixture/metadata/glossary/terms.json" -> _terms,
@@ -125,12 +128,33 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
         "fixture/repository/catalog/index.json" -> _repository_index,
         "fixture/metadata/rdf/graph.json" -> inferred
       )), _source)
+      val mismatchedversionresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> mismatchedversion
+      )), _source)
+      val mismatchedorganizationresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> mismatchedorganization
+      )), _source)
+      val malformedoptionalresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> malformedoptional
+      )), _source)
 
-      Then("only the declared CAR identity is retained and malformed or unmatched handoffs fail")
+      Then("only the declared CAR identity is retained and optional component identity fields match exactly when declared")
       result.topology.nodes.find(_.id == "component:account").flatMap(_.componentReference) shouldBe
-        Some(BokKnowledgeComponentReference("car", "textus-account"))
+        Some(BokKnowledgeComponentReference("car", "textus-account", None, Some("0.2.0")))
       missingresult should matchPattern { case Consequence.Failure(_) => }
       inferredresult should matchPattern { case Consequence.Failure(_) => }
+      mismatchedversionresult should matchPattern { case Consequence.Failure(_) => }
+      mismatchedorganizationresult should matchPattern { case Consequence.Failure(_) => }
+      malformedoptionalresult should matchPattern { case Consequence.Failure(_) => }
     }
 
     "reject malformed, incompatible, dangling, conflicting, and every finite graph-summary limit without reading referenced pages" in {

@@ -112,6 +112,30 @@ cncf command Bok.BokRetrieval.getComponentReference \
   --name textus-account --kind car --format yaml
 ```
 
+## Read A Knowledge Map
+
+After a complete replacement of a Cozy source that declares
+`metadata/rdf/graph.json`, query the bounded factual map through the normal
+component boundary:
+
+```sh
+cncf command Bok.BokRetrieval.getKnowledgeMap \
+  --datasetId knowledgehub --sourceId knowledgehub \
+  --nodeLimit 128 --relationshipLimit 256 --format yaml
+```
+
+For an operator-facing browser projection, open
+`/web/bok/textus-bok/map` on the same runtime. Its filters select the same
+public operation; the page keeps complete tables available without JavaScript
+and renders CBD handoffs as existence-only identities. It has no replace or
+other mutation control.
+
+For the representative Cozy handoff verification, set
+`TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT` to the generated `website.d` directory
+and run `scripts/run-bok-knowledge-map-sar.sh start`. The probe replaces the
+source and proves REST and Web agreement on generation, topology, evidence,
+truncation, and `componentRef` handoffs.
+
 ## MCP Use
 
 The current component publishes four read tools:
@@ -156,3 +180,4 @@ runtime compatibility from the BoK result.
 | Degraded replacement | Inspect SIE provider status; the prior complete BoK generation remains active |
 | Candidate missing | Check SIE readiness and source evidence; exact and candidate matching never synthesize data |
 | Component lacks usage detail | Hand the exact reference to Textus CBD Support |
+| Map is `no-match` | Replace a complete generation that declares the Cozy graph summary, then confirm the selected dataset/source filters |

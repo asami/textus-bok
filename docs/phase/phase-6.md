@@ -1,8 +1,8 @@
 # Phase 6: Knowledge Map Web Application
 
 Stage Status:
-- Current status: IN PROGRESS
-- Current step: P6-E Representative Verification and Closure
+- Current status: DONE
+- Current step: P6-E Representative Verification and Closure (closed)
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-6-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -37,22 +37,25 @@ topology. The accepted design and specification are
 `docs/design/bok-knowledge-map.md` and
 `docs/spec/bok-knowledge-map-contract.md`.
 
-P6-A and P6-B are complete. P6-B passed fresh re-review, normal CAR lint, and
-the full Textus BoK suite after the local SIE artifact was rebuilt against the
-current CNCF SNAPSHOT. The source reader admits only the versioned graph summary
-through CNCF resource access, preserves attributable reference-node metadata and
-truncation, and commits topology with the selected complete generation. The
-P6-C public query contract is now complete: `getKnowledgeMap` projects only
-the selected catalog generation with bounded filtering, focus, no-match,
-truncation, source-reference, and selected-term detail. The operation remains
-public but outside MCP, with fresh review, generated-contract checks, focused
-operation specifications, and `Test/compile` evidence. P6-D is now complete:
-the authorized `textus-bok` Static Form surface packages an overview and map,
-one bounded result drives the no-JavaScript tables and progressive SVG detail,
-and explicit Cozy `componentRef` values become only validated existence-only
-CBD handoffs. P6-D passed focused source/catalog/domain/Web specifications,
-clean re-review, and normal CAR lint. The next stage is P6-E representative
-SAR verification and phase-closure evidence.
+P6-A through P6-D are complete. The source reader admits only the versioned
+graph summary through CNCF resource access, preserves attributable reference
+node metadata and truncation, and commits topology with the selected complete
+generation. `getKnowledgeMap` projects only that selected generation with
+bounded filtering, focus, no-match, truncation, source-reference, and
+selected-term detail. It remains public but outside MCP. The authorized
+`textus-bok` Static Form packages an overview and map: one bounded result drives
+the no-JavaScript tables and progressive SVG detail, and explicit Cozy
+`componentRef` values become only validated existence-only CBD handoffs.
+
+P6-E closed on 2026-07-24. The live representative KnowledgeHub handoff probe
+loaded the generated Cozy source with 95 nodes, 150 relationships, and one
+explicit component handoff; the BoK REST operation and Static Form agreed on
+selected generation, topology, evidence, truncation, and handoff. A fresh
+`sbt --batch 'clean; test; cozyBuildCAR'` completed with 24 successful tests and
+generated `target/textus-bok-0.1.0-SNAPSHOT.car`. Normal CNCF CAR lint and the
+Codex provider-configuration check passed. CAR lint retained only the
+documented release-only warnings for the absent ABI baseline and development
+SNAPSHOT version. Final read-only review found no actionable Phase 6 issue.
 
 ## Scope
 
@@ -110,6 +113,19 @@ Focus: P6-06.
 - Validate a real Cozy BoK source in a representative SAR.
 - Complete full tests, CAR build/lint, documentation, review, and phase closure
   evidence.
+
+Recorded P6-E evidence (2026-07-23):
+
+- `BOK_KNOWLEDGE_MAP_SAR_OK` with KnowledgeHub source generation
+  `2026-07-23T00:00:00Z`, 95 nodes, 150 relationships, and one
+  `componentRef` handoff;
+- Static Form resolves the canonical `bok.bok-retrieval.get-knowledge-map`
+  selector and renders the same operation model with its generated
+  snake_case response fields;
+- on 2026-07-24, `sbt --batch 'clean; test; cozyBuildCAR'` passed with 24
+  successful tests and produced `target/textus-bok-0.1.0-SNAPSHOT.car`;
+- normal CNCF CAR lint and `scripts/check-bok-codex-provider-config.sh` passed,
+  with only deferred release ABI-baseline and development-SNAPSHOT warnings.
 
 ## Boundaries
 

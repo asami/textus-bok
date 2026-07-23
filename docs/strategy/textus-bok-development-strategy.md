@@ -35,14 +35,14 @@ Phase 5 is closed. It verified the representative SIE, BoK, CBD Support, and
 Scraper SAR, the four BoK-owned MCP reads, source ownership, and the
 existence-to-detail CBD handoff without crossing component boundaries.
 
-Phase 6 is in progress. P6-A promoted the ownership and handoff contracts, and
-P6-B holds the reviewed, fully tested bounded and attributable topology in the
-selected complete generation. P6-C provides the reviewed public, bounded
-Knowledge Map query with typed source references and selected `BokTerm` detail;
-it remains outside MCP. P6-D now packages the component-owned Static Form map
-with one bounded result, accessible fallback tables, and a progressive local
-SVG interaction. The next work is P6-E: representative SAR verification and
-phase-closure evidence.
+Phase 6 is closed. It delivers a versioned Cozy graph-summary handoff, atomic
+selected-generation topology, the bounded public `getKnowledgeMap` query
+(outside MCP), and the component-owned Static Form map with an accessible
+fallback and progressive local SVG interaction. P6-E verified a live
+KnowledgeHub source with 95 nodes, 150 relationships, and one explicit
+component handoff; REST and Web agreed on the selected generation, topology,
+evidence, truncation, and handoff. The clean full suite (24 tests), CAR build,
+normal CAR lint, configuration check, and final review passed.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside Phase 6 until a

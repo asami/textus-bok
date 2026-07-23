@@ -63,17 +63,17 @@ current step are recorded in `phase-6.md`.
 
 ## P6-06: Verification, Documentation, and Closure
 
-- [ ] Targeted domain, source, catalog, operation, Web descriptor, asset
+- [x] Targeted domain, source, catalog, operation, Web descriptor, asset
   packaging, no-JavaScript, progressive-enhancement, security, and
   accessibility specifications pass.
-- [ ] A representative SAR loads an actual Cozy BoK source and proves that the
+- [x] A representative SAR loads an actual Cozy BoK source and proves that the
   operation and Web view agree on generation, nodes, relationships, evidence,
   truncation, and CBD handoff.
-- [ ] The full Textus BoK test suite, `cozyBuildCAR`, normal CAR lint, and
+- [x] The full Textus BoK test suite, `cozyBuildCAR`, normal CAR lint, and
   relevant SAR checks pass with recorded evidence.
-- [ ] README, strategy, domain/developer/operator documents, and phase evidence
+- [x] README, strategy, domain/developer/operator documents, and phase evidence
   describe the delivered surface and its remaining boundaries accurately.
-- [ ] Final review has no actionable Phase 6 finding, validated work is
+- [x] Final review has no actionable Phase 6 finding, validated work is
   committed, and the Phase 6 Stage Status is closed.
 
 Phase 6 closes only while every checklist item remains checked and validation

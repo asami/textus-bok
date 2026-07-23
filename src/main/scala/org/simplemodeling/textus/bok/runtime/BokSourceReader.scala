@@ -13,7 +13,7 @@ import org.simplemodeling.textus.bok.value.*
  * Metadata-only BoK source reader over the CNCF ResourceAccess DSL.
  *
  * @since   Jul. 21, 2026
- * @version Jul. 23, 2026
+ * @version Jul. 24, 2026
  * @author  ASAMI, Tomoharu
  */
 final case class NormalizedBokSource(
@@ -25,7 +25,12 @@ final case class NormalizedBokSource(
 )
 
 final case class BokKnowledgeSourceReference(kind: String, value: String, uri: Option[String])
-final case class BokKnowledgeComponentReference(kind: String, name: String)
+final case class BokKnowledgeComponentReference(
+  kind: String,
+  name: String,
+  organization: Option[String] = None,
+  version: Option[String] = None
+)
 final case class BokKnowledgeNode(
   id: String,
   label: String,
@@ -188,7 +193,9 @@ object BokSourceReader {
         _ <- _require_either(Set("car", "sar").contains(kind), s"$label.kind must be car or sar")
         _ <- _require_either(nodekind == "component-reference", s"$label requires node_type component-reference")
         name <- _required_identifier(reference, "name", s"$label.name")
-      } yield Some(BokKnowledgeComponentReference(kind, name))
+        organization <- _optional_identifier(reference, "organization", s"$label.organization")
+        version <- _optional_identifier(reference, "version", s"$label.version")
+      } yield Some(BokKnowledgeComponentReference(kind, name, organization, version))
     }
 
   private def _decode_relationships(values: Vector[Json], evidence: BokEvidence): Either[String, Vector[BokKnowledgeRelationship]] =
@@ -228,13 +235,23 @@ object BokSourceReader {
   ): Consequence[Unit] =
     _sequence(topology.nodes.flatMap(_.componentReference).distinct.map { reference =>
       val matches = components.filter(component =>
-        component.kind.value == reference.kind && component.name.value == reference.name
+        component.kind.value == reference.kind &&
+          component.name.value == reference.name &&
+          reference.organization.forall(value => component.organization.exists(_.value == value)) &&
+          reference.version.forall(value => component.version.exists(_.value == value))
       )
       _require(
         matches.size == 1,
-        s"BoK graph componentRef ${reference.kind}:${reference.name} must match exactly one selected component index entry"
+        s"BoK graph componentRef ${_component_reference_identity(reference)} must match exactly one selected component index entry"
       )
     }).map(_ => ())
+
+  private def _component_reference_identity(reference: BokKnowledgeComponentReference): String =
+    Vector(
+      Some(s"${reference.kind}:${reference.name}"),
+      reference.organization.map(value => s"organization=$value"),
+      reference.version.map(value => s"version=$value")
+    ).flatten.mkString(" ")
 
   private def _required_array(graph: JsonObject, field: String): Either[String, Vector[Json]] =
     graph(field).flatMap(_.asArray).toRight(s"$field must be an array")
@@ -263,6 +280,14 @@ object BokSourceReader {
 
   private def _optional_identifiers(objectvalue: JsonObject, field: String, label: String, maximum: Int): Either[String, Vector[String]] =
     _optional_strings(objectvalue, field, label, maximum, _maximum_identifier_length)
+
+  private def _optional_identifier(objectvalue: JsonObject, field: String, label: String): Either[String, Option[String]] =
+    objectvalue(field) match {
+      case None | Some(Json.Null) => Right(None)
+      case Some(value) => value.asString.filter(_.nonEmpty).toRight(s"$label must be a non-empty string").flatMap { text =>
+        _require_either(text.length <= _maximum_identifier_length, s"$label exceeds maximum $_maximum_identifier_length").map(_ => Some(text))
+      }
+    }
 
   private def _optional_labels(objectvalue: JsonObject, field: String, label: String, maximum: Int): Either[String, Vector[String]] =
     _optional_strings(objectvalue, field, label, maximum, _maximum_label_length)

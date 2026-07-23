@@ -8,7 +8,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 /*
  * @since   Jul. 23, 2026
- * @version Jul. 23, 2026
+ * @version Jul. 24, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeMapWebSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -22,15 +22,18 @@ final class BokKnowledgeMapWebSpec extends AnyWordSpec with Matchers with GivenW
       When("the declared Web boundary is inspected")
 
       Then("the one public bounded operation supplies filters, graph data, and accessible tables")
-      form should include("textus-bok.bok-retrieval.get-knowledge-map: public")
-      form should include("textus-bok.bok-retrieval.get-knowledge-map:\n    enabled: true")
-      page should include("<textus:operation-result component=\"textus-bok\" service=\"bok-retrieval\" operation=\"get-knowledge-map\">")
+      form should include("bok.bok-retrieval.get-knowledge-map: public")
+      form should include("bok.bok-retrieval.get-knowledge-map:\n    enabled: true")
+      page should include("<textus:operation-result component=\"bok\" service=\"bok-retrieval\" operation=\"get-knowledge-map\">")
       page should include("method=\"get\"")
+      page should include("action=\"/web/bok/textus-bok/map\"")
+      page should include("/web/bok/textus-bok/assets/knowledge-map.js")
+      overview should include("/web/bok/textus-bok/map")
       page should include("id=\"bok-knowledge-map-data\"")
       page should include("id=\"bok-knowledge-map-summary\"")
       page should not include "result.body.nodes.size"
       page should not include "result.body.relationships.size"
-      page should include("componentReferences:CBD handoff")
+      page should include("component_references:CBD handoff")
       page should include("This complete table remains available when JavaScript is disabled.")
       page should include("aria-live=\"polite\"")
       overview should include("existence-only identities")
@@ -51,6 +54,8 @@ final class BokKnowledgeMapWebSpec extends AnyWordSpec with Matchers with GivenW
       script should include("tabindex")
       script should include("event.key === \"Enter\"")
       script should include("textContent")
+      script should include("node_id")
+      script should include("component_references")
       script should include("Nodes: ${nodes.length} · Relationships: ${relationships.length}")
       script should include("url.protocol === \"https:\" || url.protocol === \"http:\"")
       script should include("noopener noreferrer")

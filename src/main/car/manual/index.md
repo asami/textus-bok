@@ -20,7 +20,7 @@ embedding provider, the host filesystem, or the network.
 
 ## Service Contract
 
-`BokRetrieval` provides five operations:
+`BokRetrieval` provides six operations:
 
 | Operation | Kind | Purpose | MCP policy |
 |---|---|---|---|
@@ -29,6 +29,7 @@ embedding provider, the host filesystem, or the network.
 | `explainTerm` | query | Resolve one exact term and reliability state | ready |
 | `searchComponentReferences` | query | Search existence-only CAR/SAR references | ready |
 | `getComponentReference` | query | Resolve one exact CAR/SAR identity | ready |
+| `getKnowledgeMap` | query | Read one bounded, attributable selected-generation topology | never ready |
 
 CAR or SAR configuration may disable an MCP-ready operation but may never make
 `replaceKnowledgeSource` or another undeclared operation visible through MCP.
@@ -47,6 +48,8 @@ and a logical CNCF `resource` reference. The normalizer resolves
   definitions, optional category, and term type;
 - `component-repository-index`, using the canonical CNCF repository index for
   CAR/SAR existence.
+- `rdf-graph-summary`, a versioned Cozy topology projection with source
+  evidence, factual edges, and optional validated `componentRef` handoffs.
 
 Child references must be safe relative paths. Metadata-only operation is the
 default; rendered HTML and CAR/SAR archive inspection are not required.
@@ -69,6 +72,13 @@ Term responses use `matched`, `ambiguous`, `conflict`,
 `insufficient-evidence`, or `no-match`. Component-reference queries return only
 identity, kind, optional version/source/catalog/organization, and attributable
 evidence. Result limiting occurs after reliability classification.
+
+`getKnowledgeMap` reads only the selected complete generation. It supports
+bounded dataset/source, category, term type, and focus filtering; returns
+explicit `matched`, `no-match`, and truncation states; and preserves source,
+node, and relationship evidence. A declared Cozy `componentRef` is shown only
+as an exact existence handoff to CBD Support, never as usage or compatibility
+detail.
 
 ## Failures And Limits
 

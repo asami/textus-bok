@@ -1,19 +1,19 @@
 expose:
-  textus-bok.bok-retrieval.get-knowledge-map: public
-  textus-bok.bok-retrieval.replace-knowledge-source: protected
-  textus-bok.bok-retrieval.search-terms: public
+  bok.bok-retrieval.get-knowledge-map: public
+  bok.bok-retrieval.replace-knowledge-source: protected
+  bok.bok-retrieval.search-terms: public
 form:
-  textus-bok.bok-retrieval.get-knowledge-map:
+  bok.bok-retrieval.get-knowledge-map:
     enabled: true
     stayOnError: true
-  textus-bok.bok-retrieval.replace-knowledge-source:
+  bok.bok-retrieval.replace-knowledge-source:
     enabled: true
     successRedirect: /web/${component}/admin/entities/bok-term/${result.id}
     stayOnError: true
     controls:
       description:
         type: textarea
-  textus-bok.bok-retrieval.search-terms:
+  bok.bok-retrieval.search-terms:
     enabled: true
     successRedirect: /web/${component}/admin/entities/bok-term
     stayOnError: true

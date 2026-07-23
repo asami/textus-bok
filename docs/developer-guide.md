@@ -36,6 +36,13 @@ New resource kinds require:
 Rendered HTML is not a BoK default. Generic optional HTML indexing remains an
 SIE administration capability.
 
+The Knowledge Map admits only Cozy's versioned `rdf-graph-summary` resource.
+Graph edges remain factual source topology, every node and edge retains source
+evidence, and a component handoff can originate only from an explicit
+same-generation `componentRef` validated against the CAR/SAR index. Optional
+organization and version are exact constraints; never infer an identity from a
+label, identifier, tag, edge, or rendered page.
+
 ## Federation Projection
 
 `BokFederationPublisher` maps typed records to opaque SIE metadata. Stable IDs
@@ -80,9 +87,21 @@ and catalog IDs are contextual evidence only.
 
 For an admitted Cozy graph node, accept a CBD handoff only from explicit
 `componentRef.kind` and `componentRef.name` after exact same-generation
-CAR/SAR-index validation. Do not recover a handoff from a node ID, label,
+CAR/SAR-index validation; if declared, `componentRef.organization` and
+`componentRef.version` must match the same index entry exactly. Do not recover a handoff from a node ID, label,
 title, tag, relationship, or SIE candidate. Web pages may display that
 existence identity but must not invoke CBD Support or render CBD-owned detail.
+
+## Knowledge Map Web Surface
+
+The `textus-bok` Static Form page at `/web/bok/textus-bok/map` selects the
+public `bok.bok-retrieval.get-knowledge-map` operation. Keep its query bounded
+and read-only. The page's operation result is the sole data source for both
+the no-JavaScript tables and local progressive SVG enhancement. Runtime JSON
+uses generated snake_case property names, so authored tables and JavaScript
+must accept those names while request parameters remain the generated CML
+selectors. Use `textContent`, not HTML sinks, and permit evidence navigation
+only for explicit HTTP(S) URLs.
 
 ## Verification
 
@@ -91,6 +110,8 @@ Run:
 ```sh
 sbt --batch test cozyBuildCAR
 cozy lint car .
+TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT=/path/to/website.d \
+  scripts/run-bok-knowledge-map-sar.sh start
 ```
 
 Executable specifications must cover normalization failures, complete and
