@@ -1,21 +1,18 @@
 project:
-  name: "textus-bok"
+  namespace: "org.simplemodeling.textus"
+  id: "Bok"
   title: "Textus BoK"
   kind: car
-  organization: "org.textus"
-  scalaPackage: "org.simplemodeling.textus.bok"
   component:
-    name: "textus-bok"
-    className: "Bok"
     displayName: "Textus BoK"
     version: "0.1.0-SNAPSHOT"
 
 build:
   scalaVersion: "3.3.8"
-  cozyVersion: "0.3.0-SNAPSHOT"
+  cozyVersion: "0.3.4-SNAPSHOT"
   dependencies:
     compile:
-      - "org.goldenport::goldenport-cncf:0.5.1-SNAPSHOT"
+      - "org.goldenport::goldenport-cncf:0.5.2-SNAPSHOT"
     provided:
       - "org.textus::textus-semantic-integration-engine:0.2.0-SNAPSHOT"
     test:
@@ -31,17 +28,18 @@ packaging:
   car:
     abi:
       dependencies:
-        - name: "textus-semantic-integration-engine"
+        - namespace: "org.simplemodeling.textus"
+          id: "SemanticIntegrationEngine"
           abiRange: "[0.2.0,0.3.0)"
     manifest_metadata:
       boundedContext: "body-of-knowledge"
       domain: "bok"
     runtime:
       cncf:
-        minimum: "0.5.1-SNAPSHOT"
+        minimum: "0.5.2-SNAPSHOT"
         excluded: []
         tested:
-          - "0.5.1-SNAPSHOT"
+          - "0.5.2-SNAPSHOT"
 
 warehouse:
   repository_artifacts:
