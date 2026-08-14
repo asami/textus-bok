@@ -13,7 +13,8 @@ import org.simplemodeling.textus.bok.value.*
  * Metadata-only BoK source reader over the CNCF ResourceAccess DSL.
  *
  * @since   Jul. 21, 2026
- * @version Jul. 24, 2026
+ *  version Jul. 24, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 final case class NormalizedBokSource(
@@ -108,13 +109,14 @@ object BokSourceReader {
         references.filter(_._1 == _reference_kind).map(_._2)
       )
       components = repositorycomponents ++ referencecomponents
+      _ <- _unique("BoK component reference", components.map(BokComponentReferenceIdentity.identityKey))
       topology <- _read_topology(context, source, references.filter(_._1 == _graph_kind).map(_._2))
       _ <- _validate_topology_component_references(topology, components)
       warnings = _warnings(manifest, terms, components) ++ Option.when(topology.truncated)(BokWarning("BoK graph summary is truncated"))
     } yield NormalizedBokSource(
       source,
       terms.sortBy(_.termId.value),
-      components.sortBy(x => (x.kind.value, x.name.value, x.version.map(_.value).getOrElse(""))),
+      components.sortBy(BokComponentReferenceIdentity.orderKey),
       warnings,
       topology
     )
@@ -235,9 +237,12 @@ object BokSourceReader {
   ): Consequence[Unit] =
     _sequence(topology.nodes.flatMap(_.componentReference).distinct.map { reference =>
       val matches = components.filter(component =>
-        component.kind.value == reference.kind &&
-          component.name.value == reference.name &&
-          reference.organization.forall(value => component.organization.exists(_.value == value)) &&
+        BokComponentReferenceIdentity.matches(
+          component,
+          reference.kind,
+          reference.organization,
+          reference.name
+        ) &&
           reference.version.forall(value => component.version.exists(_.value == value))
       )
       _require(
@@ -248,8 +253,11 @@ object BokSourceReader {
 
   private def _component_reference_identity(reference: BokKnowledgeComponentReference): String =
     Vector(
-      Some(s"${reference.kind}:${reference.name}"),
-      reference.organization.map(value => s"organization=$value"),
+      Some(BokComponentReferenceIdentity.key(
+        reference.kind,
+        reference.organization,
+        reference.name
+      ).key),
       reference.version.map(value => s"version=$value")
     ).flatten.mkString(" ")
 
@@ -397,7 +405,7 @@ object BokSourceReader {
           ComponentReference(
             sourceId = Some(ComponentSourceId(source.sourceId.value)),
             catalogId = Some(ComponentCatalogId(entry.catalog)),
-            organization = None,
+            organization = entry.namespace.map(ComponentOrganization.apply),
             name = ComponentName(entry.artifactId),
             title = ComponentTitle(entry.artifactId),
             kind = ComponentKind(entry.kind.name),
@@ -406,7 +414,7 @@ object BokSourceReader {
           )
         }
       })
-      _ <- _unique("BoK component reference", components.map(x => s"${x.kind.value}:${x.name.value}"))
+      _ <- _unique("BoK component reference", components.map(BokComponentReferenceIdentity.identityKey))
     } yield components
 
   private def _parse_repository_index(value: String): Consequence[ComponentRepositoryIndex] =
@@ -428,7 +436,7 @@ object BokSourceReader {
       components <- _sequence(indexes.flatMap { case (reference, index) =>
         index.entries.map(_component_reference(source, base, reference, index.kind, _))
       })
-      _ <- _unique("BoK component reference", components.map(x => s"${x.kind.value}:${x.name.value}"))
+      _ <- _unique("BoK component reference", components.map(BokComponentReferenceIdentity.identityKey))
     } yield components
 
   private def _parse_reference_index(value: String): Consequence[ComponentReferenceIndex] =

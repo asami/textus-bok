@@ -81,16 +81,17 @@ A minimal glossary resource is:
 ```
 
 The repository index must satisfy
-`cncf.component-repository-index.v1`. Its CAR/SAR entries become existence-only
+`cncf.component-repository-index.v2`. Its CAR/SAR entries become existence-only
 references. Textus BoK does not read their archives or manuals.
 
 ## Replace A Generation
 
-Invoke `Bok.BokRetrieval.replaceKnowledgeSource` through the CNCF component
+Invoke `org.simplemodeling.textus.Bok.BokRetrieval.replaceKnowledgeSource`
+through the CNCF component
 command path. Use CNCF record path notation for the generated nested datatype:
 
 ```sh
-cncf command Bok.BokRetrieval.replaceKnowledgeSource \
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.replaceKnowledgeSource \
   --source.sourceId simplemodeling \
   --source.datasetId simplemodeling-bok \
   --source.generation 2026-07-21T12:00:00Z \
@@ -136,20 +137,28 @@ Resolve `ambiguous`, `conflict`, and `insufficient-evidence` instead of choosing
 silently. `no-match` means that Textus BoK has no grounded answer.
 
 ```sh
-cncf command Bok.BokRetrieval.searchTerms \
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.searchTerms \
   --query Component --category architecture --limit 10 --format yaml
 
-cncf command Bok.BokRetrieval.explainTerm \
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.explainTerm \
   --term architecture:component --format yaml
 ```
 
 Use `searchComponentReferences` to discover that a CAR or SAR exists and
-`getComponentReference` to resolve an exact name, optional version, and kind.
-When CAR and SAR share a name, pass the returned `kind` explicitly.
+`getComponentReference` to resolve an exact name, optional version, kind, and
+organization. The canonical identity is `kind` plus optional organization plus
+name; version is a selector and ordering tie-breaker, not identity. When CAR
+and SAR share a name, pass the returned `kind` explicitly. When the same
+artifact is published by more than one organization, pass `organization` or
+the lookup remains `ambiguous` without a reference.
 
 ```sh
-cncf command Bok.BokRetrieval.getComponentReference \
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference \
   --name textus-account --kind car --format yaml
+
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference \
+  --name textus-account --kind car \
+  --organization org.simplemodeling.textus --format yaml
 ```
 
 ## Read A Knowledge Map
@@ -159,7 +168,7 @@ After a complete replacement of a Cozy source that declares
 component boundary:
 
 ```sh
-cncf command Bok.BokRetrieval.getKnowledgeMap \
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap \
   --datasetId knowledgehub --sourceId knowledgehub \
   --nodeLimit 128 --relationshipLimit 256 --format yaml
 ```
@@ -180,10 +189,10 @@ truncation, and `componentRef` handoffs.
 
 The current component publishes four read tools:
 
-- `Bok.BokRetrieval.searchTerms`;
-- `Bok.BokRetrieval.explainTerm`;
-- `Bok.BokRetrieval.searchComponentReferences`;
-- `Bok.BokRetrieval.getComponentReference`.
+- `org.simplemodeling.textus.Bok.BokRetrieval.searchTerms`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.explainTerm`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference`.
 
 Use the runtime's MCP `tools/list` result as the authoritative names and input
 schemas. `replaceKnowledgeSource` remains absent permanently. A CAR/SAR
@@ -216,7 +225,7 @@ runtime compatibility from the BoK result.
 | SIE service unavailable | Both CARs are main/available components in the same subsystem |
 | Manifest not found | The CNCF resource provider resolves the logical root and canonical manifest path |
 | Unsafe reference failure | Every manifest `href` is relative and remains below the source root |
-| Duplicate identity failure | Term IDs and component `kind:name` identities are unique within the source |
+| Duplicate identity failure | Term IDs and component `kind/optional-organization/name` identities are unique within the source |
 | Degraded replacement | Inspect SIE provider status; the prior complete BoK generation remains active |
 | Candidate missing | Check SIE readiness and source evidence; exact and candidate matching never synthesize data |
 | Component lacks usage detail | Hand the exact reference to Textus CBD Support |

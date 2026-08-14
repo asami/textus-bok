@@ -185,7 +185,8 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
           OperationResponse(_catalog.getComponentReference(
             name,
             _optional_string(action.record, "version"),
-            _optional_string(action.record, "kind")
+            _optional_string(action.record, "kind"),
+            _optional_string(action.record, "organization")
           ).toRecord())
         }
       }
@@ -245,6 +246,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       case value: BokTermType => Some(value.value)
       case value: BokKnowledgeMapFocus => Some(value.value)
       case value: ComponentKind => Some(value.value)
+      case value: ComponentOrganization => Some(value.value)
       case value: ComponentVersion => Some(value.value)
       case _ => None
     }

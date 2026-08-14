@@ -72,6 +72,40 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
         inspection.getInt("evidenceCount") shouldBe Some(3)
       }
 
+      "publish same-artifact CAR references from different organizations as distinct identities" in {
+        Given("one valid generation containing the same CAR artifact in two namespaces")
+        val resources = _first_resources.updated(
+          "fixture/repository/catalog/index.json",
+          """{"schemaVersion":"cncf.component-repository-index.v2","generatedAt":"2026-07-21T00:00:00Z","artifacts":[
+            |{"kind":"car","namespace":"com.simplemodeling.textus","id":"Account","artifactId":"textus-account","catalog":"car/com/simplemodeling/textus/textus-account.yaml","status":"active","recommended":"0.2.0"},
+            |{"kind":"car","namespace":"org.simplemodeling.textus","id":"Account","artifactId":"textus-account","catalog":"car/org/simplemodeling/textus/textus-account.yaml","status":"active","recommended":"0.2.0"},
+            |{"kind":"sar","artifactId":"textus-runtime","catalog":"sar/textus-runtime.yaml","status":"active","latestSnapshot":"1.0.0-SNAPSHOT"}
+            |]}""".stripMargin
+        )
+        val assembly = _assembly(includeSie = true)
+        val context = _context(resources)
+        val source = _source("generation-qualified")
+        val normalized = BokSourceReader.read(context, source).TAKE
+        val replacement = BokFederationPublisher.replacementRequest(normalized).TAKE
+        val qualified = normalized.components.filter(_.kind.value == "car")
+        val qualifieddocumentids = qualified.map(BokFederationPublisher.componentDocumentId)
+        val qualifiedassertions = replacement.assertions.filter(_.predicate.value == "urn:textus:bok:predicate:kind")
+        val qualifiedassertionids = qualifiedassertions.map(_.id)
+        val qualifiedsubjects = qualifiedassertions.map(_.subject.value)
+
+        When("the qualified generation is replaced through SIE")
+        val response = _replace(assembly.bok, context, source)
+        val inspection = _inspect(assembly.sie.get, context, source)
+
+        Then("document and assertion IDs and subjects remain distinct and both records are inspected")
+        qualifieddocumentids.distinct should have size 2
+        qualifiedassertionids.distinct should have size 3
+        qualifiedsubjects.distinct should have size 3
+        response.getString("status") shouldBe Some("complete")
+        inspection.getInt("documentCount") shouldBe Some(5)
+        inspection.getInt("assertionCount") shouldBe Some(5)
+      }
+
       "remove stale records when a later complete generation replaces the first" in {
         Given("a first complete generation already published through the BoK action")
         val assembly = _assembly(includeSie = true)

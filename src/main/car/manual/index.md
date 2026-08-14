@@ -78,7 +78,11 @@ identity. They remain `candidate` and are never promoted to curated facts.
 Term responses use `matched`, `ambiguous`, `conflict`,
 `insufficient-evidence`, or `no-match`. Component-reference queries return only
 identity, kind, optional version/source/catalog/organization, and attributable
-evidence. Result limiting occurs after reliability classification.
+evidence. The stable component identity is `(kind, optional organization,
+name)`; version is a selector and order tie-breaker. `getComponentReference`
+applies an exact organization filter only when supplied. Omitting it spans
+organizations and returns `ambiguous` with no reference when more than one
+identity matches. Result limiting occurs after reliability classification.
 
 `getKnowledgeMap` reads only the selected complete generation. It supports
 bounded dataset/source, category, term type, and focus filtering; returns

@@ -46,9 +46,12 @@ label, identifier, tag, edge, or rendered page.
 ## Federation Projection
 
 `BokFederationPublisher` maps typed records to opaque SIE metadata. Stable IDs
-must remain deterministic. Every document and assertion must retain attributable
-evidence. Component document metadata includes `datasetId`, `domain`, and
-`recordKind` so candidate attribution survives provider retrieval.
+must remain deterministic and use `(kind, optional organization, name)` as the
+component identity. Qualified component document/assertion IDs and assertion
+subjects include the organization; an unqualified (`None`) component retains
+the legacy ID and subject bytes exactly. Every document and assertion must
+retain attributable evidence. Component document metadata includes `datasetId`,
+`domain`, and `recordKind` so candidate attribution survives provider retrieval.
 
 Commit the typed catalog only after SIE returns `complete`. Never advance it on
 `degraded`, `unavailable`, or failed publication. Replacement is a complete
@@ -61,6 +64,11 @@ insufficient-evidence, and no-match classification. SIE scores are advisory.
 Key candidates by dataset, source, and document identity. Filter unrelated
 generic results before applying the caller's result limit, using bounded
 overfetch up to 100 results per source.
+
+Component lookup identity is `(kind, organization: Option[String], name)`.
+Supply organization for an exact namespace match; omitting it spans
+organizations and must return no reference when the result is ambiguous.
+Version narrows or orders a match but never changes the stable identity.
 
 Do not convert similarity into curated knowledge. Perform reliability
 classification before truncating results. Preserve evidence on every returned

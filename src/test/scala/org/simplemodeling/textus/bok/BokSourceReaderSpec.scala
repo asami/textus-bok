@@ -15,11 +15,13 @@ import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 24, 2026
+ *  version Jul. 24, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhenThen {
   "BoK source reader" should {
+    "normalize valid metadata and topology" which {
     "normalize metadata-only terms and component existence through CNCF resources" in {
       Given("an in-memory Textus URN source with a manifest, glossary, and canonical repository index")
       val context = _context(Map(
@@ -38,9 +40,13 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
         "car" -> "textus-account",
         "sar" -> "textus-runtime"
       )
+      result.components.map(_.organization.map(_.value)) shouldBe Vector(
+        Some("org.simplemodeling.textus"),
+        None
+      )
       result.components.map(_.version.map(_.value)) shouldBe Vector(Some("0.2.0"), Some("1.0.0-SNAPSHOT"))
       result.components.map(_.evidence.uri.value) shouldBe Vector(
-        "urn:textus:bok:fixture/repository/catalog/car/textus-account.yaml",
+        "urn:textus:bok:fixture/repository/catalog/car/org/simplemodeling/textus/textus-account.yaml",
         "urn:textus:bok:fixture/repository/catalog/sar/textus-runtime.yaml"
       )
       result.warnings shouldBe empty
@@ -104,6 +110,7 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       ).replace("article:runtime", "component:account")
       val missing = graph.replace("textus-account", "missing-account")
       val inferred = graph.replace("\"componentRef\": {\"kind\": \"car\", \"name\": \"textus-account\", \"version\": \"0.2.0\"}", "\"componentRef\": {\"kind\": \"car\"}")
+      val matchedorganization = graph.replace("\"version\": \"0.2.0\"", "\"organization\": \"org.simplemodeling.textus\", \"version\": \"0.2.0\"")
       val mismatchedversion = graph.replace("\"version\": \"0.2.0\"", "\"version\": \"0.3.0\"")
       val mismatchedorganization = graph.replace("\"version\": \"0.2.0\"", "\"organization\": \"org.textus\"")
       val malformedoptional = graph.replace("\"version\": \"0.2.0\"", "\"version\": \"\"")
@@ -128,6 +135,12 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
         "fixture/repository/catalog/index.json" -> _repository_index,
         "fixture/metadata/rdf/graph.json" -> inferred
       )), _source)
+      val matchedorganizationresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/rdf/graph.json" -> matchedorganization
+      )), _source)
       val mismatchedversionresult = BokSourceReader.read(_context(Map(
         "fixture/metadata/cncf/knowledge-source.json" -> _topology_manifest,
         "fixture/metadata/glossary/terms.json" -> _terms,
@@ -150,12 +163,18 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       Then("only the declared CAR identity is retained and optional component identity fields match exactly when declared")
       result.topology.nodes.find(_.id == "component:account").flatMap(_.componentReference) shouldBe
         Some(BokKnowledgeComponentReference("car", "textus-account", None, Some("0.2.0")))
+      matchedorganizationresult.TAKE.topology.nodes.find(_.id == "component:account").flatMap(_.componentReference) shouldBe
+        Some(BokKnowledgeComponentReference("car", "textus-account", Some("org.simplemodeling.textus"), Some("0.2.0")))
       missingresult should matchPattern { case Consequence.Failure(_) => }
       inferredresult should matchPattern { case Consequence.Failure(_) => }
       mismatchedversionresult should matchPattern { case Consequence.Failure(_) => }
       mismatchedorganizationresult should matchPattern { case Consequence.Failure(_) => }
       malformedoptionalresult should matchPattern { case Consequence.Failure(_) => }
     }
+
+    }
+
+    "reject invalid metadata and topology" which {
 
     "reject malformed, incompatible, dangling, conflicting, and every finite graph-summary limit without reading referenced pages" in {
       Given("one admitted graph resource and variants that violate the producer contract")
@@ -314,8 +333,22 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
       )
       val duplicatecomponents = _repository_index.replace(
         "\"kind\": \"sar\", \"artifactId\": \"textus-runtime\", \"catalog\": \"sar/textus-runtime.yaml\"",
-        "\"kind\": \"car\", \"artifactId\": \"textus-account\", \"catalog\": \"car/textus-account.yaml\""
+        "\"kind\": \"car\", \"namespace\": \"org.simplemodeling.textus\", \"id\": \"Account\", \"artifactId\": \"textus-account\", \"catalog\": \"car/org/simplemodeling/textus/textus-account.yaml\""
       )
+      val crossnamespacecomponents = _repository_index.replace(
+        "\"kind\": \"sar\", \"artifactId\": \"textus-runtime\", \"catalog\": \"sar/textus-runtime.yaml\"",
+        "\"kind\": \"car\", \"namespace\": \"com.simplemodeling.textus\", \"id\": \"Account\", \"artifactId\": \"textus-account\", \"catalog\": \"car/com/simplemodeling/textus/textus-account.yaml\""
+      )
+      val aggregatemanifest =
+        """{
+          |  "schemaVersion": "cncf.knowledge-source.v1",
+          |  "resources": [
+          |    {"kind": "component-repository-index", "href": "repository/catalog/index.json"},
+          |    {"kind": "component-reference-index", "href": "metadata/cncf/component-references/sar.json"},
+          |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"}
+          |  ]
+          |}""".stripMargin
+      val aggregatereference = _sar_reference_index.replace("nict-knowledgehub", "textus-runtime")
 
       When("each malformed source is normalized")
       val termresult = BokSourceReader.read(_context(Map(
@@ -328,10 +361,27 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
         "fixture/metadata/glossary/terms.json" -> _terms,
         "fixture/repository/catalog/index.json" -> duplicatecomponents
       )), _source)
+      val crossnamespaceresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _manifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> crossnamespacecomponents
+      )), _source)
+      val aggregateresult = BokSourceReader.read(_context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> aggregatemanifest,
+        "fixture/metadata/glossary/terms.json" -> _terms,
+        "fixture/repository/catalog/index.json" -> _repository_index,
+        "fixture/metadata/cncf/component-references/sar.json" -> aggregatereference
+      )), _source)
 
-      Then("neither conflicting dataset is accepted")
+      Then("conflicting identities are rejected while equal artifact names in distinct namespaces remain distinct")
       termresult should matchPattern { case Consequence.Failure(_) => }
       componentresult should matchPattern { case Consequence.Failure(_) => }
+      aggregateresult should matchPattern { case Consequence.Failure(_) => }
+      crossnamespaceresult.TAKE.components.map(x => (x.kind.value, x.organization.map(_.value), x.name.value)) shouldBe Vector(
+        ("car", Some("com.simplemodeling.textus"), "textus-account"),
+        ("car", Some("org.simplemodeling.textus"), "textus-account")
+      )
+    }
     }
   }
 
@@ -415,17 +465,17 @@ final class BokSourceReaderSpec extends AnyWordSpec with Matchers with GivenWhen
 
   private val _repository_index =
     """{
-      |  "schemaVersion": "cncf.component-repository-index.v1",
+      |  "schemaVersion": "cncf.component-repository-index.v2",
       |  "generatedAt": "2026-07-21T00:00:00Z",
       |  "artifacts": [
       |    {"kind": "sar", "artifactId": "textus-runtime", "catalog": "sar/textus-runtime.yaml", "status": "active", "latestSnapshot": "1.0.0-SNAPSHOT"},
-      |    {"kind": "car", "artifactId": "textus-account", "catalog": "car/textus-account.yaml", "status": "active", "recommended": "0.2.0", "latestStable": "0.2.0"}
+      |    {"kind": "car", "namespace": "org.simplemodeling.textus", "id": "Account", "artifactId": "textus-account", "catalog": "car/org/simplemodeling/textus/textus-account.yaml", "status": "active", "recommended": "0.2.0", "latestStable": "0.2.0"}
       |  ]
       |}""".stripMargin
 
   private val _empty_repository_index =
     """{
-      |  "schemaVersion": "cncf.component-repository-index.v1",
+      |  "schemaVersion": "cncf.component-repository-index.v2",
       |  "generatedAt": "2026-07-21T00:00:00Z",
       |  "artifacts": []
       |}""".stripMargin

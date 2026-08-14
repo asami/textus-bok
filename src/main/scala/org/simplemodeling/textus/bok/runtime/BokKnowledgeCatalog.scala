@@ -8,7 +8,7 @@ import org.simplemodeling.textus.bok.value.*
  * BoK-owned matching state, replaced only after a complete SIE publication.
  *
  * @since   Jul. 21, 2026
- * @version Jul. 24, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalog {
@@ -156,14 +156,20 @@ final class BokKnowledgeCatalog {
     if (_normalize(query).isEmpty || entries.isEmpty)
       Consequence.success(_component_response("no-match", query, Vector.empty, limit))
     else if (exact.nonEmpty)
-      Consequence.success(_component_response("matched", query, exact.map(x => _component_match(x.reference, "exact", 1.0, query)), limit))
+      Consequence.success(_component_response(
+        "matched",
+        query,
+        exact.sortBy(x => BokComponentReferenceIdentity.orderKey(x.reference))
+          .map(x => _component_match(x.reference, "exact", 1.0, query)),
+        limit
+      ))
     else
       candidateScores(entries.map(_component_candidate_key).toSet).map { scores =>
         val matches = entries.flatMap { entry =>
           scores.get(_component_candidate_key(entry))
             .filter(_ >= BokKnowledgeCatalog.MinimumCandidateScore)
             .map(_component_match(entry.reference, "candidate", _, query))
-        }.sortBy(x => (-x.score, x.reference.name.value, x.reference.kind.value))
+        }.sortBy(x => (-x.score, BokComponentReferenceIdentity.orderKey(x.reference)))
         _component_response(if (matches.nonEmpty) "matched" else "no-match", query, matches, limit)
       }
   }
@@ -171,15 +177,21 @@ final class BokKnowledgeCatalog {
   def getComponentReference(
     name: String,
     version: Option[String],
-    kind: Option[String]
+    kind: Option[String],
+    organization: Option[String]
   ): ComponentReferenceLookupResponse = {
     val matches = _components
       .filter(x => _normalize(x.reference.name.value) == _normalize(name))
       .filter(x => version.forall(y => x.reference.version.exists(z => _normalize(z.value) == _normalize(y))))
       .filter(x => kind.forall(y => _normalize(x.reference.kind.value) == _normalize(y)))
-      .sortBy(x => (x.reference.kind.value, x.reference.name.value, x.reference.version.map(_.value).getOrElse("")))
+      .filter(x => organization.forall(y => x.reference.organization.exists(z => _normalize(z.value) == _normalize(y))))
+      .sortBy(x => BokComponentReferenceIdentity.orderKey(x.reference))
     val status = if (matches.isEmpty) "no-match" else if (matches.size == 1) "matched" else "ambiguous"
-    ComponentReferenceLookupResponse(BokQueryStatus(status), matches.headOption.map(_.reference), _warnings(status))
+    val reference = matches match {
+      case Vector(single) => Some(single.reference)
+      case _ => None
+    }
+    ComponentReferenceLookupResponse(BokQueryStatus(status), reference, _warnings(status))
   }
 
   private def _terms: Vector[TermEntry] = synchronized {
@@ -289,12 +301,15 @@ final class BokKnowledgeCatalog {
   private def _map_component_references(node: MapNode): Vector[ComponentReference] =
     node.node.componentReference.toVector.flatMap { reference =>
       node.source.normalized.components.filter(component =>
-        component.kind.value == reference.kind &&
-          component.name.value == reference.name &&
-          reference.organization.forall(value => component.organization.exists(_.value == value)) &&
+        BokComponentReferenceIdentity.matches(
+          component,
+          reference.kind,
+          reference.organization,
+          reference.name
+        ) &&
           reference.version.forall(value => component.version.exists(_.value == value))
       )
-    }.sortBy(component => (component.kind.value, component.name.value, component.version.map(_.value).getOrElse("")))
+    }.sortBy(BokComponentReferenceIdentity.orderKey)
 
   private def _map_relationship(relationship: MapRelationship): BokKnowledgeMapRelationship =
     BokKnowledgeMapRelationship(

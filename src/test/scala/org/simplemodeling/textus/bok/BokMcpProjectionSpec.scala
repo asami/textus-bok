@@ -11,7 +11,8 @@ import org.simplemodeling.textus.bok.impl
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 23, 2026
+ *  version Jul. 23, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -34,10 +35,10 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
 
       Then("all four BoK reads are discoverable while source replacement is absent")
       names shouldBe Set(
-        "Bok.BokRetrieval.searchTerms",
-        "Bok.BokRetrieval.explainTerm",
-        "Bok.BokRetrieval.searchComponentReferences",
-        "Bok.BokRetrieval.getComponentReference"
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms",
+        "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference"
       )
       names.exists(_.endsWith(".replaceKnowledgeSource")) shouldBe false
       names.exists(_.endsWith(".getKnowledgeMap")) shouldBe false
@@ -60,7 +61,8 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       componentlookupschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "name",
         "version",
-        "kind"
+        "kind",
+        "organization"
       )
       componentlookupschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("name"))
       outputs.get("searchTerms") shouldBe Some("SearchTermsResponse")
@@ -99,18 +101,18 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         .flatMap(_.asArray)
         .getOrElse(Vector.empty)
         .flatMap(_.hcursor.get[String]("name").toOption)
-        .filterNot(_.startsWith("tool."))
+        .filter(_.startsWith("org.simplemodeling.textus.Bok.BokRetrieval."))
         .toSet
       val called = adapter.handle(
-        """{"jsonrpc":"2.0","id":"mutation-call","method":"tools/call","params":{"name":"Bok.BokRetrieval.replaceKnowledgeSource","arguments":{}}}""",
+        """{"jsonrpc":"2.0","id":"mutation-call","method":"tools/call","params":{"name":"org.simplemodeling.textus.Bok.BokRetrieval.replaceKnowledgeSource","arguments":{}}}""",
         Some(McpProtocolRevision.PREFERRED.print)
       ).responseBody.getOrElse(fail("MCP call outcome has no JSON response body"))
 
       Then("configuration removes declared reads but cannot add source mutation")
       narrowednames shouldBe Set(
-        "Bok.BokRetrieval.explainTerm",
-        "Bok.BokRetrieval.searchComponentReferences",
-        "Bok.BokRetrieval.getComponentReference"
+        "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference"
       )
       called.hcursor.downField("error").get[Int]("code") shouldBe Right(-32602)
 

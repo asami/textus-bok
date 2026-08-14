@@ -15,7 +15,7 @@ import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetRep
  * BoK-owned projection into the provider-neutral SIE component contract.
  *
  * @since   Jul. 21, 2026
- * @version Jul. 21, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 final case class BokFederationPublication(
@@ -42,7 +42,10 @@ object BokFederationPublisher {
     _stable_id("bok-term-document", term.termId.value)
 
   private[bok] def componentDocumentId(component: ComponentReference): String =
-    _stable_id("bok-component-document", component.kind.value, component.name.value)
+    _stable_id(
+      "bok-component-document",
+      BokComponentReferenceIdentity.identityValues(component)*
+    )
 
   private def _api(core: ActionCall.Core): Consequence[SemanticIntegrationFederationApi] =
     core.component match {
@@ -130,7 +133,19 @@ object BokFederationPublisher {
     datasetid: String,
     component: ComponentReference,
     evidenceids: Map[String, String]
-  ): Record =
+  ): Record = {
+    val basemetadata = Json.obj(
+      "domain" -> Json.fromString("bok"),
+      "recordKind" -> Json.fromString("component-reference"),
+      "datasetId" -> Json.fromString(datasetid),
+      "kind" -> Json.fromString(component.kind.value),
+      "name" -> Json.fromString(component.name.value),
+      "version" -> component.version.map(x => Json.fromString(x.value)).getOrElse(Json.Null),
+      "catalogId" -> component.catalogId.map(x => Json.fromString(x.value)).getOrElse(Json.Null)
+    )
+    val metadata = component.organization.fold(basemetadata) { organization =>
+      basemetadata.deepMerge(Json.obj("organization" -> Json.fromString(organization.value)))
+    }
     Record.dataAuto(
       "id" -> componentDocumentId(component),
       "sourceId" -> component.evidence.sourceId.value,
@@ -138,36 +153,45 @@ object BokFederationPublisher {
       "uri" -> component.evidence.uri.value,
       "content" -> _component_content(component),
       "mediaType" -> "text/plain",
-      "metadata" -> Json.obj(
-        "domain" -> Json.fromString("bok"),
-        "recordKind" -> Json.fromString("component-reference"),
-        "datasetId" -> Json.fromString(datasetid),
-        "kind" -> Json.fromString(component.kind.value),
-        "name" -> Json.fromString(component.name.value),
-        "version" -> component.version.map(x => Json.fromString(x.value)).getOrElse(Json.Null),
-        "catalogId" -> component.catalogId.map(x => Json.fromString(x.value)).getOrElse(Json.Null),
-        "organization" -> component.organization.map(x => Json.fromString(x.value)).getOrElse(Json.Null)
-      ).noSpaces,
+      "metadata" -> metadata.noSpaces,
       "evidenceIds" -> Vector(evidenceids(_evidence_key(component.evidence)))
     )
+  }
 
   private def _component_assertion(
     component: ComponentReference,
     evidenceids: Map[String, String]
-  ): Record =
+  ): Record = {
+    val basemetadata = Json.obj(
+      "domain" -> Json.fromString("bok"),
+      "recordKind" -> Json.fromString("component-reference"),
+      "name" -> Json.fromString(component.name.value)
+    )
+    val metadata = component.organization.fold(basemetadata) { organization =>
+      basemetadata.deepMerge(Json.obj("organization" -> Json.fromString(organization.value)))
+    }
     Record.dataAuto(
-      "id" -> _stable_id("bok-component-assertion", component.kind.value, component.name.value),
-      "subject" -> s"urn:textus:bok:component:${component.kind.value}:${_digest(component.name.value)}",
+      "id" -> _stable_id(
+        "bok-component-assertion",
+        BokComponentReferenceIdentity.identityValues(component)*
+      ),
+      "subject" -> _component_assertion_subject(component),
       "predicate" -> _component_predicate,
       "objectValue" -> component.kind.value,
       "objectType" -> "literal",
-      "metadata" -> Json.obj(
-        "domain" -> Json.fromString("bok"),
-        "recordKind" -> Json.fromString("component-reference"),
-        "name" -> Json.fromString(component.name.value)
-      ).noSpaces,
+      "metadata" -> metadata.noSpaces,
       "evidenceIds" -> Vector(evidenceids(_evidence_key(component.evidence)))
     )
+  }
+
+  private def _component_assertion_subject(component: ComponentReference): String =
+    component.organization match {
+      case None =>
+        s"urn:textus:bok:component:${component.kind.value}:${_digest(component.name.value)}"
+      case Some(organization) =>
+        val identity = Vector(organization.value, component.name.value).mkString("\u0000")
+        s"urn:textus:bok:component:${component.kind.value}:${_digest(identity)}"
+    }
 
   private def _component_content(component: ComponentReference): String =
     Vector(

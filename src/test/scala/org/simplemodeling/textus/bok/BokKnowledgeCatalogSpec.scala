@@ -10,7 +10,7 @@ import org.simplemodeling.textus.bok.value.*
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 23, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -69,7 +69,7 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
           ) -> 0.71
         ))
       ).TAKE
-      val missingcomponent = catalog.getComponentReference("missing", None, None)
+      val missingcomponent = catalog.getComponentReference("missing", None, None, None)
 
       Then("CAR/SAR matching returns only existence records with stable match kinds")
       exactcomponent.status.value shouldBe "matched"
@@ -87,6 +87,70 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
 
       Then("candidate attribution remains scoped by dataset and source identity")
       isolated.results.map(_.term.evidence.sourceId.value) shouldBe Vector("source-a")
+    }
+
+    "require organization for an ambiguous component identity and retain deterministic qualified ordering" in {
+      Given("two qualified CAR references with the same kind, name, and version")
+      val catalog = new BokKnowledgeCatalog()
+      val comcomponent = _component("textus-account", "Account Component", "car", "source-com", Some("com.simplemodeling.textus"))
+      val orgcomponent = _component("textus-account", "Account Component", "car", "source-org", Some("org.simplemodeling.textus"))
+      val topology = BokKnowledgeTopology(
+        Vector(BokKnowledgeNode(
+          "component:account",
+          "Account",
+          "component-reference",
+          _evidence("component-account"),
+          componentReference = Some(BokKnowledgeComponentReference("car", "textus-account"))
+        )),
+        Vector.empty,
+        false
+      )
+      _commit(catalog, _normalized(
+        "source-qualified",
+        "dataset-qualified",
+        "g1",
+        Vector.empty,
+        Vector(orgcomponent, comcomponent),
+        topology
+      ))
+
+      When("the name is looked up with omitted, exact, and mismatched organizations")
+      val omitted = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), None)
+      val com = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), Some("com.simplemodeling.textus"))
+      val org = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), Some("org.simplemodeling.textus"))
+      val mismatch = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), Some("net.example"))
+      val exact = catalog.searchComponentReferences("textus-account", Some("car"), 10)(_ => Consequence.success(Map.empty)).TAKE
+      val candidatekeys = Set(
+        BokCandidateKey("dataset-qualified", "source-qualified", BokFederationPublisher.componentDocumentId(comcomponent)),
+        BokCandidateKey("dataset-qualified", "source-qualified", BokFederationPublisher.componentDocumentId(orgcomponent))
+      )
+      val candidates = catalog.searchComponentReferences("account capability", Some("car"), 10)(_ =>
+        Consequence.success(candidatekeys.map(_ -> 0.71).toMap)
+      ).TAKE
+      val map = catalog.getKnowledgeMap(Some("dataset-qualified"), Some("source-qualified"), None, None, None, Some(10), Some(10))
+
+      Then("omitted organization is ambiguous, exact organization narrows, and all orderings are stable")
+      omitted.status.value shouldBe "ambiguous"
+      omitted.reference shouldBe empty
+      com.status.value shouldBe "matched"
+      com.reference.map(_.organization.map(_.value)) shouldBe Some(Some("com.simplemodeling.textus"))
+      org.status.value shouldBe "matched"
+      org.reference.map(_.organization.map(_.value)) shouldBe Some(Some("org.simplemodeling.textus"))
+      mismatch.status.value shouldBe "no-match"
+      mismatch.reference shouldBe empty
+      exact.results.map(_.reference.organization.map(_.value)) shouldBe Vector(
+        Some("com.simplemodeling.textus"),
+        Some("org.simplemodeling.textus")
+      )
+      candidates.results.map(_.reference.organization.map(_.value)) shouldBe Vector(
+        Some("com.simplemodeling.textus"),
+        Some("org.simplemodeling.textus")
+      )
+      BokFederationPublisher.componentDocumentId(comcomponent) should not be BokFederationPublisher.componentDocumentId(orgcomponent)
+      map.nodes.head.componentReferences.flatMap(_.organization.map(_.value)) shouldBe Vector(
+        "com.simplemodeling.textus",
+        "org.simplemodeling.textus"
+      )
     }
 
     "project selected factual topology with deterministic filters and bounded results" in {
@@ -272,12 +336,13 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
     name: String,
     title: String,
     kind: String,
-    sourceid: String
+    sourceid: String,
+    organization: Option[String] = None
   ): ComponentReference =
     ComponentReference(
       Some(ComponentSourceId(sourceid)),
       Some(ComponentCatalogId(s"$kind/$name.yaml")),
-      None,
+      organization.map(ComponentOrganization.apply),
       ComponentName(name),
       ComponentTitle(title),
       ComponentKind(kind),

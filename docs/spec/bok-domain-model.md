@@ -15,8 +15,11 @@ changing the curated term.
 
 ## Component Existence
 
-A `ComponentReference` proves only that a named CAR or SAR exists. It may carry
-organization, catalog, source, and version identity plus evidence. It must not
+A `ComponentReference` proves only that a named CAR or SAR exists. Its stable
+identity is `(kind, organization: Option[String], name)`; `None` means an
+unqualified legacy identity, while `Some` names the exact organization
+namespace. Version is a selector and deterministic ordering tie-breaker, not
+identity. It may carry organization, catalog, source, and version metadata plus evidence. It must not
 carry capabilities, dependencies, operations, runtime compatibility, manuals,
 or usage guidance; those details belong to `textus-cbd-support`.
 
@@ -58,11 +61,14 @@ through `ExecutionContext.resources`. The v1 manifest recognizes structured
 must be safe relative paths.
 
 Glossary metadata becomes typed `BokTerm` values. The CNCF repository codec
-validates `repository/catalog/index.json`, and its CAR/SAR entries become
+validates `repository/catalog/index.json` as
+`cncf.component-repository-index.v2`, and its CAR/SAR entries become
 existence-only `ComponentReference` values whose evidence identifies the
-canonical catalog resource. Results are sorted by stable identity and duplicate
-identities fail. No rendered page, CAR/SAR archive, host file, or direct network
-resource is opened by the normalizer.
+canonical catalog resource. Results are sorted by `(kind,
+unqualified-before-qualified, organization, name, version)` and duplicate
+`(kind, optional organization, name)` identities fail. No rendered page,
+CAR/SAR archive, host file, or direct network resource is opened by the
+normalizer.
 
 ## Federation Publication
 

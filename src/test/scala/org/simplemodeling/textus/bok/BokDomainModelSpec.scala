@@ -1,6 +1,6 @@
 package org.simplemodeling.textus.bok
 
-import org.goldenport.schema.DataType
+import org.goldenport.schema.{DataType, Multiplicity}
 import org.scalatest.GivenWhenThen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,6 +28,16 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
         "getComponentReference" -> List("ComponentReferenceLookupResponse"),
         "getKnowledgeMap" -> List("GetKnowledgeMapResponse")
       )
+
+      And("component lookup keeps required name and optional organization in the generated request")
+      val lookup = operations.find(_.name == "getComponentReference").getOrElse(
+        fail("getComponentReference operation is missing")
+      )
+      val parameters = lookup.specification.request.parameters.map(parameter => parameter.name -> parameter).toMap
+      parameters("name").datatype.name shouldBe "componentname"
+      parameters("name").multiplicity shouldBe Multiplicity.One
+      parameters("organization").datatype.name shouldBe "componentorganization"
+      parameters("organization").multiplicity shouldBe Multiplicity.ZeroOne
     }
 
     "generate source, evidence, term, and existence-only reference models" in {

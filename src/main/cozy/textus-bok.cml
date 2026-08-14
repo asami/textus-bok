@@ -144,7 +144,7 @@ ComponentReferenceSearchResponse
 
 ##### DESCRIPTION
 
-Search existence-only CAR and SAR references suitable for CBD handoff.
+Search existence-only CAR and SAR references suitable for CBD handoff. Exact component identity matching uses kind and name; organization is retained as an optional namespace qualifier on returned references.
 
 #### getComponentReference
 
@@ -166,7 +166,7 @@ ComponentReferenceLookupResponse
 
 ##### DESCRIPTION
 
-Return one exact existence-only CAR or SAR reference.
+Return one exact existence-only CAR or SAR reference. When supplied, organization narrows the lookup to that component namespace; when omitted, the lookup spans namespaces and reports ambiguity instead of selecting one.
 
 #### getKnowledgeMap
 
@@ -536,6 +536,7 @@ Input command identifying one logical BoK source generation.
 | name | ComponentName | 1 |
 | version | ComponentVersion | ? |
 | kind | ComponentKind | ? |
+| organization | ComponentOrganization | ? |
 
 ## GetKnowledgeMapRequest
 
