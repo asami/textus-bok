@@ -2,13 +2,17 @@ package org.simplemodeling.textus.bok
 
 import java.nio.file.Files
 import java.nio.file.Path
+
+import org.goldenport.cncf.http.{WebApplicationEntryPolicy, WebDescriptor}
+import org.goldenport.cncf.subsystem.GenericSubsystemDescriptor
 import org.scalatest.GivenWhenThen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 /*
  * @since   Jul. 23, 2026
- * @version Jul. 24, 2026
+ *  version Jul. 24, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeMapWebSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -64,8 +68,26 @@ final class BokKnowledgeMapWebSpec extends AnyWordSpec with Matchers with GivenW
       css should include("@media")
       css should include(".bok-skip-link:focus")
     }
+
+    "declare textus-bok as the configuration-free sole public application entry" in {
+      Given("the authored Web descriptor source")
+
+      When("the shared entry policy resolves the sole application for canonical component segment bok")
+      val webdescriptor = WebDescriptor.load(Path.of("src", "main", "web-inf", "web.yaml")).fold(_fail_conclusion, identity)
+      val entry = WebApplicationEntryPolicy.resolve(
+        webdescriptor,
+        Some(GenericSubsystemDescriptor(Path.of("textus-bok.sar"), "textus-bok", implicitRootComponentName = Some("bok")))
+      )
+
+      Then("the descriptor needs no entry flag while /web is the public entry and the canonical route remains configured")
+      webdescriptor.componentEntryApps shouldBe Vector.empty
+      entry shouldBe WebApplicationEntryPolicy.Selected(webdescriptor.apps.head, "bok", "/web")
+      webdescriptor.apps.head.completedFor(Some("bok")).effectiveRoute shouldBe "/web/bok/textus-bok"
+    }
   }
 
   private def _read(path: String): String =
     Files.readString(Path.of(path))
+
+  private def _fail_conclusion(error: org.goldenport.Conclusion): Nothing = fail(error.toString)
 }
