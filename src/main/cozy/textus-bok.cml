@@ -188,8 +188,7 @@ GetKnowledgeMapResponse
 
 ##### DESCRIPTION
 
-Return a bounded factual topology from selected complete BoK generations. This
-public read is not MCP Ready.
+Return a bounded factual topology from selected complete BoK generations. This public read is not MCP Ready.
 
 # DATATYPE
 
@@ -234,6 +233,22 @@ public read is not MCP Ready.
 | value | string | 1 |
 
 ## BokTermSearchText
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokProfile
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
+## BokProjectId
 
 ### ATTRIBUTE
 
@@ -502,6 +517,8 @@ Input command identifying one logical BoK source generation.
 | query | BokTermSearchText | 1 |
 | category | BokTermCategory | ? |
 | limit | int | ? |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
 
 ## ExplainTermRequest
 
@@ -512,6 +529,8 @@ Input command identifying one logical BoK source generation.
 | name | type | multiplicity |
 |------|------|--------------|
 | term | BokTermSearchText | 1 |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
 
 ## ComponentReferenceSearchRequest
 
@@ -524,6 +543,8 @@ Input command identifying one logical BoK source generation.
 | query | ComponentSearchText | 1 |
 | kind | ComponentKind | ? |
 | limit | int | ? |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
 
 ## ComponentReferenceLookupRequest
 
@@ -537,6 +558,8 @@ Input command identifying one logical BoK source generation.
 | version | ComponentVersion | ? |
 | kind | ComponentKind | ? |
 | organization | ComponentOrganization | ? |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
 
 ## GetKnowledgeMapRequest
 
@@ -553,6 +576,8 @@ Input command identifying one logical BoK source generation.
 | focus | BokKnowledgeMapFocus | ? |
 | nodeLimit | int | ? |
 | relationshipLimit | int | ? |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
 
 # VALUE
 
@@ -586,6 +611,23 @@ Attributable evidence retained with a BoK term or component existence record.
 | sourceVersion | BokSourceVersion | ? |
 | observedAt | BokObservedAt | ? |
 | freshness | BokFreshness | ? |
+
+## BokResolvedSelection
+
+### DESCRIPTION
+
+One complete BoK generation selected by the public logical profile request.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| resolvedProfile | BokProfile | 1 |
+| projectId | BokProjectId | ? |
+| datasetId | BokDatasetId | 1 |
+| sourceId | BokSourceId | 1 |
+| generation | BokSourceGeneration | 1 |
+| evidence | BokEvidence | 1 |
 
 ## BokTerm
 
@@ -750,6 +792,7 @@ Attributable factual relationship whose endpoints are returned map nodes.
 | name | type | multiplicity |
 |------|------|--------------|
 | status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
 | query | BokTermSearchText | 1 |
 | results | BokTermMatch | * |
 | warnings | BokWarning | * |
@@ -761,6 +804,7 @@ Attributable factual relationship whose endpoints are returned map nodes.
 | name | type | multiplicity |
 |------|------|--------------|
 | status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
 | query | BokTermSearchText | 1 |
 | result | BokTermMatch | ? |
 | warnings | BokWarning | * |
@@ -772,6 +816,7 @@ Attributable factual relationship whose endpoints are returned map nodes.
 | name | type | multiplicity |
 |------|------|--------------|
 | status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
 | query | ComponentSearchText | 1 |
 | results | ComponentReferenceMatch | * |
 | warnings | BokWarning | * |
@@ -783,6 +828,7 @@ Attributable factual relationship whose endpoints are returned map nodes.
 | name | type | multiplicity |
 |------|------|--------------|
 | status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
 | reference | ComponentReference | ? |
 | warnings | BokWarning | * |
 
@@ -793,6 +839,7 @@ Attributable factual relationship whose endpoints are returned map nodes.
 | name | type | multiplicity |
 |------|------|--------------|
 | status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
 | sources | BokKnowledgeMapSelectedSource | * |
 | nodes | BokKnowledgeMapNode | * |
 | relationships | BokKnowledgeMapRelationship | * |

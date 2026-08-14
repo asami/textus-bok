@@ -12,7 +12,7 @@ import org.simplemodeling.textus.bok.impl
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Aug. 14, 2026
+ * @version Aug. 15, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -47,24 +47,40 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       searchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "query",
         "category",
-        "limit"
+        "limit",
+        "profile",
+        "projectId"
       )
       searchschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
-      explainschema.hcursor.downField("properties").keys.get.toSet shouldBe Set("term")
+      explainschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
+        "term",
+        "profile",
+        "projectId"
+      )
       explainschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("term"))
       componentsearchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "query",
         "kind",
-        "limit"
+        "limit",
+        "profile",
+        "projectId"
       )
       componentsearchschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
       componentlookupschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "name",
         "version",
         "kind",
-        "organization"
+        "organization",
+        "profile",
+        "projectId"
       )
       componentlookupschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("name"))
+
+      And("the closed logical selector remains optional on every MCP-ready read")
+      Vector(searchschema, explainschema, componentsearchschema, componentlookupschema).foreach { schema =>
+        schema.hcursor.downField("properties").downField("profile").get[String]("type") shouldBe Right("string")
+        schema.hcursor.downField("properties").downField("projectId").get[String]("type") shouldBe Right("string")
+      }
       outputs.get("searchTerms") shouldBe Some("SearchTermsResponse")
       outputs.get("explainTerm") shouldBe Some("ExplainTermResponse")
       outputs.get("searchComponentReferences") shouldBe Some("ComponentReferenceSearchResponse")

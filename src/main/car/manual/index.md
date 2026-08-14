@@ -71,6 +71,20 @@ admitted.
 
 ## Query Semantics
 
+Every public read accepts one optional logical `profile` selector and optional
+`projectId`. Omitting `profile` selects only the registered `official`
+generation. Select `development` explicitly for a development binding; select
+`project` together with its exact logical `projectId` for a project binding.
+No selector accepts a resource location, credential, provider setting, current
+directory, Git checkout, or other ambient project information.
+
+Each successful read returns one `selection` attribution with its resolved
+profile, optional project identity, dataset, source, generation, and
+generation evidence. Existing term, component, node, and relationship evidence
+remains attached to the returned records. An unavailable, invalid, unauthorized,
+or conflicting selection is a structured failure; BoK never falls back to a
+different profile or returns an empty successful response from another one.
+
 Exact identity and title matches are classified by Textus BoK. Semantic
 candidates use generic SIE document IDs and scores scoped by dataset and source
 identity. They remain `candidate` and are never promoted to curated facts.
@@ -84,12 +98,14 @@ applies an exact organization filter only when supplied. Omitting it spans
 organizations and returns `ambiguous` with no reference when more than one
 identity matches. Result limiting occurs after reliability classification.
 
-`getKnowledgeMap` reads only the selected complete generation. It supports
-bounded dataset/source, category, term type, and focus filtering; returns
-explicit `matched`, `no-match`, and truncation states; and preserves source,
-node, and relationship evidence. A declared Cozy `componentRef` is shown only
-as an exact existence handoff to CBD Support, never as usage or compatibility
-detail.
+`getKnowledgeMap` reads only the resolved complete generation. Its optional
+`datasetId` and `sourceId` values only confirm or narrow that exact resolved
+tuple; a different value fails as `conflicting-selection` and cannot select a
+different profile. It supports bounded category, term type, and focus filtering;
+returns explicit `matched`, `no-match`, and truncation states; and preserves
+source, node, and relationship evidence. A declared Cozy `componentRef` is
+shown only as an exact existence handoff to CBD Support, never as usage or
+compatibility detail.
 
 ## Failures And Limits
 

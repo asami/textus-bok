@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
-import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublisher, BokFederationRetriever, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileSelection, BokSourceReader}
+import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublisher, BokFederationRetriever, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader}
 import org.simplemodeling.textus.bok.value.{BokEvidence, BokKnowledgeSource}
 import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.KnowledgeFederationService
 import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetQueryRequest, FederationDatasetQueryResult}
@@ -26,7 +26,7 @@ import org.simplemodeling.textus.scraper.api.TextusScraperApi
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Aug. 14, 2026
+ * @version Aug. 15, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -51,7 +51,7 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
 
       "replace one complete generation idempotently without duplicate records" in {
         Given("BoK and generated-contract SIE components with one metadata-only generation")
-        val assembly = _assembly(includeSie = true)
+        val assembly = _assembly(includesie = true)
         val context = _context(_first_resources)
         val source = _source("generation-1")
 
@@ -82,7 +82,7 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
             |{"kind":"sar","artifactId":"textus-runtime","catalog":"sar/textus-runtime.yaml","status":"active","latestSnapshot":"1.0.0-SNAPSHOT"}
             |]}""".stripMargin
         )
-        val assembly = _assembly(includeSie = true)
+        val assembly = _assembly(includesie = true)
         val context = _context(resources)
         val source = _source("generation-qualified")
         val normalized = BokSourceReader.read(context, source).TAKE
@@ -108,7 +108,7 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
 
       "remove stale records when a later complete generation replaces the first" in {
         Given("a first complete generation already published through the BoK action")
-        val assembly = _assembly(includeSie = true)
+        val assembly = _assembly(includesie = true)
         val firstcontext = _context(_first_resources)
         _replace(assembly.bok, firstcontext, _source("generation-1"))
         val secondcontext = _context(_second_resources)
@@ -134,9 +134,9 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     "project admitted knowledge" which {
       "return factual Knowledge Map topology without semantic retrieval" in {
         Given("one complete generation published into the BoK catalog")
-        val assembly = _assembly(includeSie = true)
-        val context = _context(_first_resources)
         val source = _source("generation-1")
+        val assembly = _assembly(includesie = true, configuration = _profile_configuration(source))
+        val context = _context(_first_resources)
         _replace(assembly.bok, context, source)
 
         When("the public Knowledge Map operation projects the selected catalog topology")
@@ -156,9 +156,9 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
 
       "retain dataset and source attribution for semantic term candidates" in {
         Given("one complete generation published through BoK and the generic SIE contract")
-        val assembly = _assembly(includeSie = true)
-        val context = _context(_first_resources)
         val source = _source("generation-1")
+        val assembly = _assembly(includesie = true, configuration = _profile_configuration(source))
+        val context = _context(_first_resources)
         _replace(assembly.bok, context, source)
         val normalized = BokSourceReader.read(context, source).TAKE
         val runtime = normalized.terms.find(_.title.value == "Runtime").get
@@ -195,10 +195,119 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       }
     }
 
+    "integrate one resolved profile into public reads" which {
+      "default to official, isolate explicit development and project reads, and retain full attribution" in {
+        Given("private official, development, and project bindings with distinct admitted generations")
+        val fixture = _profile_read_fixture()
+
+        When("an omitted request and explicit development and project requests are dispatched")
+        val omitted = _search_terms(fixture.assembly.bok, fixture.context, "Runtime", 1)
+        val developmentread = _search_terms(
+          fixture.assembly.bok,
+          fixture.context,
+          "Runtime",
+          1,
+          Some("development")
+        )
+        val projectread = _search_terms(
+          fixture.assembly.bok,
+          fixture.context,
+          "Runtime",
+          1,
+          Some("project"),
+          Some("sample-project")
+        )
+        val officialselection = omitted.getRecord("selection").getOrElse(fail("official selection is missing"))
+        val developmentselection = developmentread.getRecord("selection").getOrElse(fail("development selection is missing"))
+        val projectselection = projectread.getRecord("selection").getOrElse(fail("project selection is missing"))
+        val officialrecordevidence = omitted.getVector("results").getOrElse(Vector.empty).collect {
+          case result: Record => result.getRecord("term").flatMap(_.getRecord("evidence")).flatMap(_.getString("sourceId"))
+        }
+
+        Then("one request exposes only its resolved profile generation and record evidence")
+        omitted.getString("status") shouldBe Some("matched")
+        developmentread.getString("status") shouldBe Some("matched")
+        projectread.getString("status") shouldBe Some("matched")
+        officialselection.getString("resolvedProfile") shouldBe Some("official")
+        officialselection.getString("datasetId") shouldBe Some("official-dataset")
+        officialselection.getString("sourceId") shouldBe Some("official-source")
+        officialselection.getString("generation") shouldBe Some("official-g1")
+        officialselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("official-source")
+        officialrecordevidence shouldBe Vector(Some("official-source"))
+        developmentselection.getString("resolvedProfile") shouldBe Some("development")
+        developmentselection.getString("datasetId") shouldBe Some("development-dataset")
+        developmentselection.getString("sourceId") shouldBe Some("development-source")
+        developmentselection.getString("generation") shouldBe Some("development-g1")
+        developmentselection.getString("projectId") shouldBe None
+        projectselection.getString("resolvedProfile") shouldBe Some("project")
+        projectselection.getString("projectId") shouldBe Some("sample-project")
+        projectselection.getString("datasetId") shouldBe Some("project-dataset")
+        projectselection.getString("sourceId") shouldBe Some("project-source")
+        projectselection.getString("generation") shouldBe Some("project-g1")
+        developmentselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("development-source")
+        projectselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("project-source")
+      }
+
+      "accept agreeing Knowledge Map filters for the resolved generation and reject conflicting legacy filters" in {
+        Given("private official, development, and project bindings with distinct admitted generations")
+        val fixture = _profile_read_fixture()
+
+        When("a project map confirms its resolved identities and an omitted selector supplies development identities")
+        val projectmap = _knowledge_map(
+          fixture.assembly.bok,
+          fixture.context,
+          fixture.project,
+          Some("project"),
+          Some("sample-project")
+        )
+        val conflicting = _knowledge_map_c(
+          fixture.assembly.bok,
+          fixture.context,
+          Some(fixture.development.datasetId.value),
+          Some(fixture.development.sourceId.value),
+          None,
+          None,
+          None
+        )
+        val mapselection = projectmap.getRecord("selection").getOrElse(fail("Knowledge Map selection is missing"))
+
+        Then("the agreeing map returns only the project generation and the conflicting request has no fallback response")
+        projectmap.getString("status") shouldBe Some("matched")
+        mapselection.getString("resolvedProfile") shouldBe Some("project")
+        mapselection.getString("projectId") shouldBe Some("sample-project")
+        mapselection.getString("datasetId") shouldBe Some("project-dataset")
+        mapselection.getString("sourceId") shouldBe Some("project-source")
+        mapselection.getString("generation") shouldBe Some("project-g1")
+        projectmap.getVector("sources").getOrElse(Vector.empty).collect {
+          case source: Record => source.getString("sourceId")
+        } shouldBe Vector(Some("project-source"))
+        _failure_code(conflicting) shouldBe Some(BokProfileResolutionFailure.ConflictingSelection)
+      }
+
+      "return project-identity-required for an incomplete project selector" in {
+        Given("a BoK component without an inferred project binding")
+        val assembly = _assembly(includesie = false)
+        val context = _context(_first_resources)
+
+        When("a terminology read selects project without projectId")
+        val result = _search_terms_c(
+          assembly.bok,
+          context,
+          "Runtime",
+          1,
+          Some("project"),
+          None
+        )
+
+        Then("the request fails with its stable structured selection code")
+        _failure_code(result) shouldBe Some(BokProfileResolutionFailure.ProjectIdentityRequired)
+      }
+    }
+
     "enforce component and private-binding boundaries" which {
       "fail without bypassing the component boundary when SIE is absent" in {
         Given("a BoK component whose subsystem has no SemanticIntegrationEngine component")
-        val assembly = _assembly(includeSie = false)
+        val assembly = _assembly(includesie = false)
 
         When("knowledge-source replacement is requested")
         val result = _replace_c(assembly.bok, _context(_first_resources), _source("generation-1"))
@@ -214,7 +323,7 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
           resource = BokResourceReference("urn:textus:bok:request-must-not-be-read")
         )
         val assembly = _assembly(
-          includeSie = true,
+          includesie = true,
           configuration = _profile_configuration(configuredsource)
         )
         val context = _context(_first_resources)
@@ -239,7 +348,7 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
   }
 
   private def _assembly(
-    includeSie: Boolean,
+    includesie: Boolean,
     configuration: ResolvedConfiguration = ResolvedConfiguration(Configuration.empty, ConfigurationTrace.empty)
   ): Assembly = {
     val subsystem = RuntimeBindingAdmissionFixture.admit(
@@ -250,19 +359,38 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     )
     val params = ComponentCreate(subsystem, ComponentOrigin.Main)
     val bok = new impl.ComponentFactory().create(params).primary
-    val scraper = Option.when(includeSie)(
+    val scraper = Option.when(includesie)(
       new ScraperProviderFactory().createPrimary(params)
     )
-    val sie = Option.when(includeSie)(
+    val sie = Option.when(includesie)(
       new org.simplemodeling.textus.semanticintegration.impl.ComponentFactory().create(params).primary
     )
     subsystem.add(scraper.toVector ++ sie.toVector :+ bok)
-    if (includeSie) {
+    if (includesie) {
       given ExecutionContext = ExecutionContext.create()
       val resolution = SpiResolver.resolveAssembly(subsystem.components.toVector).TAKE
       subsystem.withComponentApiResolver(resolution.componentApiResolver)
     }
     Assembly(bok, sie)
+  }
+
+  private def _profile_read_fixture(): ProfileReadFixture = {
+    val official = _source("official-g1", "official-source", "official-dataset")
+    val development = _source("development-g1", "development-source", "development-dataset")
+    val project = _source("project-g1", "project-source", "project-dataset")
+    val assembly = _assembly(
+      includesie = true,
+      configuration = _profile_configuration(Vector(
+        ("official", None, official),
+        ("development", None, development),
+        ("project", Some("sample-project"), project)
+      ))
+    )
+    val context = _context(_first_resources)
+    _replace(assembly.bok, context, official)
+    _replace(assembly.bok, context, development)
+    _replace(assembly.bok, context, project)
+    ProfileReadFixture(assembly, context, development, project)
   }
 
   private def _replace(
@@ -306,29 +434,69 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     bok: Component,
     context: ExecutionContext,
     query: String,
-    limit: Int
-  ): Record = {
+    limit: Int,
+    profile: Option[String] = None,
+    projectid: Option[String] = None
+  ): Record =
+    _record(_search_terms_c(bok, context, query, limit, profile, projectid).TAKE)
+
+  private def _search_terms_c(
+    bok: Component,
+    context: ExecutionContext,
+    query: String,
+    limit: Int,
+    profile: Option[String],
+    projectid: Option[String]
+  ): Consequence[OperationResponse] = {
     val action = BokComponent.BokRetrievalService.SearchTermsRequest.unsafeForTest(
       null,
-      Record.dataAuto("query" -> query, "limit" -> limit)
+      Record.dataAuto(
+        "query" -> query,
+        "limit" -> limit,
+        "profile" -> profile,
+        "projectId" -> projectid
+      )
     )
-    _record(action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute().TAKE)
+    action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute()
   }
 
   private def _knowledge_map(
     bok: Component,
     context: ExecutionContext,
-    source: BokKnowledgeSource
-  ): Record = {
+    source: BokKnowledgeSource,
+    profile: Option[String] = None,
+    projectid: Option[String] = None
+  ): Record =
+    _record(_knowledge_map_c(
+      bok,
+      context,
+      Some(source.datasetId.value),
+      Some(source.sourceId.value),
+      Some("runtime"),
+      profile,
+      projectid
+    ).TAKE)
+
+  private def _knowledge_map_c(
+    bok: Component,
+    context: ExecutionContext,
+    datasetid: Option[String],
+    sourceid: Option[String],
+    focus: Option[String],
+    profile: Option[String],
+    projectid: Option[String]
+  ): Consequence[OperationResponse] = {
     val action = BokComponent.BokRetrievalService.GetKnowledgeMapRequest.unsafeForTest(
       null,
       Record.dataAuto(
-        "datasetId" -> source.datasetId.value,
-        "sourceId" -> source.sourceId.value,
-        "focus" -> "runtime"
+        "datasetId" -> datasetid,
+        "sourceId" -> sourceid,
+        "focus" -> focus,
+        "profile" -> profile,
+        "projectId" -> projectid
       )
     )
-    _record(action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute().TAKE)
+    action.createCall(ActionCall.Core(action, context, Some(bok), None)).execute()
   }
 
   private def _query_federation(
@@ -369,45 +537,66 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       case other => fail(s"Expected RecordResponse but got ${other.getClass.getName}")
     }
 
+  private def _failure_code(
+    result: Consequence[?]
+  ): Option[BokProfileResolutionFailure] =
+    result match {
+      case Consequence.Failure(conclusion) => BokProfileResolutionFailure.from(conclusion)
+      case Consequence.Success(_) => None
+    }
+
   private def _context(contents: Map[String, String]): ExecutionContext = {
     val provider = new InMemoryTextusUrnResourceProvider("bok", contents)
     val resources = ResourceAccessTestProfile(textusUrnProviders = Vector(provider)).resourceAccess
     ExecutionContext.withResourceAccess(ExecutionContext.create(), resources)
   }
 
-  private def _source(generation: String): BokKnowledgeSource =
+  private def _source(
+    generation: String,
+    sourceid: String = "simplemodeling",
+    datasetid: String = "simplemodeling-bok"
+  ): BokKnowledgeSource =
     BokKnowledgeSource(
-      BokSourceId("simplemodeling"),
-      BokDatasetId("simplemodeling-bok"),
+      BokSourceId(sourceid),
+      BokDatasetId(datasetid),
       BokSourceGeneration(generation),
       BokResourceReference("urn:textus:bok:fixture")
     )
 
-  private def _profile_configuration(source: BokKnowledgeSource): ResolvedConfiguration = {
-    val sourcevalue = ConfigurationValue.ObjectValue(Map(
-      "sourceId" -> ConfigurationValue.StringValue(source.sourceId.value),
-      "datasetId" -> ConfigurationValue.StringValue(source.datasetId.value),
-      "generation" -> ConfigurationValue.StringValue(source.generation.value),
-      "resource" -> ConfigurationValue.StringValue(source.resource.value)
-    ))
-    val evidence = BokEvidence(
-      BokEvidenceUri("https://evidence.example/simplemodeling"),
-      source.sourceId,
-      None,
-      None,
-      None
-    )
-    val evidencevalue = ConfigurationValue.ObjectValue(Map(
-      "uri" -> ConfigurationValue.StringValue(evidence.uri.value),
-      "sourceId" -> ConfigurationValue.StringValue(evidence.sourceId.value)
-    ))
-    val binding = ConfigurationValue.ObjectValue(Map(
-      "profile" -> ConfigurationValue.StringValue("official"),
-      "source" -> sourcevalue,
-      "evidence" -> evidencevalue
-    ))
+  private def _profile_configuration(source: BokKnowledgeSource): ResolvedConfiguration =
+    _profile_configuration(Vector(("official", None, source)))
+
+  private def _profile_configuration(
+    bindings: Vector[(String, Option[String], BokKnowledgeSource)]
+  ): ResolvedConfiguration = {
+    val configured = bindings.map { case (profile, projectid, source) =>
+      val sourcevalue = ConfigurationValue.ObjectValue(Map(
+        "sourceId" -> ConfigurationValue.StringValue(source.sourceId.value),
+        "datasetId" -> ConfigurationValue.StringValue(source.datasetId.value),
+        "generation" -> ConfigurationValue.StringValue(source.generation.value),
+        "resource" -> ConfigurationValue.StringValue(source.resource.value)
+      ))
+      val evidence = BokEvidence(
+        BokEvidenceUri(s"https://evidence.example/${source.sourceId.value}"),
+        source.sourceId,
+        None,
+        None,
+        None
+      )
+      val evidencevalue = ConfigurationValue.ObjectValue(Map(
+        "uri" -> ConfigurationValue.StringValue(evidence.uri.value),
+        "sourceId" -> ConfigurationValue.StringValue(evidence.sourceId.value)
+      ))
+      ConfigurationValue.ObjectValue(
+        Map(
+          "profile" -> ConfigurationValue.StringValue(profile),
+          "source" -> sourcevalue,
+          "evidence" -> evidencevalue
+        ) ++ projectid.map(value => "projectId" -> ConfigurationValue.StringValue(value))
+      )
+    }
     val registry = ConfigurationValue.ObjectValue(Map(
-      "profiles" -> ConfigurationValue.ListValue(List(binding))
+      "profiles" -> ConfigurationValue.ListValue(configured.toList)
     ))
     val nested = ConfigurationValue.ObjectValue(Map(
       "bok" -> ConfigurationValue.ObjectValue(Map(
@@ -480,6 +669,13 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
   private final case class Assembly(
     bok: Component,
     sie: Option[Component]
+  )
+
+  private final case class ProfileReadFixture(
+    assembly: Assembly,
+    context: ExecutionContext,
+    development: BokKnowledgeSource,
+    project: BokKnowledgeSource
   )
 }
 

@@ -10,86 +10,89 @@ import org.simplemodeling.textus.bok.value.*
 
 /*
  * @since   Jul. 21, 2026
- * @version Aug. 14, 2026
+ * @version Aug. 15, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with GivenWhenThen {
   "BoK knowledge catalog" should {
-    "preserve exact, candidate, ambiguity, conflict, insufficient-evidence, and no-match states" in {
-      Given("multiple source-owned datasets containing reliable, equivalent, conflicting, and weak terms")
-      val catalog = new BokKnowledgeCatalog()
-      val runtimea = _term("runtime:a", "Runtime", "Runtime definition A.", "source-a", "dataset-a")
-      val runtimeb = _term("runtime:b", "Runtime", "Runtime definition B.", "source-b", "dataset-b")
-      val platforma = _term("platform:a", "Platform", "Shared platform definition.", "source-a", "dataset-a")
-      val platformb = _term("platform:b", "Platform", "Shared platform definition.", "source-b", "dataset-b")
-      val weak = _term("weak", "Weak Term", "  ", "source-c", "dataset-c")
-      val component = _component("textus-account", "Account Component", "car", "source-a")
-      _commit(catalog, _normalized("source-a", "dataset-a", "g1", Vector(runtimea, platforma), Vector(component)))
-      _commit(catalog, _normalized("source-b", "dataset-b", "g1", Vector(runtimeb, platformb), Vector.empty))
-      _commit(catalog, _normalized("source-c", "dataset-c", "g1", Vector(weak), Vector.empty))
+    "selected terminology and component classification" which {
+      "preserve exact, ambiguity, conflict, insufficient-evidence, and no-match term states" in {
+        Given("one selected complete generation and isolated records from another dataset")
+        val fixture = _classification_fixture()
 
-      When("the catalog classifies exact identities, provider candidates, and unreliable grounding")
-      val exact = catalog.searchTerms("runtime:a", None, 10)(_ => Consequence.success(Map.empty)).TAKE
-      val candidateid = BokCandidateKey(
-        "dataset-a",
-        "source-a",
-        BokFederationPublisher.termDocumentId(runtimea)
-      )
-      val candidate = catalog.searchTerms("execution environment", None, 10)(
-        _ => Consequence.success(Map(candidateid -> 0.82))
-      ).TAKE
-      val conflict = catalog.explainTerm("Runtime")
-      val ambiguity = catalog.explainTerm("Platform")
-      val insufficient = catalog.explainTerm("Weak Term")
-      val missing = catalog.explainTerm("Missing Term")
+        When("exact and explanatory terminology reads are classified")
+        val exact = fixture.catalog.searchTerms(fixture.selection, "runtime:a", None, 10)(
+          _ => Consequence.success(Map.empty)
+        ).TAKE
+        val conflict = fixture.catalog.explainTerm(fixture.selection, "Runtime")
+        val ambiguity = fixture.catalog.explainTerm(fixture.selection, "Platform")
+        val insufficient = fixture.catalog.explainTerm(fixture.selection, "Weak Term")
+        val missing = fixture.catalog.explainTerm(fixture.selection, "Missing Term")
 
-      Then("each state remains explicit and semantic evidence is not promoted to exact knowledge")
-      exact.status.value shouldBe "matched"
-      exact.results.head.matchKind.value shouldBe "exact"
-      candidate.status.value shouldBe "matched"
-      candidate.results.head.matchKind.value shouldBe "candidate"
-      candidate.results.head.score shouldBe 0.82
-      conflict.status.value shouldBe "conflict"
-      conflict.result.get.term.definition.value shouldBe "Runtime definition A."
-      ambiguity.status.value shouldBe "ambiguous"
-      insufficient.status.value shouldBe "insufficient-evidence"
-      missing.status.value shouldBe "no-match"
-      missing.result shouldBe empty
+        Then("each classification remains explicit and retains the resolved selection")
+        exact.status.value shouldBe "matched"
+        exact.results.head.matchKind.value shouldBe "exact"
+        conflict.status.value shouldBe "conflict"
+        conflict.result.get.term.definition.value shouldBe "Runtime definition A."
+        ambiguity.status.value shouldBe "ambiguous"
+        insufficient.status.value shouldBe "insufficient-evidence"
+        missing.status.value shouldBe "no-match"
+        missing.result shouldBe empty
+        exact.selection.resolvedProfile.value shouldBe "official"
+        exact.selection.datasetId.value shouldBe "dataset-a"
+        exact.selection.sourceId.value shouldBe "source-a"
+        exact.selection.generation.value shouldBe "g1"
+      }
 
-      When("component existence is searched by exact identity, provider score, and an unknown identity")
-      val exactcomponent = catalog.searchComponentReferences("textus-account", Some("car"), 10)(
-        _ => Consequence.success(Map.empty)
-      ).TAKE
-      val candidatecomponent = catalog.searchComponentReferences("account capability", None, 10)(
-        _ => Consequence.success(Map(
-          BokCandidateKey(
-            "dataset-a",
-            "source-a",
-            BokFederationPublisher.componentDocumentId(component)
-          ) -> 0.71
-        ))
-      ).TAKE
-      val missingcomponent = catalog.getComponentReference("missing", None, None, None)
+      "constrain provider accepted keys before candidate classification and limits" in {
+        Given("a selected generation with an identically named outside term")
+        val fixture = _classification_fixture()
 
-      Then("CAR/SAR matching returns only existence records with stable match kinds")
-      exactcomponent.status.value shouldBe "matched"
-      exactcomponent.results.head.matchKind.value shouldBe "exact"
-      candidatecomponent.results.head.matchKind.value shouldBe "candidate"
-      missingcomponent.status.value shouldBe "no-match"
-      missingcomponent.reference shouldBe empty
+        When("the provider supplies selected and outside candidate scores for a one-result query")
+        var accepted = Set.empty[BokCandidateKey]
+        val candidate = fixture.catalog.searchTerms(fixture.selection, "execution environment", None, 1) { keys =>
+          accepted = keys
+          Consequence.success(Map(
+            fixture.candidateid -> 0.82,
+            fixture.outsidecandidateid -> 0.99
+          ))
+        }.TAKE
 
-      When("another source publishes the same term identity but receives no provider score")
-      val duplicateidentity = _term("runtime:a", "Other Runtime", "Other definition.", "source-d", "dataset-d")
-      _commit(catalog, _normalized("source-d", "dataset-d", "g1", Vector(duplicateidentity), Vector.empty))
-      val isolated = catalog.searchTerms("execution environment", None, 10)(
-        _ => Consequence.success(Map(candidateid -> 0.82))
-      ).TAKE
+        Then("only keys from the resolved tuple are sent to the provider and classified")
+        accepted should contain (fixture.candidateid)
+        accepted should not contain fixture.outsidecandidateid
+        accepted.forall(key => key.datasetId == "dataset-a" && key.sourceId == "source-a") shouldBe true
+        candidate.status.value shouldBe "matched"
+        candidate.results should have size 1
+        candidate.results.head.matchKind.value shouldBe "candidate"
+        candidate.results.head.score shouldBe 0.82
+        candidate.results.map(_.term.evidence.sourceId.value) shouldBe Vector("source-a")
+      }
 
-      Then("candidate attribution remains scoped by dataset and source identity")
-      isolated.results.map(_.term.evidence.sourceId.value) shouldBe Vector("source-a")
+      "classify component existence by exact identity, provider candidate, and no-match" in {
+        Given("one selected generation with a CAR component reference")
+        val fixture = _classification_fixture()
+
+        When("exact, candidate, and missing component requests are made")
+        val exact = fixture.catalog.searchComponentReferences(fixture.selection, "textus-account", Some("car"), 10)(
+          _ => Consequence.success(Map.empty)
+        ).TAKE
+        val candidate = fixture.catalog.searchComponentReferences(fixture.selection, "account capability", None, 10)(
+          _ => Consequence.success(Map(fixture.componentcandidateid -> 0.71))
+        ).TAKE
+        val missing = fixture.catalog.getComponentReference(fixture.selection, "missing", None, None, None)
+
+        Then("only existence records receive stable exact, candidate, and no-match classifications")
+        exact.status.value shouldBe "matched"
+        exact.results.head.matchKind.value shouldBe "exact"
+        candidate.results.head.matchKind.value shouldBe "candidate"
+        missing.status.value shouldBe "no-match"
+        missing.reference shouldBe empty
+      }
     }
 
-    "require organization for an ambiguous component identity and retain deterministic qualified ordering" in {
+    "qualified component identity" which {
+      "require organization for an ambiguous component identity and retain deterministic qualified ordering" in {
       Given("two qualified CAR references with the same kind, name, and version")
       val catalog = new BokKnowledgeCatalog()
       val comcomponent = _component("textus-account", "Account Component", "car", "source-com", Some("com.simplemodeling.textus"))
@@ -113,21 +116,22 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
         Vector(orgcomponent, comcomponent),
         topology
       ))
+      val selection = _resolved("official", None, "dataset-qualified", "source-qualified", "g1")
 
       When("the name is looked up with omitted, exact, and mismatched organizations")
-      val omitted = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), None)
-      val com = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), Some("com.simplemodeling.textus"))
-      val org = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), Some("org.simplemodeling.textus"))
-      val mismatch = catalog.getComponentReference("textus-account", Some("0.2.0"), Some("car"), Some("net.example"))
-      val exact = catalog.searchComponentReferences("textus-account", Some("car"), 10)(_ => Consequence.success(Map.empty)).TAKE
+      val omitted = catalog.getComponentReference(selection, "textus-account", Some("0.2.0"), Some("car"), None)
+      val com = catalog.getComponentReference(selection, "textus-account", Some("0.2.0"), Some("car"), Some("com.simplemodeling.textus"))
+      val org = catalog.getComponentReference(selection, "textus-account", Some("0.2.0"), Some("car"), Some("org.simplemodeling.textus"))
+      val mismatch = catalog.getComponentReference(selection, "textus-account", Some("0.2.0"), Some("car"), Some("net.example"))
+      val exact = catalog.searchComponentReferences(selection, "textus-account", Some("car"), 10)(_ => Consequence.success(Map.empty)).TAKE
       val candidatekeys = Set(
         BokCandidateKey("dataset-qualified", "source-qualified", BokFederationPublisher.componentDocumentId(comcomponent)),
         BokCandidateKey("dataset-qualified", "source-qualified", BokFederationPublisher.componentDocumentId(orgcomponent))
       )
-      val candidates = catalog.searchComponentReferences("account capability", Some("car"), 10)(_ =>
+      val candidates = catalog.searchComponentReferences(selection, "account capability", Some("car"), 10)(_ =>
         Consequence.success(candidatekeys.map(_ -> 0.71).toMap)
       ).TAKE
-      val map = catalog.getKnowledgeMap(Some("dataset-qualified"), Some("source-qualified"), None, None, None, Some(10), Some(10))
+      val map = catalog.getKnowledgeMap(selection, None, None, None, Some(10), Some(10))
 
       Then("omitted organization is ambiguous, exact organization narrows, and all orderings are stable")
       omitted.status.value shouldBe "ambiguous"
@@ -151,97 +155,100 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
         "com.simplemodeling.textus",
         "org.simplemodeling.textus"
       )
+      }
     }
 
-    "project selected factual topology with deterministic filters and bounded results" in {
-      Given("a complete selected generation with term and adjacent article topology")
-      val catalog = new BokKnowledgeCatalog()
-      val runtime = _term("architecture:runtime", "Runtime", "Runtime definition.", "source-a", "dataset-a")
-      val component = _component("textus-account", "Account Component", "car", "source-a")
-      val topology = BokKnowledgeTopology(
-        Vector(
-          BokKnowledgeNode("term:runtime", "Runtime", "term", _evidence("term-runtime"), Some("architecture"), Vector("architecture:runtime"), Vector("core")),
-          BokKnowledgeNode("article:runtime", "Runtime Article", "article", _evidence("article-runtime"), Some("documentation")),
-          BokKnowledgeNode("component:account", "Account", "component-reference", _evidence("component-account"), componentReference = Some(BokKnowledgeComponentReference("car", "textus-account"))),
-          BokKnowledgeNode("rdf:runtime", "Runtime RDF", "rdf", _evidence("rdf-runtime"))
-        ),
-        Vector(BokKnowledgeRelationship(
-          "term:runtime",
-          "references",
-          "article:runtime",
-          Some("References"),
-          _evidence("runtime-reference"),
+    "selected map projection" which {
+      "project a bounded selected topology with deterministic truncation" in {
+        Given("a complete selected generation with term and adjacent article topology")
+        val fixture = _map_fixture()
+
+        When("the term type, category, and focus select one seed with a one-node bound")
+        val bounded = fixture.catalog.getKnowledgeMap(
+          fixture.selection,
           Some("architecture"),
-          Vector("architecture:runtime"),
-          Vector("core")
-        )),
-        false,
-        Some(BokKnowledgeSourceReference("bok-site", "knowledgehub", Some("https://example.test/knowledgehub")))
-      )
-      _commit(catalog, _normalized("source-a", "dataset-a", "g1", Vector(runtime), Vector(component), topology))
+          Some("concept"),
+          Some("runtime"),
+          Some(1),
+          Some(1)
+        )
 
-      When("the term type, category, and focus select one seed with a one-node bound")
-      val bounded = catalog.getKnowledgeMap(
-        Some("dataset-a"),
-        Some("source-a"),
-        Some("architecture"),
-        Some("concept"),
-        Some("runtime"),
-        Some(1),
-        Some(1)
-      )
+        Then("the adjacent factual closure is bounded deterministically and reports truncation")
+        bounded.status.value shouldBe "matched"
+        bounded.sources.map(_.generation.value) shouldBe Vector("g1")
+        bounded.sources.head.sourceReference.map(_.kind.value) shouldBe Some("bok-site")
+        bounded.sources.head.sourceReference.map(_.value.value) shouldBe Some("knowledgehub")
+        bounded.sources.head.sourceReference.flatMap(_.uri.map(_.value)) shouldBe Some("https://example.test/knowledgehub")
+        bounded.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime")
+        bounded.nodes.head.terms.map(_.definition.value) shouldBe Vector("Runtime definition.")
+        bounded.nodes.head.componentReferences shouldBe empty
+        bounded.relationships shouldBe empty
+        bounded.truncated shouldBe true
+        bounded.warnings.map(_.value) should contain ("Knowledge Map result is truncated")
+      }
 
-      Then("the adjacent factual closure is bounded deterministically and reports truncation")
-      bounded.status.value shouldBe "matched"
-      bounded.sources.map(_.generation.value) shouldBe Vector("g1")
-      bounded.sources.head.sourceReference.map(_.kind.value) shouldBe Some("bok-site")
-      bounded.sources.head.sourceReference.map(_.value.value) shouldBe Some("knowledgehub")
-      bounded.sources.head.sourceReference.flatMap(_.uri.map(_.value)) shouldBe Some("https://example.test/knowledgehub")
-      bounded.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime")
-      bounded.nodes.head.terms.map(_.definition.value) shouldBe Vector("Runtime definition.")
-      bounded.nodes.head.componentReferences shouldBe empty
-      bounded.relationships shouldBe empty
-      bounded.truncated shouldBe true
-      bounded.warnings.map(_.value) should contain ("Knowledge Map result is truncated")
+      "project complete selected topology with resolved-generation attribution" in {
+        Given("a complete selected generation with term and component topology")
+        val fixture = _map_fixture()
 
-      When("the same selected topology is requested without a constraining node bound")
-      val complete = catalog.getKnowledgeMap(
-        Some("dataset-a"),
-        Some("source-a"),
-        Some("architecture"),
-        Some("concept"),
-        Some("runtime"),
-        Some(10),
-        Some(10)
-      )
-      val allnodes = catalog.getKnowledgeMap(
-        Some("dataset-a"),
-        Some("source-a"),
-        None,
-        None,
-        None,
-        Some(10),
-        Some(10)
-      )
-      val missing = catalog.getKnowledgeMap(None, None, None, None, Some("missing"), None, None)
-      val clamped = catalog.getKnowledgeMap(None, None, None, None, None, Some(999), Some(-1))
+        When("a complete focus projection and all-node projection are requested")
+        val complete = fixture.catalog.getKnowledgeMap(
+          fixture.selection,
+          Some("architecture"),
+          Some("concept"),
+          Some("runtime"),
+          Some(10),
+          Some(10)
+        )
+        val allnodes = fixture.catalog.getKnowledgeMap(
+          fixture.selection,
+          None,
+          None,
+          None,
+          Some(10),
+          Some(10)
+        )
 
-      Then("the complete closure, no-match response, and effective limits remain explicit")
-      complete.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime", "article:runtime")
-      allnodes.nodes.find(_.nodeId.value == "component:account").map(_.componentReferences.map(x => x.kind.value -> x.name.value)) shouldBe
-        Some(Vector("car" -> "textus-account"))
-      complete.relationships.map(_.predicate.value) shouldBe Vector("references")
-      complete.truncated shouldBe false
-      missing.status.value shouldBe "no-match"
-      missing.nodes shouldBe empty
-      missing.relationships shouldBe empty
-      clamped.nodeLimit shouldBe BokKnowledgeCatalog.DEFAULT_KNOWLEDGE_MAP_NODE_LIMIT
-      clamped.relationshipLimit shouldBe 1
-      clamped.warnings.map(_.value) should contain ("Knowledge Map node limit 999 is clamped to 128")
-      clamped.warnings.map(_.value) should contain ("Knowledge Map relationship limit -1 is clamped to 1")
+        Then("only the resolved generation is projected with its selection attribution")
+        complete.nodes.map(_.nodeId.value) shouldBe Vector("term:runtime", "article:runtime")
+        allnodes.nodes.find(_.nodeId.value == "component:account").map(_.componentReferences.map(x => x.kind.value -> x.name.value)) shouldBe
+          Some(Vector("car" -> "textus-account"))
+        complete.relationships.map(_.predicate.value) shouldBe Vector("references")
+        complete.truncated shouldBe false
+        complete.selection.generation.value shouldBe "g1"
+        complete.selection.evidence.uri.value shouldBe "urn:textus:bok:source-a:selection"
+      }
+
+      "report no-match for a focus absent from the resolved generation" in {
+        Given("a complete selected topology")
+        val fixture = _map_fixture()
+
+        When("a focus missing from that generation is requested")
+        val missing = fixture.catalog.getKnowledgeMap(fixture.selection, None, None, Some("missing"), None, None)
+
+        Then("the read remains an empty no-match without fallback")
+        missing.status.value shouldBe "no-match"
+        missing.nodes shouldBe empty
+        missing.relationships shouldBe empty
+      }
+
+      "normalize map limits before projecting the selected generation" in {
+        Given("a complete selected topology")
+        val fixture = _map_fixture()
+
+        When("node and relationship limits exceed their valid bounds")
+        val clamped = fixture.catalog.getKnowledgeMap(fixture.selection, None, None, None, Some(999), Some(-1))
+
+        Then("effective limits and their warnings are explicit")
+        clamped.nodeLimit shouldBe BokKnowledgeCatalog.DEFAULT_KNOWLEDGE_MAP_NODE_LIMIT
+        clamped.relationshipLimit shouldBe 1
+        clamped.warnings.map(_.value) should contain ("Knowledge Map node limit 999 is clamped to 128")
+        clamped.warnings.map(_.value) should contain ("Knowledge Map relationship limit -1 is clamped to 1")
+      }
     }
 
-    "replace complete generations, remove stale records, and retain the previous generation after degradation" in {
+    "generation replacement" which {
+      "replace complete generations, remove stale records, and retain the previous generation after degradation" in {
       Given("one committed source generation")
       val catalog = new BokKnowledgeCatalog()
       val stale = _term("stale", "Stale Term", "Old definition.", "source-a", "dataset-a")
@@ -269,19 +276,104 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
         degraded,
         _normalized("source-a", "dataset-a", "g3", Vector(stale), Vector.empty, _topology("degraded-node"))
       ) shouldBe false
+      val selection = _resolved("official", None, "dataset-a", "source-a", "g2")
 
       Then("the stale first generation is absent and the last complete terms and topology remain visible")
-      catalog.explainTerm("Stale Term").status.value shouldBe "no-match"
-      catalog.explainTerm("Current Term").status.value shouldBe "matched"
+      catalog.explainTerm(selection, "Stale Term").status.value shouldBe "no-match"
+      catalog.explainTerm(selection, "Current Term").status.value shouldBe "matched"
       catalog.selectedTopology("dataset-a").map(_.nodes.map(_.id)) shouldBe Some(Vector("current-node"))
+      }
     }
   }
+
+  private def _classification_fixture(): ClassificationFixture = {
+    val catalog = new BokKnowledgeCatalog()
+    val runtimea = _term("runtime:a", "Runtime", "Runtime definition A.", "source-a", "dataset-a")
+    val runtimeb = _term("runtime:b", "Runtime", "Runtime definition B.", "source-a", "dataset-a")
+    val platforma = _term("platform:a", "Platform", "Shared platform definition.", "source-a", "dataset-a")
+    val platformb = _term("platform:b", "Platform", "Shared platform definition.", "source-a", "dataset-a")
+    val weak = _term("weak", "Weak Term", "  ", "source-a", "dataset-a")
+    val outside = _term("runtime:a", "Outside Runtime", "Outside definition.", "source-b", "dataset-b")
+    val component = _component("textus-account", "Account Component", "car", "source-a")
+    _commit(catalog, _normalized(
+      "source-a",
+      "dataset-a",
+      "g1",
+      Vector(runtimea, runtimeb, platforma, platformb, weak),
+      Vector(component)
+    ))
+    _commit(catalog, _normalized("source-b", "dataset-b", "g1", Vector(outside), Vector.empty))
+    ClassificationFixture(
+      catalog,
+      _resolved("official", None, "dataset-a", "source-a", "g1"),
+      BokCandidateKey("dataset-a", "source-a", BokFederationPublisher.termDocumentId(runtimea)),
+      BokCandidateKey("dataset-b", "source-b", BokFederationPublisher.termDocumentId(outside)),
+      BokCandidateKey("dataset-a", "source-a", BokFederationPublisher.componentDocumentId(component))
+    )
+  }
+
+  private def _map_fixture(): MapFixture = {
+    val catalog = new BokKnowledgeCatalog()
+    val runtime = _term("architecture:runtime", "Runtime", "Runtime definition.", "source-a", "dataset-a")
+    val component = _component("textus-account", "Account Component", "car", "source-a")
+    val topology = BokKnowledgeTopology(
+      Vector(
+        BokKnowledgeNode("term:runtime", "Runtime", "term", _evidence("term-runtime"), Some("architecture"), Vector("architecture:runtime"), Vector("core")),
+        BokKnowledgeNode("article:runtime", "Runtime Article", "article", _evidence("article-runtime"), Some("documentation")),
+        BokKnowledgeNode("component:account", "Account", "component-reference", _evidence("component-account"), componentReference = Some(BokKnowledgeComponentReference("car", "textus-account"))),
+        BokKnowledgeNode("rdf:runtime", "Runtime RDF", "rdf", _evidence("rdf-runtime"))
+      ),
+      Vector(BokKnowledgeRelationship(
+        "term:runtime",
+        "references",
+        "article:runtime",
+        Some("References"),
+        _evidence("runtime-reference"),
+        Some("architecture"),
+        Vector("architecture:runtime"),
+        Vector("core")
+      )),
+      false,
+      Some(BokKnowledgeSourceReference("bok-site", "knowledgehub", Some("https://example.test/knowledgehub")))
+    )
+    _commit(catalog, _normalized("source-a", "dataset-a", "g1", Vector(runtime), Vector(component), topology))
+    MapFixture(catalog, _resolved("official", None, "dataset-a", "source-a", "g1"))
+  }
+
+  private final case class ClassificationFixture(
+    catalog: BokKnowledgeCatalog,
+    selection: ResolvedBokProfile,
+    candidateid: BokCandidateKey,
+    outsidecandidateid: BokCandidateKey,
+    componentcandidateid: BokCandidateKey
+  )
+
+  private final case class MapFixture(
+    catalog: BokKnowledgeCatalog,
+    selection: ResolvedBokProfile
+  )
 
   private def _commit(catalog: BokKnowledgeCatalog, normalized: NormalizedBokSource): Unit =
     catalog.commit(
       BokFederationPublication("complete", org.goldenport.record.Record.empty),
       normalized
     ) shouldBe true
+
+  private def _resolved(
+    profile: String,
+    projectid: Option[String],
+    datasetid: String,
+    sourceid: String,
+    generation: String
+  ): ResolvedBokProfile =
+    ResolvedBokProfile(
+      profile,
+      projectid,
+      BokDatasetId(datasetid),
+      BokSourceId(sourceid),
+      BokSourceGeneration(generation),
+      BokEvidence(BokEvidenceUri(s"urn:textus:bok:$sourceid:selection"), BokSourceId(sourceid), None, None, None)
+    )
 
   private def _normalized(
     sourceid: String,

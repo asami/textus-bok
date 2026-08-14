@@ -136,9 +136,28 @@ title. Accept `matched` exact knowledge directly only with its evidence. Treat
 Resolve `ambiguous`, `conflict`, and `insufficient-evidence` instead of choosing
 silently. `no-match` means that Textus BoK has no grounded answer.
 
+Every read selects exactly one logical profile. With no `--profile`, the read
+uses only `official`; it does not combine configured generations or infer a
+project from the host, checkout, or request filters. Use
+`--profile development` for the registered development generation. Use
+`--profile project --projectId <logical-project-id>` for an exact registered
+project generation. A project selector without `projectId`, or a `projectId`
+combined with `official` or `development`, is a structured selection failure.
+Every successful response contains `selection` attribution for the resolved
+profile, optional project identity, dataset, source, generation, and generation
+evidence. Keep the record-level evidence when handing an exact term or
+component reference to another reader.
+
 ```sh
 cncf command org.simplemodeling.textus.Bok.BokRetrieval.searchTerms \
   --query Component --category architecture --limit 10 --format yaml
+
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.searchTerms \
+  --query Component --profile development --limit 10 --format yaml
+
+cncf command org.simplemodeling.textus.Bok.BokRetrieval.explainTerm \
+  --term architecture:component --profile project \
+  --projectId example-project --format yaml
 
 cncf command org.simplemodeling.textus.Bok.BokRetrieval.explainTerm \
   --term architecture:component --format yaml
@@ -169,9 +188,15 @@ component boundary:
 
 ```sh
 cncf command org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap \
-  --datasetId knowledgehub --sourceId knowledgehub \
+  --profile official --datasetId knowledgehub --sourceId knowledgehub \
   --nodeLimit 128 --relationshipLimit 256 --format yaml
 ```
+
+`datasetId` and `sourceId` are compatibility assertions after profile
+resolution, not profile selectors. Omit them to use the complete resolved
+generation, or supply the exact resolved values to confirm it. A value from a
+development or project generation on an omitted/official request fails as
+`conflicting-selection`; it never changes the request to another profile.
 
 For an operator-facing browser projection, open
 `/web/bok/textus-bok/map` on the same runtime. Its filters select the same
