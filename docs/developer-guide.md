@@ -12,6 +12,46 @@ Use SIE only through generated component APIs:
 Do not import SIE runtime or provider SPI packages. Do not add Fuseki, Chroma,
 embedding, retry, endpoint, credential, filesystem, or network types to CML.
 
+## Profile Preparation And Resolution
+
+Private component/SAR authors must keep the three profile keys distinct:
+`official`, `development`, and `project`. `projectId` is present only for
+`project`, and it is an explicit logical identity rather than a path, URL,
+host, checkout, or provider setting. Each binding has its own `sourceId`,
+`datasetId`, `generation`, logical CNCF `resource`, and generation evidence;
+the evidence `sourceId` must match the binding source identity. Public reads
+must never supply these private resource locations or credentials.
+
+Registry configuration prepares a binding but does not load or admit its
+content. The protected administrative replacement operation must be invoked
+for each binding identity and generation. Only `complete` publication changes
+the readable catalog; degraded or failed replacement retains the prior
+complete generation. The packaged operator guide is the operator-facing
+companion for this preparation and observation procedure.
+
+Freshness is an optional exact-generation invariant. Without
+`freshnessGeneration`, any admitted complete generation is readable. With it,
+the observed generation must match exactly; retaining an older complete
+generation for atomic rollback does not bypass a `stale` result. Successful
+attribution (`resolvedProfile`, optional `projectId`, `datasetId`, `sourceId`,
+`generation`, and `evidence`) is the diagnostic source of truth, including the
+Knowledge Map source-generation table and no-JavaScript output.
+
+Maintainers must preserve the deterministic responsibility order: normalize
+and validate the closed selector, authorize the exact key, locate its exact
+binding, require an admitted complete generation, apply freshness, then apply
+optional dataset/source compatibility filters. Never probe or fall back to
+another profile, infer a project, or expose private bindings when one check
+fails. Keep the stable failure codes and their meanings intact:
+`invalid-selection`, `project-identity-required`, `unregistered`,
+`unavailable`, `stale`, `ambiguous`, `unauthorized`, and
+`conflicting-selection`.
+
+The Web selectors invoke the same public Knowledge Map operation and remain
+read-only. Resource locations, source registration/replacement, provider
+credentials, and MCP readiness stay outside the Web surface. Knowledge Map
+and `replaceKnowledgeSource` remain outside the four MCP-ready reads.
+
 ## Generated And Handwritten Code
 
 `src/main/cozy/textus-bok.cml` is the public component contract. Cozy-generated

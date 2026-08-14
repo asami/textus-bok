@@ -6,6 +6,19 @@ form:
   bok.bok-retrieval.get-knowledge-map:
     enabled: true
     stayOnError: true
+    controls:
+      profile:
+        type: select
+        values: [official, development, project]
+        defaultValue: official
+        required: false
+        label: Knowledge profile
+        help: Omit this selector for the official profile; choose project only with an explicit project identity.
+      projectId:
+        type: text
+        required: false
+        label: Project identity
+        help: Supply this logical identity only when the project profile is selected.
   bok.bok-retrieval.replace-knowledge-source:
     enabled: true
     successRedirect: /web/${component}/admin/entities/bok-term/${result.id}

@@ -17,6 +17,21 @@
     <nav aria-label="Knowledge Map navigation"><a href="/web/bok/textus-bok/index">Overview</a></nav>
   </header>
   <form class="bok-map-filters" method="get" action="/web/bok/textus-bok/map" aria-label="Knowledge Map filters">
+    <fieldset class="bok-map-profile-fields">
+      <legend>Knowledge profile</legend>
+      <label for="bok-map-profile">Profile</label>
+      <select id="bok-map-profile" name="profile" aria-describedby="bok-map-profile-help bok-map-request-state">
+        <option value="official">Official (default)</option>
+        <option value="development">Development</option>
+        <option value="project">Project</option>
+      </select>
+      <p id="bok-map-profile-help" class="bok-map-field-help">Omit the profile for the registered official generation.</p>
+      <label for="bok-map-project-id">Project identity <span class="bok-map-optional">(project profile only)</span></label>
+      <input id="bok-map-project-id" name="projectId" type="text" autocomplete="off" data-profile-dependent="project" aria-describedby="bok-map-project-help">
+      <p id="bok-map-project-help" class="bok-map-field-help">Use the explicit logical project identity; do not enter a URL, path, or credential.</p>
+      <p id="bok-map-request-state" class="bok-map-request-state" role="status" aria-live="polite">Request state: profile=official (default); projectId is omitted unless project is selected.</p>
+      <noscript><p class="bok-map-noscript">JavaScript is optional. Select Project and enter its project identity here; leave the optional field empty for Official or Development.</p></noscript>
+    </fieldset>
     <label>Dataset <input name="datasetId" autocomplete="off"></label>
     <label>Source <input name="sourceId" autocomplete="off"></label>
     <label>Category <input name="category" autocomplete="off"></label>
@@ -32,6 +47,24 @@
         <div><h2 id="map-result-title">Map result</h2><p>Status: ${result.body.status}</p></div>
         <p id="bok-knowledge-map-summary">Node and relationship totals are available in the complete tables below.</p>
       </header>
+      <section id="bok-knowledge-map-attribution" class="bok-map-attribution" aria-labelledby="attribution-title">
+        <h3 id="attribution-title">Resolved selection and evidence</h3>
+        <dl>
+          <dt>Resolved profile</dt><dd>${result.body.selection.resolved_profile}</dd>
+          <dt>Project identity</dt><dd>${result.body.selection.project_id}</dd>
+          <dt>Dataset</dt><dd>${result.body.selection.dataset_id}</dd>
+          <dt>Source</dt><dd>${result.body.selection.source_id}</dd>
+          <dt>Generation</dt><dd>${result.body.selection.generation}</dd>
+          <dt>Evidence URI</dt><dd>${result.body.selection.evidence.uri}</dd>
+          <dt>Evidence source</dt><dd>${result.body.selection.evidence.source_id}</dd>
+        </dl>
+      </section>
+      <section id="bok-knowledge-map-errors" class="bok-map-errors" aria-live="assertive" aria-atomic="true">
+        <h3>Structured status</h3>
+        <p>Outcome: ${result.outcome}</p>
+        <p>Status: ${error.status}</p>
+        <textus-error-panel source="error"></textus-error-panel>
+      </section>
       <script type="application/json" id="bok-knowledge-map-data">${result.body}</script>
       <div id="bok-knowledge-map-graph" class="bok-map-graph" aria-label="Interactive Knowledge Map"></div>
       <section id="bok-knowledge-map-detail" class="bok-map-detail" aria-live="polite" tabindex="-1">

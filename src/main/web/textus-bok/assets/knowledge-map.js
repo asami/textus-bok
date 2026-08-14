@@ -30,7 +30,8 @@
     list.append(_text("dt", name));
     const detail = document.createElement("dd");
     if (name === "Evidence") {
-      const url = _safeHttpUrl(value && value.uri);
+      const uri = _field(value, "uri", "uri");
+      const url = _safeHttpUrl(uri);
       if (url) {
         const link = document.createElement("a");
         link.href = url.href;
@@ -39,7 +40,7 @@
         link.textContent = url.href;
         detail.append(link);
       } else {
-        detail.append(_text("code", value && value.uri));
+        detail.append(_text("code", uri));
       }
     } else {
       detail.append(_text("span", value));
@@ -103,12 +104,19 @@
       label.setAttribute("text-anchor", "middle");
       label.setAttribute("y", "48");
       label.textContent = _scalar(node.label).slice(0, 28);
+      const kind = document.createElementNS(svg.namespaceURI, "text");
+      kind.setAttribute("class", "bok-map-node-kind");
+      kind.setAttribute("text-anchor", "middle");
+      kind.setAttribute("y", "66");
+      kind.textContent = _scalar(node.kind);
       const select = () => _showDetail(detail, node);
       group.addEventListener("click", select);
       group.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); }
       });
-      group.append(circle, label);
+      group.setAttribute("data-node-kind", _scalar(node.kind));
+      group.setAttribute("aria-label", `Show ${_scalar(node.kind) || "node"} details for ${_scalar(node.label)}`);
+      group.append(circle, label, kind);
       svg.append(group);
     });
     container.append(svg);
@@ -119,6 +127,68 @@
   const detail = document.getElementById("bok-knowledge-map-detail");
   const summary = document.getElementById("bok-knowledge-map-summary");
   if (!source || !container || !detail || !summary) return;
+  const profile = document.getElementById("bok-map-profile");
+  const projectid = document.getElementById("bok-map-project-id");
+  const requeststate = document.getElementById("bok-map-request-state");
+  if (profile && projectid && requeststate) {
+    const query = new URLSearchParams(window.location.search);
+    const hasprofile = query.has("profile");
+    const hasprojectid = query.has("projectId");
+    const requestedprofile = query.get("profile");
+    const requestedprojectid = query.get("projectId");
+    const knownprofiles = ["official", "development", "project"];
+    let invalidprofile = hasprofile && !knownprofiles.includes(requestedprofile);
+    let conflictingselection = hasprojectid && requestedprofile !== "project";
+    let initialinvalidorconflicting = invalidprofile || conflictingselection;
+    const initialprofilelabel = hasprofile
+      ? requestedprofile === "" ? "(empty)" : requestedprofile
+      : "official (default)";
+    const initialprojectidlabel = hasprojectid
+      ? requestedprojectid === "" ? "(empty)" : requestedprojectid
+      : "(omitted)";
+    const _updateRequestState = () => {
+      const selectedprofile = profile.value;
+      const selectedprojectid = projectid.value.trim();
+      projectid.disabled = selectedprofile !== "project";
+      projectid.required = selectedprofile === "project";
+      if (invalidprofile) {
+        requeststate.textContent = `Request state: profile=${initialprofilelabel} (invalid selection; the operation will report a structured failure).`;
+        if (conflictingselection) {
+          requeststate.textContent += ` projectId=${initialprojectidlabel} also conflicts with this profile; the operation will report a structured failure.`;
+        }
+      } else if (conflictingselection) {
+        requeststate.textContent = `Request state: profile=${initialprofilelabel}; projectId=${initialprojectidlabel} conflicts with this profile; the operation will report a structured failure.`;
+      } else if (selectedprofile === "project") {
+        requeststate.textContent = `Request state: profile=project; projectId=${selectedprojectid || "(required)"}`;
+      } else {
+        requeststate.textContent = `Request state: profile=${selectedprofile}; projectId is omitted unless project is selected.`;
+      }
+    };
+    if (invalidprofile) {
+      profile.value = "";
+      profile.selectedIndex = -1;
+    } else {
+      profile.value = hasprofile ? requestedprofile : "official";
+    }
+    projectid.value = hasprojectid ? requestedprojectid : "";
+    _updateRequestState();
+    profile.addEventListener("change", () => {
+      invalidprofile = false;
+      conflictingselection = false;
+      initialinvalidorconflicting = false;
+      if (profile.value !== "project") projectid.value = "";
+      _updateRequestState();
+    });
+    projectid.addEventListener("input", () => {
+      _updateRequestState();
+    });
+    const form = profile.form;
+    if (form) {
+      form.addEventListener("submit", (event) => {
+        if (initialinvalidorconflicting) event.preventDefault();
+      });
+    }
+  }
   try {
     const model = JSON.parse(_decodeHtmlEntities(source.textContent || "{}"));
     _draw(container, detail, summary, model.body || model);
