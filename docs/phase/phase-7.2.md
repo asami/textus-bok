@@ -1,8 +1,8 @@
 # Phase 7.2: Read Contract Integration
 
 Stage Status:
-- Current status: OPEN
-- Current step: P7-C Read Contract Integration
+- Current status: CLOSED
+- Current step: P7-C Read Contract Integration (closed)
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-7.2-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -86,3 +86,43 @@ Phase 7.2 closes only when every P7-03 item in
 evidence is recorded here, validated work is committed, and final review finds
 no actionable Phase 7.2 issue. Closure hands control to Phase 7.3 but does not
 start it.
+
+## Phase Hygiene Ledger
+
+Phase 7.2 adds the public selector wrappers required by the closed read
+contract. Their accepted lint-policy follow-up is persisted in
+`docs/journal/2026/08/2026-08-15-phase-7.2-hygiene-ledger.md` as
+`HYG-P7.2-001`. The Phase 7 and Phase 7.1 ledgers remain authoritative for the
+pre-existing nominal wrappers, release ABI/plugin warnings, and external
+descriptor-helper mismatch; Phase 7.2 does not duplicate or absorb those
+items.
+
+## Closure Evidence
+
+Phase 7.2 closed on 2026-08-15.
+
+- Step commit `176386977200f64e35a57a88e8c80191a22d56c5` adds the shared
+  selector and resolved-selection response model, resolves and authorizes the
+  exact normalized tuple before catalog access, filters exact and SIE reads
+  before classification and limits, constrains Knowledge Map compatibility
+  filters, preserves MCP readiness boundaries, and updates the public manuals.
+- The post-fix affected-consumer accumulator passed 5 suites and 37/37 tests
+  in invocation `36310-20260814T185425Z`. Its included federation publication
+  specification exercises the public component boundary.
+- The Phase-release full suite passed 8 suites and 51/51 tests in invocation
+  `42094-20260814T190545Z`.
+- `cozyBuildCAR` produced
+  `target/textus-bok-0.1.0-SNAPSHOT.car` in invocation
+  `42515-20260814T190621Z`; the artifact SHA-256 is
+  `09d47014fc5766a8f287f442007a3bf620fd449d76889ae5eb3452f117bf8618`.
+- Normal CAR lint reports integrated Cozy identity
+  `CAR_COMPONENT_IDENTITY_CANONICAL` for
+  `org.simplemodeling.textus.Bok`. The external descriptor helper still
+  reports the inherited schema-v3 false positive recorded as `P7.1-HY-01`;
+  inherited ABI, SNAPSHOT-plugin, and nominal-wrapper warnings remain in their
+  existing hygiene ledgers. The two Phase 7.2 selector-wrapper warnings are
+  recorded as `HYG-P7.2-001`.
+- The complete post-implementation review found one naming issue, which was
+  repaired without behavior change. The fresh focused re-review sealed
+  `P7C1-R1` as closed with no actionable findings and no requirement for a new
+  full review.
