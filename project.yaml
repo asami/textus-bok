@@ -1,11 +1,17 @@
 project:
   namespace: "org.simplemodeling.textus"
   id: "Bok"
+  name: "textus-bok"
   title: "Textus BoK"
   kind: car
+  scalaPackage: "org.simplemodeling.textus.bok"
   component:
+    name: "Bok"
+    className: "BokComponent"
     displayName: "Textus BoK"
     version: "0.1.0-SNAPSHOT"
+    config:
+      textus.server.default-port: "18014"
 
 build:
   scalaVersion: "3.3.8"
@@ -14,7 +20,7 @@ build:
     compile:
       - "org.goldenport::goldenport-cncf:0.5.2-SNAPSHOT"
     provided:
-      - "org.textus::textus-semantic-integration-engine:0.2.0-SNAPSHOT"
+      - "org.simplemodeling.textus::textus-semantic-integration-engine:0.2.0-SNAPSHOT"
     test:
       - "org.scalatest::scalatest:3.2.19"
       - "org.textus::textus-scraper:0.1.1-SNAPSHOT"

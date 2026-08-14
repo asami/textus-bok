@@ -3,16 +3,45 @@
 ## Prerequisites
 
 Deploy `textus-bok` and `textus-semantic-integration-engine` in the same CNCF
-subsystem. Configure a CNCF resource provider that resolves the logical root
-used by `BokKnowledgeSource.resource`. Keep RDF, Vector, embedding, credentials,
-and provider endpoints in the SIE deployment configuration; they are not Textus
-BoK inputs.
+subsystem. In configured mode, install private profile bindings and configure a
+CNCF resource provider that resolves each binding's logical source root. In
+legacy mode (when no profile registry is configured), the provider resolves the
+logical root in the request's `BokKnowledgeSource.resource`. Keep RDF, Vector,
+embedding, credentials, and provider endpoints in the SIE deployment
+configuration; they are not Textus BoK inputs.
 
 Use generated Help to confirm the loaded component and operation contract:
 
 ```sh
 cncf command meta.help textus-bok --format yaml
 ```
+
+## Configure A Private Profile Registry
+
+The private subsystem configuration key `textus.bok.profile-registry` binds a
+profile to one source identity, logical resource, and generation-level
+evidence. For example, an official binding can be delivered by component or
+SAR configuration:
+
+```yaml
+textus:
+  bok:
+    profile-registry:
+      profiles:
+        - profile: official
+          source:
+            sourceId: simplemodeling
+            datasetId: simplemodeling-bok
+            generation: 2026-07-21T12:00:00Z
+            resource: urn:textus:bok:simplemodeling
+          evidence:
+            uri: https://evidence.example/simplemodeling
+            sourceId: simplemodeling
+```
+
+Bindings are validated during component bootstrap. Duplicate or conflicting
+bindings, malformed source descriptors, and mismatched evidence are rejected
+before replacement starts.
 
 ## Prepare Metadata
 
@@ -82,6 +111,17 @@ source:
 Treat `status: complete` as the commit point. Record `sourceId`, `datasetId`,
 `generation`, `termCount`, `componentCount`, and warnings. A degraded or failed
 publication is not a successful typed-generation switch.
+
+With a private profile registry configured, configured mode matches the request
+`datasetId`, `sourceId`, and `generation` to one installed binding and loads
+only that binding's `source.resource`. The request-side `resource` may remain
+in the generated compatibility request shape, but it is ignored and is not an
+alternate source. When no registry is configured, legacy mode reads the
+request-side `source.resource` as before.
+
+Only a `complete` publication is admitted. A degraded or failed replacement
+keeps the previous complete generation active; a later complete generation
+replaces it atomically.
 
 To replace content, publish a complete later generation with the same
 `datasetId`. Omitted records are intentionally removed. Do not send partial

@@ -1,0 +1,12 @@
+subsystem: textus-bok
+version: 0.1.0-SNAPSHOT
+components:
+  - namespace: org.simplemodeling.textus
+    id: Bok
+    version: 0.1.0-SNAPSHOT
+  - namespace: org.simplemodeling.textus
+    id: SemanticIntegrationEngine
+    version: 0.2.0-SNAPSHOT
+  - namespace: org.simplemodeling.textus
+    id: Scraper
+    version: 0.1.1-SNAPSHOT

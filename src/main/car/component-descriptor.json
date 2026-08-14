@@ -4,5 +4,8 @@
     "namespace": "org.simplemodeling.textus",
     "id": "Bok",
     "version": "0.1.0-SNAPSHOT"
+  },
+  "config": {
+    "textus.server.default-port": "18014"
   }
 }

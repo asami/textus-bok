@@ -39,9 +39,13 @@ declarations.
 
 ## Knowledge Source
 
-`replaceKnowledgeSource.source` contains `sourceId`, `datasetId`, `generation`,
-and a logical CNCF `resource` reference. The normalizer resolves
-`metadata/cncf/knowledge-source.json` below that root. Schema
+`replaceKnowledgeSource.source` contains `sourceId`, `datasetId`, and
+`generation`. In configured mode, those identity fields match one private
+profile-registry binding; the binding's logical `resource` is the sole source
+root, and any request-side `resource` is ignored (it may remain in the
+generated compatibility request shape). Without a configured registry, legacy
+mode uses the request's logical CNCF `resource` reference. The normalizer then
+resolves `metadata/cncf/knowledge-source.json` below the selected root. Schema
 `cncf.knowledge-source.v1` recognizes:
 
 - `glossary-terms`, containing structured term identities, titles,
@@ -56,11 +60,14 @@ default; rendered HTML and CAR/SAR archive inspection are not required.
 
 ## Replacement Semantics
 
-The command publishes one complete generation through SIE
-`KnowledgeFederation.replaceDataset`. The typed BoK generation becomes visible
+The administrative command remains non-MCP and publishes one complete
+generation through SIE `KnowledgeFederation.replaceDataset`. In configured mode
+the installed binding supplies the resource after identity matching; in legacy
+mode the request resource supplies it. The typed BoK generation becomes visible
 only when SIE reports `complete`. A complete later generation removes stale
-terms and component references. A degraded publication leaves the previous
-complete typed generation visible.
+terms and component references. A degraded or failed publication leaves the
+previous complete typed generation visible until a later complete generation is
+admitted.
 
 ## Query Semantics
 

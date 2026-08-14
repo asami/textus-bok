@@ -3,20 +3,21 @@ package org.simplemodeling.textus.bok.impl
 import org.goldenport.Consequence
 import org.goldenport.cncf.action.ActionCall
 import org.simplemodeling.textus.bok.BokComponent
-import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentId}
+import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentId, ComponentInit}
 import org.goldenport.cncf.context.ExecutionContext
 import org.goldenport.cncf.spi.ComponentSelector
 import org.goldenport.cncf.unitofwork.ExecUowM
 import org.goldenport.protocol.operation.OperationResponse
 import org.goldenport.record.Record
 import org.simplemodeling.textus.bok.datatype.*
-import org.simplemodeling.textus.bok.runtime.{BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokSourceReader}
+import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileSelection, BokSourceReader, NormalizedBokSource, ResolvedBokProfile}
 import org.simplemodeling.textus.bok.value.*
 import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 
 /*
  * @since   Jul. 21, 2026
- * @version Jul. 23, 2026
+ *  version Jul. 23, 2026
+ * @version Aug. 14, 2026
  * @author  ASAMI, Tomoharu
  */
 
@@ -30,6 +31,27 @@ final class ComponentFactory extends Component.BundleFactory {
 
 abstract class BokParticipantFactoryBase extends BokComponent.Factory {
   private val _catalog = new BokKnowledgeCatalog()
+
+  override protected def initialize_component_c(
+    component: Component,
+    params: ComponentInit
+  ): Consequence[Component] =
+    super.initialize_component_c(component, params).flatMap {
+      case bok: BokPrimaryComponent =>
+        bok.subsystem match {
+          case Some(subsystem) =>
+            // Bootstrap wiring must inspect the resolved subsystem configuration before ActionCalls exist.
+            BokProfileRegistryConfiguration.fromConfiguration(
+              subsystem.configuration // cncf-car-lint: ignore -- component initialization boundary
+            ).flatMap { configuration =>
+              bok.configureProfileRegistry(configuration).map(_ => bok)
+            }
+          case None => Consequence.stateInvalid("The BoK component subsystem is unavailable during initialization")
+        }
+      case value => Consequence.componentInvalid(
+        new IllegalStateException(s"The BoK factory initialized an incompatible component: ${value.getClass.getName}")
+      )
+    }
 
   override val BokRetrieval: BokComponent.BokRetrievalServiceFactory =
     new BokRetrievalServiceFactoryImpl()
@@ -89,14 +111,17 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       exec_from {
         for {
           source <- _source(action.record)
-          normalized <- BokSourceReader.read(executionContext, source)
+          component <- _component(core)
+          configured <- component.loadReplacementSource(executionContext, source)
+          (profilekey, normalized) = configured
           publication <- BokFederationPublisher.replace(core, normalized)
-          _ = _catalog.commit(publication, normalized)
+          admitted <- component.admitReplacement(profilekey, publication, normalized)
+          _ = if (admitted) _catalog.commit(publication, normalized)
         } yield OperationResponse(ReplaceKnowledgeSourceResponse(
           status = BokQueryStatus(publication.state),
-          sourceId = source.sourceId,
-          datasetId = source.datasetId,
-          generation = source.generation,
+          sourceId = normalized.source.sourceId,
+          datasetId = normalized.source.datasetId,
+          generation = normalized.source.generation,
           termCount = normalized.terms.size,
           componentCount = normalized.components.size,
           warnings = normalized.warnings
@@ -192,6 +217,15 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       case None => Consequence.successOrPropertyNotFound("source", Option.empty[BokKnowledgeSource])
     }
 
+  private def _component(core: ActionCall.Core): Consequence[BokPrimaryComponent] =
+    core.component match {
+      case Some(component: BokPrimaryComponent) => Consequence.success(component)
+      case Some(value) => Consequence.stateInvalid(
+        s"The BoK action is bound to an unsupported component: ${value.getClass.getName}"
+      )
+      case None => Consequence.serviceUnavailable("The BoK component is unavailable")
+    }
+
   private def _required_string(record: Record, name: String): Consequence[String] =
     record.getAny(name) match {
       case Some(value: String) => Consequence.success(value)
@@ -217,6 +251,56 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
 }
 
 final class BokPrimaryComponent extends BokComponent {
+  private var _profile_registry: Option[BokProfileRegistry] = None
+
+  private[bok] def configureProfileRegistry(
+    configuration: Option[BokProfileRegistryConfiguration]
+  ): Consequence[Unit] =
+    configuration match {
+      case Some(value) => BokProfileRegistry.create(value).map { registry =>
+        _profile_registry = Some(registry)
+      }
+      case None =>
+        _profile_registry = None
+        Consequence.unit
+    }
+
+  private[bok] def loadReplacementSource(
+    context: ExecutionContext,
+    requested: BokKnowledgeSource
+  ): Consequence[(Option[BokProfileKey], NormalizedBokSource)] =
+    _profile_registry match {
+      case Some(registry) =>
+        for {
+          key <- registry.configuredKey(requested)
+          normalized <- registry.loadConfiguredSource(context, key)
+        } yield Some(key) -> normalized
+      case None => BokSourceReader.read(context, requested).map(None -> _)
+    }
+
+  private[bok] def admitReplacement(
+    key: Option[BokProfileKey],
+    publication: BokFederationPublication,
+    normalized: NormalizedBokSource
+  ): Consequence[Boolean] =
+    (key, _profile_registry) match {
+      case (Some(profilekey), Some(registry)) => registry.admit(profilekey, publication, normalized)
+      case (None, None) => Consequence.success(true)
+      case _ => Consequence.stateInvalid("The BoK profile registry changed during source replacement")
+    }
+
+  private[bok] def resolveProfile(
+    selection: BokProfileSelection,
+    filter: BokProfileCompatibilityFilter,
+    authorization: BokProfileAuthorization
+  ): Consequence[ResolvedBokProfile] =
+    _profile_registry match {
+      case Some(registry) => registry.resolve(selection, filter, authorization)
+      case None => BokProfileRegistry.create(BokProfileRegistryConfiguration(Vector.empty)).flatMap(
+        _.resolve(selection, filter, authorization)
+      )
+    }
+
   private[bok] def semanticIntegrationFederation(
     selector: ComponentSelector = ComponentSelector()
   )(using ExecutionContext): Consequence[SemanticIntegrationFederationApi] =
