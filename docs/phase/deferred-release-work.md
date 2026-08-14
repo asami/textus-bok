@@ -3,10 +3,11 @@
 Status: deferred until the next Textus BoK release-readiness phase starts.
 
 This ledger records work intentionally outside the completed Phase 1–5 scope
-and outside the current Phase 6 Knowledge Map scope. It is the relocation
-target required by the completed-phase checklists. These items must not be
-started as incidental Phase 6 work; they become active only when an explicitly
-selected release-readiness phase takes ownership.
+and outside the completed Phase 6 Knowledge Map and active Phase 7 selectable
+BoK-profile series. It is the relocation target required by the completed-phase
+checklists. These items must not be started as incidental Phase 7–7.4 work;
+they become active only when an explicitly selected release-readiness phase
+takes ownership.
 
 ## DP-01: Released ABI Baseline and Build-Plugin Coordinate
 
@@ -22,7 +23,7 @@ At release-readiness time:
   packaging against the selected release versions.
 
 This item is release-track work. It does not block development-SNAPSHOT CAR
-builds or the Phase 6 Knowledge Map implementation.
+builds or Phase 7–7.4 selectable-profile implementation.
 
 ## DP-02: Live `meta.help` Verification
 
