@@ -54,13 +54,14 @@ evidence, truncation, and handoff. The clean full suite (24 tests), CAR build,
 normal CAR lint, configuration check, and final review passed.
 
 The original open Phase 7 was split with explicit user approval on 2026-08-14
-into the sequential Phase 7, 7.1, 7.2, 7.3, and 7.4 delivery units. Phase 7 is
-the current priority and closes the stable selection and migration contract
-for the published official `simplemodeling.org` BoK, the explicitly selected
+into the sequential Phase 7, 7.1, 7.2, 7.3, and 7.4 delivery units. Phase 7
+closed on 2026-08-14 with the stable selection and migration contract for the
+published official `simplemodeling.org` BoK, the explicitly selected
 development generation from `simplemodeling-org`, and an explicitly identified
-project-local BoK. Later children respectively own private resolution, read
-contract integration, Web/operator integration, and representative runtime
-closure. Each child starts only after its predecessor closes.
+project-local BoK. Phase 7.1 is the current priority and owns private registry
+and resolution implementation. Later children respectively own read contract
+integration, Web/operator integration, and representative runtime closure.
+Each child starts only after its predecessor closes.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside active feature

@@ -1,8 +1,8 @@
 # Phase 7: BoK Profile Selection Contract
 
 Stage Status:
-- Current status: OPEN
-- Current step: P7-A Selection Contract
+- Current status: CLOSED
+- Current step: P7-A Selection Contract (closed)
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-7-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -149,6 +149,22 @@ Focus: P7-01.
   integration to Phase 7.2, Web/operator integration to Phase 7.3, and
   representative runtime closure to Phase 7.4.
 
+## Phase Hygiene Ledger
+
+The final normal CAR lint also inspected preserved work outside the P7-A
+documentation paths. Those findings do not change the accepted profile
+contract and are recorded, rather than repaired inside this Phase:
+
+- `P7-HY-01` — project/CAR identity metadata alignment remains a separate
+  hygiene follow-up.
+- `P7-HY-02` — ABI baseline and development plugin-coordinate readiness remain
+  release-readiness work.
+- `P7-HY-03` — existing nominal string-wrapper warnings remain a separate CML
+  modeling follow-up.
+
+The evidence, risk, separation basis, and exact lint codes are preserved in
+`docs/journal/2026/08/2026-08-14-phase-7-hygiene-ledger.md`.
+
 ## Validation Boundary
 
 Review the stable design/specification text against every P7-01 outcome and
@@ -162,3 +178,22 @@ explicitly admits an executable behavior change.
 Phase 7 closes only when every P7-01 item in `phase-7-checklist.md` is checked,
 the stable selection and compatibility contracts are documented, validation
 evidence is recorded here, and final review finds no actionable Phase 7 issue.
+
+## Closure Evidence
+
+Phase 7 closed on 2026-08-14.
+
+- `docs/design/bok-profile-selection.md` and
+  `docs/spec/bok-profile-selection-contract.md` define the stable selection,
+  migration, attribution, compatibility-filter, and failure contracts.
+- Step commit `263eb27891c3e0651a9cc7585f6a0b7bd863eba3` records the complete
+  P7-A contract and approved Phase 7–7.4 split without the preserved unrelated
+  CAR/configuration work.
+- Tracked and untracked whitespace checks passed, and all relative Markdown
+  links in the Phase 7 contract surface resolved.
+- The independent P7-A review and final Phase closure review each reported zero
+  actionable findings; P7-A also had no same-file hygiene. Normal CAR lint
+  found no P7-A path issue; its unrelated preserved findings are separated in
+  the Phase Hygiene Ledger above.
+- No executable behavior changed, so P7-A and its release closure require no
+  SBT or runtime validation.
