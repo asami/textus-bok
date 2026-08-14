@@ -1,8 +1,8 @@
 # Phase 7.1: Profile Registry and Resolution
 
 Stage Status:
-- Current status: OPEN
-- Current step: P7-B Profile Registry and Resolution
+- Current status: CLOSED
+- Current step: P7-B Profile Registry and Resolution (closed)
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-7.1-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -82,6 +82,23 @@ of direct filesystem/network/ambient discovery. At Phase release, run the full
 Textus BoK test suite and `cozyBuildCAR`; run normal CAR lint when the delivered
 CAR contract or descriptor surface changes.
 
+## Phase Hygiene Ledger
+
+The final normal CAR lint and complete reviews also exposed issues outside the
+P7-B registry/resolver closure boundary. They are persisted in
+`docs/journal/2026/08/2026-08-14-phase-7.1-hygiene-ledger.md`:
+
+- `P7.1-HY-01` — the external Python CAR descriptor helper still expects
+  legacy root descriptor fields even though Cozy validates the canonical
+  schema-v3 component identity;
+- `P7.1-HY-02` — historical probes, example fixtures, and Phase 4 examples
+  still use pre-canonical operation names or repository-index v1; and
+- `P7.1-HY-03` — one unchanged pre-existing multiline CML description still
+  loses a joining space in generated help.
+
+Phase 7 release-readiness items `P7-HY-02` and `P7-HY-03` also remain open;
+P7-B does not absorb ABI-baseline, published-plugin, or nominal-wrapper debt.
+
 ## Completion Conditions
 
 Phase 7.1 closes only when every P7-02 item in
@@ -89,3 +106,33 @@ Phase 7.1 closes only when every P7-02 item in
 evidence is recorded here, validated work is committed, and final review finds
 no actionable Phase 7.1 issue. Closure hands control to Phase 7.2 but does not
 start it.
+
+## Closure Evidence
+
+Phase 7.1 closed on 2026-08-14.
+
+- Step commit `4b220065f39ea04625be0b660cc41568d8da3cb7` implements the
+  private profile registry/resolver, configuration binding, authorization,
+  complete-generation admission, degraded retention, and executable
+  specifications. Cozy support commit
+  `9db5afb45489559936b7a94d70136db3590cf453` corrects canonical CAR
+  component-name identity linting.
+- Repair Step commit `4ebc8dfddd5d34f352a279994401d8112ce1bc2b`
+  aligns repository-index v2 identity, qualified MCP names, optional component
+  organization lookup, deterministic ordering, and SIE publication identity.
+- Focused registry validation passed 8/8 tests in invocation
+  `75200-20260814T114427Z`. Final identity/CML validation included 10/10
+  source-reader tests in `24319-20260814T131120Z` and 6/6 generated-domain/MCP
+  tests in `27865-20260814T132131Z`.
+- The post-commit Textus BoK full suite passed 8 suites and 40/40 tests in
+  invocation `30304-20260814T132824Z`. The dependency Cozy full suite passed
+  97 suites and 1325/1325 tests, with 7 expected cancellations, in invocation
+  `97235-20260814T121810Z`.
+- `cozyBuildCAR` produced `target/textus-bok-0.1.0-SNAPSHOT.car` from the
+  post-commit tree in invocation `30643-20260814T132907Z`.
+- Normal CAR lint reports integrated Cozy identity
+  `CAR_COMPONENT_IDENTITY_CANONICAL`. Its only FAIL is the external stale
+  descriptor helper recorded as `P7.1-HY-01`; inherited release-readiness
+  warnings remain in the hygiene ledgers.
+- The final complete review closed all six canonical-identity findings. The
+  focused CML re-review reported `PASS` with zero actionable findings.

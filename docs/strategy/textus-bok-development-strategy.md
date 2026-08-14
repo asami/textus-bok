@@ -58,10 +58,13 @@ into the sequential Phase 7, 7.1, 7.2, 7.3, and 7.4 delivery units. Phase 7
 closed on 2026-08-14 with the stable selection and migration contract for the
 published official `simplemodeling.org` BoK, the explicitly selected
 development generation from `simplemodeling-org`, and an explicitly identified
-project-local BoK. Phase 7.1 is the current priority and owns private registry
-and resolution implementation. Later children respectively own read contract
-integration, Web/operator integration, and representative runtime closure.
-Each child starts only after its predecessor closes.
+project-local BoK. Phase 7.1 closed on 2026-08-14 with the private registry,
+configuration-bound resolution, complete-generation admission, deterministic
+failure behavior, and canonical component-identity integration. Phase 7.2 is
+the next priority and owns public read contract integration, but it has not
+started. Later children respectively own Web/operator integration and
+representative runtime closure. Each child starts only after its predecessor
+closes.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside active feature
