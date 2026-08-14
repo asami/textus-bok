@@ -1,0 +1,9 @@
+subsystem: textus-bok-profile-selection
+version: 0.1.0-SNAPSHOT
+components:
+  - component: textus-semantic-integration-engine
+    coordinate: org.textus.car:textus-semantic-integration-engine:0.2.0-SNAPSHOT
+  - component: textus-bok
+    coordinate: org.textus.car:textus-bok:0.1.0-SNAPSHOT
+  - component: textus-scraper
+    coordinate: org.textus.car:textus-scraper:0.1.1-SNAPSHOT

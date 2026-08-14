@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "cozy.rdf-graph-summary.v1",
+  "kind": "rdf-graph-summary",
+  "sourceRef": {
+    "kind": "bok-site",
+    "value": "profile-project-alpha-source-ref",
+    "uri": "https://evidence.example/textus-bok/profile-project-alpha/source"
+  },
+  "nodes": [
+    {
+      "id": "profile-project-alpha-node",
+      "label": "Project Alpha Marker",
+      "node_type": "term",
+      "category": "architecture",
+      "terms": ["profile-project-alpha-marker"]
+    }
+  ],
+  "edges": [],
+  "truncated": false
+}

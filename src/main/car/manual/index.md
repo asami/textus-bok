@@ -107,6 +107,22 @@ source, node, and relationship evidence. A declared Cozy `componentRef` is
 shown only as an exact existence handoff to CBD Support, never as usage or
 compatibility detail.
 
+## Representative Verification
+
+The representative conformance model uses one private SAR with official,
+development, and at least two distinct project bindings. Each selected read
+must expose only its own generation, source evidence, term marker, and
+Knowledge Map node. Cyclic foreign-term and foreign-focus probes must return
+structured no-match results with the requested attribution and empty results or
+topology; they must never union, cross project boundaries, or fall back.
+
+The prepared implementation evidence is the
+[profile-selection SAR example](../../../../examples/bok-profile-selection-sar/README.md)
+and the operator procedure in [the operator guide](user-guide.md). Focused and
+static preparation is not a live runtime result. The Phase 7.4 release gate
+must execute the lifecycle and record live evidence before claiming a
+representative SAR pass.
+
 ## Failures And Limits
 
 - Invalid manifests, unsafe child references, unsupported schemas, and

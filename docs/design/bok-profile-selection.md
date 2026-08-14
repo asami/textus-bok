@@ -146,6 +146,34 @@ Failure responses must not expose private resource locations, credentials, or
 other project bindings. Transport layers may reduce diagnostic detail
 according to authorization policy without changing the domain outcome.
 
+## Representative Verification Model
+
+The representative verification model composes one private SAR with four
+logical bindings: official, development, and at least two distinct project
+keys. The prepared Textus BoK example uses official, development, project-alpha,
+and project-beta identities, each with a distinct dataset, source, generation,
+registry evidence URI, term marker, and Knowledge Map node. Those names belong
+to the example; the public selector remains the closed vocabulary described
+above.
+
+Positive reads prove that each explicit selection resolves its own complete
+generation and that omitted selection resolves only official. Positive
+evidence alone is insufficient: a resolver that accidentally unions generations
+can still return the requested marker. Therefore the verification cycles each
+selected profile through a foreign term query and a foreign node focus. Each
+negative read must retain the requested selection attribution while returning
+no match, empty results, and empty topology; it must not fall back to the
+foreign generation. The same cycle distinguishes project identities from one
+another without requiring project names to become public API vocabulary.
+
+Focused executable specifications prove resolver and catalog behavior in
+process. The representative SAR fixture, lifecycle script, and probe provide
+prepared/static integration evidence across REST, the qualified MCP read tools,
+and the Static Form Knowledge Map; REST and Web map projections must agree, and
+the Knowledge Map and source replacement remain outside MCP. Only the Phase
+7.4 release gate's live lifecycle execution establishes runtime evidence. A
+prepared or focused result must not be described as a live SAR pass.
+
 ## Non-goals
 
 - No cross-profile union, precedence, overlay, or conflict merge.

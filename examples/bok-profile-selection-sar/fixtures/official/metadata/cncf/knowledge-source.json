@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "cncf.knowledge-source.v1",
+  "resources": [
+    {
+      "kind": "glossary-terms",
+      "href": "metadata/glossary/terms.json",
+      "mediaType": "application/json"
+    },
+    {
+      "kind": "rdf-graph-summary",
+      "href": "metadata/rdf/graph.json",
+      "mediaType": "application/json"
+    }
+  ]
+}

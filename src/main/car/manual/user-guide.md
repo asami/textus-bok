@@ -289,6 +289,59 @@ and run `scripts/run-bok-knowledge-map-sar.sh start`. The probe replaces the
 source and proves REST and Web agreement on generation, topology, evidence,
 truncation, and `componentRef` handoffs.
 
+## Profile Selection Representative SAR
+
+The prepared profile-selection representative SAR is a one-shot operator
+procedure for the private four-binding model. It requires the existing
+Textus BoK, Semantic Integration Engine, and Scraper SNAPSHOT CARs, a
+compatible CNCF runtime, Python 3.10 or newer, and `zip`, `curl`, and `lsof`.
+Use `PYTHON_BIN` to choose the Python 3.10+ interpreter when the default
+`python3` is not suitable. From the Textus BoK repository, run:
+
+```sh
+scripts/check-bok-profile-selection-sar.sh
+```
+
+The logical bindings are official (omitted selector), development,
+project-alpha, and project-beta. Their prepared identities are deliberately
+distinct:
+
+| Binding | Dataset | Source | Generation | Registry evidence URI |
+|---|---|---|---|---|
+| official | `profile-official-dataset` | `profile-official-source` | `2026-08-15T00:00:00Z` | `https://evidence.example/textus-bok/profile-official` |
+| development | `profile-development-dataset` | `profile-development-source` | `2026-08-15T01:00:00Z` | `https://evidence.example/textus-bok/profile-development` |
+| project (`project-alpha`) | `profile-project-alpha-dataset` | `profile-project-alpha-source` | `2026-08-15T02:00:00Z` | `https://evidence.example/textus-bok/profile-project-alpha` |
+| project (`project-beta`) | `profile-project-beta-dataset` | `profile-project-beta-source` | `2026-08-15T03:00:00Z` | `https://evidence.example/textus-bok/profile-project-beta` |
+
+The lifecycle checks positive REST `searchTerms` and Knowledge Map reads,
+Static Form Web map reads, and qualified MCP terminology/read-tool
+publication. It also cycles foreign-term and foreign-focus queries across the
+four bindings: each must retain the selected attribution while returning no
+match with empty results or topology. The checks prove that a selected read
+does not union generations, cross project boundaries, or fall back. REST and
+Web map projections must agree. `tools/list` keeps Knowledge Map absent from
+MCP, and `replaceKnowledgeSource` remains protected and non-MCP; callers do
+not provide private resource roots.
+
+On a live release-gate run, the probe reports these stable markers:
+
+```text
+BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4
+BOK_PROFILE_SELECTION_SAR_LIFECYCLE_OK profiles=4
+```
+
+The lifecycle accepts
+loopback HTTP only, rejects an occupied port, owns a temporary runtime
+directory, stops only its process/listener, and removes only that directory.
+Repository, CAR, fixture, CNCF, port, URL, timeout, and runtime-development
+overrides are documented in the
+[profile-selection SAR README](../../../../examples/bok-profile-selection-sar/README.md).
+
+P7-E1 prepared and focused/static-validated these fixtures, the lifecycle,
+the probe, and the executable specification; this prepared artifact has not
+been live-passed. Only the Phase 7.4 release gate may execute the lifecycle and
+claim live runtime, full-test, CAR build/lint, review, or closure evidence.
+
 ## MCP Use
 
 The current component publishes four read tools:

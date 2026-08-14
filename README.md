@@ -43,6 +43,13 @@ To verify a real Cozy source locally, build it with Cozy 0.3.0-SNAPSHOT and run
 `scripts/run-bok-knowledge-map-sar.sh start` with
 `TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT` set to its generated `website.d` root.
 
+Phase 7.4 also prepares one representative profile-selection SAR with official,
+development, and two distinct project keys. Its positive reads and cyclic
+foreign-term/foreign-node probes demonstrate selected generation, evidence, and
+project isolation without union or fallback; the prepared lifecycle is not
+claimed live-passed until the Phase release gate runs it. See the
+[representative profile-selection verification](examples/bok-profile-selection-sar/README.md).
+
 ## Documentation
 
 - [Development strategy](docs/strategy/textus-bok-development-strategy.md)

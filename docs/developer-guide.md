@@ -153,6 +153,52 @@ only for explicit HTTP(S) URLs.
 
 ## Verification
 
+### P7-E1 Representative Profile-Selection Preparation
+
+The representative profile-selection SAR is prepared at
+examples/bok-profile-selection-sar and is launched by
+scripts/check-bok-profile-selection-sar.sh. It composes the existing Textus
+BoK, Semantic Integration Engine, and Scraper SNAPSHOT CARs without changing
+their repositories. The private four-binding model is official,
+development, project-alpha, and project-beta; each has distinct source,
+dataset, generation, registry-evidence, term, and graph-node identities.
+Positive REST terminology and Knowledge Map reads, qualified MCP terminology
+reads, Static Form map reads, and cyclic foreign-term/foreign-focus negative
+probes are checked for isolation, attribution, no union, and no fallback.
+Knowledge Map remains outside MCP and replaceKnowledgeSource remains protected
+and non-MCP.
+
+The operator prerequisites are the three existing CAR files, a compatible CNCF
+runtime, Python 3.10 or newer, zip, curl, and lsof. The lifecycle refuses
+non-loopback URLs and occupied ports, uses a private temporary runtime
+directory, and cleans only that directory. Repository and input overrides include TEXTUS_SIE_ROOT,
+TEXTUS_SCRAPER_ROOT, TEXTUS_SIE_CAR, TEXTUS_BOK_CAR,
+TEXTUS_SCRAPER_CAR, TEXTUS_BOK_PROFILE_SELECTION_SAR_FIXTURE_ROOT, and
+TEXTUS_BOK_PROFILE_SELECTION_SAR_DESCRIPTOR. Runtime overrides include
+CNCF_BIN, CNCF_VERSION, CNCF_RUNTIME_DEV_DIR, CNCF_SERVER_PORT, and
+CNCF_HTTP_BASEURL; PYTHON_BIN selects the Python 3.10+ interpreter when the
+default python3 is not suitable. Bounded lifecycle overrides are
+BOK_PROFILE_SELECTION_SAR_STARTUP_TIMEOUT_SECONDS and
+BOK_PROFILE_SELECTION_SAR_SHUTDOWN_TIMEOUT_SECONDS; the example README
+documents the complete list.
+
+P7-E1 has prepared and focused/static-validated the fixture, lifecycle, probe,
+and executable specification. That evidence does not substitute for live
+runtime evidence: the lifecycle has not yet been executed. The Phase 7.4
+release gate alone owns live scripts/check-bok-profile-selection-sar.sh
+execution, the full test suite, CAR build/lint, final review, and closure.
+Expected live markers are:
+
+```text
+BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4
+BOK_PROFILE_SELECTION_SAR_LIFECYCLE_OK profiles=4
+```
+
+Maintainers must update the example README, probe assertions, fixture
+identities, and reported surface counts together. Any change to the four
+positive profiles or the cyclic negative probes requires corresponding
+executable-specification and documentation updates.
+
 Run:
 
 ```sh

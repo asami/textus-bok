@@ -173,6 +173,33 @@ This is an intentional compatibility migration. Public schemas and operator
 guidance delivered by later Phases MUST make the new default and explicit
 non-official selection visible.
 
+## Representative Conformance Matrix
+
+The representative conformance fixture is implementation evidence for this
+contract, not an addition to the public selector vocabulary. A conforming
+representative SAR MUST register exactly one official binding, one development
+binding, and at least two distinct project keys. Each binding MUST have a
+distinct observable dataset identity, source identity, complete generation,
+generation-level evidence, term record, and graph-node identity. The prepared
+implementation evidence is the profile-selection SAR example, its lifecycle
+script and probe, and the resolved-profile executable specification.
+
+| Conformance concern | Required representative behavior |
+| --- | --- |
+| Positive selection | Omitted selection MUST read only official; explicit development and each project key MUST read only that key's generation and retain its exact selection and record evidence. |
+| Foreign term isolation | For every selected key, a cyclic probe for a term owned by another key MUST return no-match with empty results and the selected attribution. It MUST NOT union or fall back. |
+| Foreign topology isolation | For every selected key, a cyclic focus for a node owned by another key MUST return no-match with empty nodes and relationships and the selected attribution. It MUST NOT expose the foreign node or topology. |
+| Cross-surface reads | REST terminology and Knowledge Map reads MUST expose the resolved tuple; qualified MCP read tools MUST expose equivalent attribution for their respective reads; the Static Form Knowledge Map MUST agree with the REST map projection. |
+| Surface ownership | MCP tools/list MUST contain only the four qualified terminology/component read tools for this component. Knowledge Map and source replacement MUST remain absent from MCP; source replacement MUST remain protected. |
+| Resource boundary | A caller MUST NOT select a private resource root. The representative replacement requests MUST demonstrate that a request-side resource cannot choose an alternate binding. |
+| Proof level | Focused executable/static evidence MUST be reported separately from live SAR evidence. Prepared artifacts MUST NOT be described as a live runtime pass; only the Phase 7.4 release gate MAY establish that result. |
+
+The cycle is an evidence strategy: each selected key probes a different
+foreign key, and the final probe closes the cycle. It does not define project
+names or make fixture identities public API. A failed, unavailable, stale,
+unauthorized, incomplete, or unknown selection MUST remain a structured
+failure under the outcomes above.
+
 ## Isolation and Non-goals
 
 - A response MUST contain records from one resolved profile and, for

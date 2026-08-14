@@ -196,69 +196,141 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     }
 
     "integrate one resolved profile into public reads" which {
-      "default to official, isolate explicit development and project reads, and retain full attribution" in {
-        Given("private official, development, and project bindings with distinct admitted generations")
+      "default to official, isolate explicit development and project-alpha and project-beta reads, and retain full attribution" in {
+        Given("private official, development, project-alpha, and project-beta bindings with distinct admitted generations")
         val fixture = _profile_read_fixture()
 
-        When("an omitted request and explicit development and project requests are dispatched")
-        val omitted = _search_terms(fixture.assembly.bok, fixture.context, "Runtime", 1)
+        When("positive profile requests and cyclic foreign-marker requests are dispatched")
+        val omitted = _search_terms(fixture.assembly.bok, fixture.context, "Official Profile Marker", 1)
         val developmentread = _search_terms(
           fixture.assembly.bok,
           fixture.context,
-          "Runtime",
+          "Development Profile Marker",
           1,
           Some("development")
         )
-        val projectread = _search_terms(
+        val projectalpharead = _search_terms(
           fixture.assembly.bok,
           fixture.context,
-          "Runtime",
+          "Project Alpha Marker",
           1,
           Some("project"),
-          Some("sample-project")
+          Some("project-alpha")
         )
+        val projectbetaread = _search_terms(
+          fixture.assembly.bok,
+          fixture.context,
+          "Project Beta Marker",
+          1,
+          Some("project"),
+          Some("project-beta")
+        )
+        val officialforeign = _search_terms(fixture.assembly.bok, fixture.context, "Development", 1)
+        val developmentforeign = _search_terms(
+          fixture.assembly.bok,
+          fixture.context,
+          "Alpha",
+          1,
+          Some("development")
+        )
+        val projectalphaforeign = _search_terms(
+          fixture.assembly.bok,
+          fixture.context,
+          "Beta",
+          1,
+          Some("project"),
+          Some("project-alpha")
+        )
+        val projectbetaforeign = _search_terms(
+          fixture.assembly.bok,
+          fixture.context,
+          "Official",
+          1,
+          Some("project"),
+          Some("project-beta")
+        )
+
+        Then("each request exposes only its resolved profile generation and record evidence")
+        val officialterm = _term_record(omitted)
+        val developmentterm = _term_record(developmentread)
+        val projectalphaterm = _term_record(projectalpharead)
+        val projectbetaterm = _term_record(projectbetaread)
         val officialselection = omitted.getRecord("selection").getOrElse(fail("official selection is missing"))
         val developmentselection = developmentread.getRecord("selection").getOrElse(fail("development selection is missing"))
-        val projectselection = projectread.getRecord("selection").getOrElse(fail("project selection is missing"))
-        val officialrecordevidence = omitted.getVector("results").getOrElse(Vector.empty).collect {
-          case result: Record => result.getRecord("term").flatMap(_.getRecord("evidence")).flatMap(_.getString("sourceId"))
-        }
-
-        Then("one request exposes only its resolved profile generation and record evidence")
+        val projectalphaselection = projectalpharead.getRecord("selection").getOrElse(fail("project-alpha selection is missing"))
+        val projectbetaselection = projectbetaread.getRecord("selection").getOrElse(fail("project-beta selection is missing"))
         omitted.getString("status") shouldBe Some("matched")
         developmentread.getString("status") shouldBe Some("matched")
-        projectread.getString("status") shouldBe Some("matched")
+        projectalpharead.getString("status") shouldBe Some("matched")
+        projectbetaread.getString("status") shouldBe Some("matched")
+        Vector(omitted, developmentread, projectalpharead, projectbetaread).foreach { response =>
+          response.getVector("results").getOrElse(Vector.empty) should have size 1
+        }
         officialselection.getString("resolvedProfile") shouldBe Some("official")
         officialselection.getString("datasetId") shouldBe Some("official-dataset")
         officialselection.getString("sourceId") shouldBe Some("official-source")
         officialselection.getString("generation") shouldBe Some("official-g1")
         officialselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("official-source")
-        officialrecordevidence shouldBe Vector(Some("official-source"))
+        officialterm.getString("termId") shouldBe Some("official-marker")
+        officialterm.getString("title") shouldBe Some("Official Profile Marker")
+        officialterm.getString("definition") shouldBe Some("Official representative generation.")
+        officialterm.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("official-source")
         developmentselection.getString("resolvedProfile") shouldBe Some("development")
         developmentselection.getString("datasetId") shouldBe Some("development-dataset")
         developmentselection.getString("sourceId") shouldBe Some("development-source")
         developmentselection.getString("generation") shouldBe Some("development-g1")
         developmentselection.getString("projectId") shouldBe None
-        projectselection.getString("resolvedProfile") shouldBe Some("project")
-        projectselection.getString("projectId") shouldBe Some("sample-project")
-        projectselection.getString("datasetId") shouldBe Some("project-dataset")
-        projectselection.getString("sourceId") shouldBe Some("project-source")
-        projectselection.getString("generation") shouldBe Some("project-g1")
+        developmentterm.getString("termId") shouldBe Some("development-marker")
+        developmentterm.getString("title") shouldBe Some("Development Profile Marker")
+        developmentterm.getString("definition") shouldBe Some("Development representative generation.")
+        developmentterm.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("development-source")
+        projectalphaselection.getString("resolvedProfile") shouldBe Some("project")
+        projectalphaselection.getString("projectId") shouldBe Some("project-alpha")
+        projectalphaselection.getString("datasetId") shouldBe Some("project-alpha-dataset")
+        projectalphaselection.getString("sourceId") shouldBe Some("project-alpha-source")
+        projectalphaselection.getString("generation") shouldBe Some("project-alpha-g1")
+        projectalphaterm.getString("termId") shouldBe Some("project-alpha-marker")
+        projectalphaterm.getString("title") shouldBe Some("Project Alpha Marker")
+        projectalphaterm.getString("definition") shouldBe Some("Project Alpha representative generation.")
+        projectalphaterm.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("project-alpha-source")
+        projectbetaselection.getString("resolvedProfile") shouldBe Some("project")
+        projectbetaselection.getString("projectId") shouldBe Some("project-beta")
+        projectbetaselection.getString("datasetId") shouldBe Some("project-beta-dataset")
+        projectbetaselection.getString("sourceId") shouldBe Some("project-beta-source")
+        projectbetaselection.getString("generation") shouldBe Some("project-beta-g1")
+        projectbetaterm.getString("termId") shouldBe Some("project-beta-marker")
+        projectbetaterm.getString("title") shouldBe Some("Project Beta Marker")
+        projectbetaterm.getString("definition") shouldBe Some("Project Beta representative generation.")
+        projectbetaterm.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("project-beta-source")
         developmentselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("development-source")
-        projectselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("project-source")
+        projectalphaselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("project-alpha-source")
+        projectbetaselection.getRecord("evidence").flatMap(_.getString("sourceId")) shouldBe Some("project-beta-source")
+        _assert_no_match_terms(officialforeign, "official", None, fixture.official)
+        _assert_no_match_terms(developmentforeign, "development", None, fixture.development)
+        _assert_no_match_terms(projectalphaforeign, "project", Some("project-alpha"), fixture.projectalpha)
+        _assert_no_match_terms(projectbetaforeign, "project", Some("project-beta"), fixture.projectbeta)
       }
 
       "accept agreeing Knowledge Map filters for the resolved generation and reject conflicting legacy filters" in {
-        Given("private official, development, and project bindings with distinct admitted generations")
+        Given("private official, development, project-alpha, and project-beta bindings with distinct admitted generations")
         val fixture = _profile_read_fixture()
 
-        When("a project map confirms its resolved identities and an omitted selector supplies development identities")
+        When("an agreeing project map, a foreign focus, and conflicting legacy filters are dispatched")
         val projectmap = _knowledge_map(
           fixture.assembly.bok,
           fixture.context,
-          fixture.project,
+          fixture.projectalpha,
           Some("project"),
-          Some("sample-project")
+          Some("project-alpha"),
+          focus = None
+        )
+        val foreignfocusmap = _knowledge_map(
+          fixture.assembly.bok,
+          fixture.context,
+          fixture.projectalpha,
+          Some("project"),
+          Some("project-alpha"),
+          focus = Some("project-beta-node")
         )
         val conflicting = _knowledge_map_c(
           fixture.assembly.bok,
@@ -269,19 +341,20 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
           None,
           None
         )
-        val mapselection = projectmap.getRecord("selection").getOrElse(fail("Knowledge Map selection is missing"))
 
-        Then("the agreeing map returns only the project generation and the conflicting request has no fallback response")
+        Then("the agreeing map returns only the project generation and foreign or conflicting requests have no fallback response")
+        val mapselection = projectmap.getRecord("selection").getOrElse(fail("Knowledge Map selection is missing"))
         projectmap.getString("status") shouldBe Some("matched")
         mapselection.getString("resolvedProfile") shouldBe Some("project")
-        mapselection.getString("projectId") shouldBe Some("sample-project")
-        mapselection.getString("datasetId") shouldBe Some("project-dataset")
-        mapselection.getString("sourceId") shouldBe Some("project-source")
-        mapselection.getString("generation") shouldBe Some("project-g1")
+        mapselection.getString("projectId") shouldBe Some("project-alpha")
+        mapselection.getString("datasetId") shouldBe Some("project-alpha-dataset")
+        mapselection.getString("sourceId") shouldBe Some("project-alpha-source")
+        mapselection.getString("generation") shouldBe Some("project-alpha-g1")
         projectmap.getVector("sources").getOrElse(Vector.empty).collect {
           case source: Record => source.getString("sourceId")
-        } shouldBe Vector(Some("project-source"))
+        } shouldBe Vector(Some("project-alpha-source"))
         _failure_code(conflicting) shouldBe Some(BokProfileResolutionFailure.ConflictingSelection)
+        _assert_no_match_map(foreignfocusmap, "project", Some("project-alpha"), fixture.projectalpha)
       }
 
       "return project-identity-required for an incomplete project selector" in {
@@ -375,22 +448,25 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
   }
 
   private def _profile_read_fixture(): ProfileReadFixture = {
-    val official = _source("official-g1", "official-source", "official-dataset")
-    val development = _source("development-g1", "development-source", "development-dataset")
-    val project = _source("project-g1", "project-source", "project-dataset")
+    val official = _profile_source("official", "official-g1", "official-source", "official-dataset")
+    val development = _profile_source("development", "development-g1", "development-source", "development-dataset")
+    val projectalpha = _profile_source("project-alpha", "project-alpha-g1", "project-alpha-source", "project-alpha-dataset")
+    val projectbeta = _profile_source("project-beta", "project-beta-g1", "project-beta-source", "project-beta-dataset")
     val assembly = _assembly(
       includesie = true,
       configuration = _profile_configuration(Vector(
         ("official", None, official),
         ("development", None, development),
-        ("project", Some("sample-project"), project)
+        ("project", Some("project-alpha"), projectalpha),
+        ("project", Some("project-beta"), projectbeta)
       ))
     )
-    val context = _context(_first_resources)
+    val context = _context(_profile_resources)
     _replace(assembly.bok, context, official)
     _replace(assembly.bok, context, development)
-    _replace(assembly.bok, context, project)
-    ProfileReadFixture(assembly, context, development, project)
+    _replace(assembly.bok, context, projectalpha)
+    _replace(assembly.bok, context, projectbeta)
+    ProfileReadFixture(assembly, context, official, development, projectalpha, projectbeta)
   }
 
   private def _replace(
@@ -465,14 +541,15 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     context: ExecutionContext,
     source: BokKnowledgeSource,
     profile: Option[String] = None,
-    projectid: Option[String] = None
+    projectid: Option[String] = None,
+    focus: Option[String] = Some("runtime")
   ): Record =
     _record(_knowledge_map_c(
       bok,
       context,
       Some(source.datasetId.value),
       Some(source.sourceId.value),
-      Some("runtime"),
+      focus,
       profile,
       projectid
     ).TAKE)
@@ -537,6 +614,52 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       case other => fail(s"Expected RecordResponse but got ${other.getClass.getName}")
     }
 
+  private def _term_record(response: Record): Record = {
+    val terms = response.getVector("results").getOrElse(Vector.empty).collect {
+      case result: Record => result.getRecord("term").getOrElse(result)
+    }
+    terms should have size 1
+    terms.head
+  }
+
+  private def _assert_no_match_terms(
+    response: Record,
+    resolvedprofile: String,
+    projectid: Option[String],
+    source: BokKnowledgeSource
+  ): Unit = {
+    response.getString("status") shouldBe Some("no-match")
+    response.getVector("results").getOrElse(Vector.empty) should have size 0
+    val selection = response.getRecord("selection").getOrElse(fail("No-match selection is missing"))
+    selection.getString("resolvedProfile") shouldBe Some(resolvedprofile)
+    selection.getString("projectId") shouldBe projectid
+    selection.getString("datasetId") shouldBe Some(source.datasetId.value)
+    selection.getString("sourceId") shouldBe Some(source.sourceId.value)
+    selection.getString("generation") shouldBe Some(source.generation.value)
+  }
+
+  private def _assert_no_match_map(
+    response: Record,
+    resolvedprofile: String,
+    projectid: Option[String],
+    source: BokKnowledgeSource
+  ): Unit = {
+    response.getString("status") shouldBe Some("no-match")
+    response.getVector("nodes").getOrElse(Vector.empty) should have size 0
+    response.getVector("relationships").getOrElse(Vector.empty) should have size 0
+    val selection = response.getRecord("selection").getOrElse(fail("No-match Knowledge Map selection is missing"))
+    selection.getString("resolvedProfile") shouldBe Some(resolvedprofile)
+    selection.getString("projectId") shouldBe projectid
+    selection.getString("datasetId") shouldBe Some(source.datasetId.value)
+    selection.getString("sourceId") shouldBe Some(source.sourceId.value)
+    selection.getString("generation") shouldBe Some(source.generation.value)
+    val sources = response.getVector("sources").getOrElse(Vector.empty).collect { case value: Record => value }
+    sources should have size 1
+    sources.head.getString("datasetId") shouldBe Some(source.datasetId.value)
+    sources.head.getString("sourceId") shouldBe Some(source.sourceId.value)
+    sources.head.getString("generation") shouldBe Some(source.generation.value)
+  }
+
   private def _failure_code(
     result: Consequence[?]
   ): Option[BokProfileResolutionFailure] =
@@ -554,14 +677,23 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
   private def _source(
     generation: String,
     sourceid: String = "simplemodeling",
-    datasetid: String = "simplemodeling-bok"
+    datasetid: String = "simplemodeling-bok",
+    resourceid: String = "fixture"
   ): BokKnowledgeSource =
     BokKnowledgeSource(
       BokSourceId(sourceid),
       BokDatasetId(datasetid),
       BokSourceGeneration(generation),
-      BokResourceReference("urn:textus:bok:fixture")
+      BokResourceReference(s"urn:textus:bok:$resourceid")
     )
+
+  private def _profile_source(
+    profileid: String,
+    generation: String,
+    sourceid: String,
+    datasetid: String
+  ): BokKnowledgeSource =
+    _source(generation, sourceid, datasetid, profileid)
 
   private def _profile_configuration(source: BokKnowledgeSource): ResolvedConfiguration =
     _profile_configuration(Vector(("official", None, source)))
@@ -656,6 +788,51 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
         |}""".stripMargin
   )
 
+  private val _profile_manifest =
+    """{
+      |  "schemaVersion": "cncf.knowledge-source.v1",
+      |  "resources": [
+      |    {"kind":"glossary-terms","href":"metadata/glossary/terms.json"},
+      |    {"kind":"rdf-graph-summary","href":"metadata/rdf/graph.json"}
+      |  ]
+      |}""".stripMargin
+
+  private def _profile_resources: Map[String, String] =
+    Vector(
+      ("official", "official-marker", "Official Profile Marker", "Official representative generation.", "official-source"),
+      ("development", "development-marker", "Development Profile Marker", "Development representative generation.", "development-source"),
+      ("project-alpha", "project-alpha-marker", "Project Alpha Marker", "Project Alpha representative generation.", "project-alpha-source"),
+      ("project-beta", "project-beta-marker", "Project Beta Marker", "Project Beta representative generation.", "project-beta-source")
+    ).flatMap { case (profileid, termid, marker, definition, sourceid) =>
+      Vector(
+        s"$profileid/metadata/cncf/knowledge-source.json" -> _profile_manifest,
+        s"$profileid/metadata/glossary/terms.json" -> _profile_terms(termid, marker, definition),
+        s"$profileid/metadata/rdf/graph.json" -> _profile_graph(profileid, termid, marker, sourceid)
+      )
+    }.toMap
+
+  private def _profile_terms(
+    termid: String,
+    marker: String,
+    definition: String
+  ): String =
+    s"""{"terms":[{"id":"$termid","title":"$marker","definition_text":"$definition","category":"architecture","term_type":"concept"}]}"""
+
+  private def _profile_graph(
+    profileid: String,
+    termid: String,
+    marker: String,
+    sourceid: String
+  ): String =
+    s"""{
+       |  "schemaVersion":"cozy.rdf-graph-summary.v1",
+       |  "kind":"rdf-graph-summary",
+       |  "sourceRef":{"kind":"bok-site","value":"${sourceid}-ref","uri":"https://evidence.example/$sourceid/source"},
+       |  "nodes":[{"id":"${profileid}-node","label":"$marker","node_type":"term","category":"architecture","terms":["$termid"]}],
+       |  "edges":[],
+       |  "truncated":false
+       |}""".stripMargin
+
   private val _second_resources = Map(
     "fixture/metadata/cncf/knowledge-source.json" -> _manifest,
     "fixture/metadata/glossary/terms.json" ->
@@ -674,8 +851,10 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
   private final case class ProfileReadFixture(
     assembly: Assembly,
     context: ExecutionContext,
+    official: BokKnowledgeSource,
     development: BokKnowledgeSource,
-    project: BokKnowledgeSource
+    projectalpha: BokKnowledgeSource,
+    projectbeta: BokKnowledgeSource
   )
 }
 

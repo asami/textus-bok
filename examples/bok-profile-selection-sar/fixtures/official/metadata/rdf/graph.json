@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "cozy.rdf-graph-summary.v1",
+  "kind": "rdf-graph-summary",
+  "sourceRef": {
+    "kind": "bok-site",
+    "value": "profile-official-source-ref",
+    "uri": "https://evidence.example/textus-bok/profile-official/source"
+  },
+  "nodes": [
+    {
+      "id": "profile-official-node",
+      "label": "Official Profile Marker",
+      "node_type": "term",
+      "category": "architecture",
+      "terms": ["profile-official-marker"]
+    }
+  ],
+  "edges": [],
+  "truncated": false
+}
