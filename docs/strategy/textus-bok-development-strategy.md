@@ -63,10 +63,12 @@ configuration-bound resolution, complete-generation admission, deterministic
 failure behavior, and canonical component-identity integration. Phase 7.2
 closed on 2026-08-15 with exact profile-scoped public reads, resolved-selection
 attribution, pre-classification catalog and SIE filtering, Knowledge Map
-compatibility narrowing, and MCP schema parity. Phase 7.3 is the next priority
-and owns Web/operator integration, but it has not started. Phase 7.4 remains
-the later representative runtime closure. Each child starts only after its
-predecessor closes.
+compatibility narrowing, and MCP schema parity. Phase 7.3 closed on 2026-08-15
+with the profile-aware Static Form, shareable selection state, complete
+no-JavaScript attribution and failure rendering, safe progressive behavior,
+CAR packaging, and operator/developer guidance. Phase 7.4 is the next priority
+and has not started; it owns the representative runtime closure. Each child
+starts only after its predecessor closes.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside active feature

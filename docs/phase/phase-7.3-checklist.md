@@ -6,17 +6,24 @@ The summary and current step are recorded in `phase-7.3.md`.
 
 ## P7-04: Web and Operator Integration
 
-- [ ] The Static Form Knowledge Map offers `official`, `development`, and
+- [x] The Static Form Knowledge Map offers `official`, `development`, and
   `project` choices, requests project identity only for `project`, and submits
   the same public operation contract used outside Web.
-- [ ] The selection remains visible and shareable in request state, and the
+- [x] The selection remains visible and shareable in request state, and the
   complete no-JavaScript result identifies the resolved profile and evidence.
-- [ ] Progressive enhancement, keyboard access, narrow-screen behavior, and
+- [x] Progressive enhancement, keyboard access, narrow-screen behavior, and
   safe text/URI rendering remain valid for all three choices and structured
   failure states.
-- [ ] Operator/developer documentation explains how SAR configuration prepares
+- [x] Operator/developer documentation explains how SAR configuration prepares
   each profile, how generation freshness is observed, and how selection
   failures are diagnosed without weakening resource or MCP boundaries.
 
 Phase 7.3 closes only while every P7-04 item remains checked and validation
 evidence remains recorded in `phase-7.3.md`.
+
+## Closure Basis
+
+All four P7-04 outcomes are backed by the P7-D implementation commit, focused
+Web and accumulated validation, a clean accumulated full review, the clean
+Phase-release full suite, successful CAR packaging, and the normal CAR-lint
+disposition recorded in `phase-7.3.md`.

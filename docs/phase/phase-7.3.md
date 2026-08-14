@@ -1,8 +1,8 @@
 # Phase 7.3: Web and Operator Integration
 
 Stage Status:
-- Current status: OPEN
-- Current step: P7-D Web and Operator Integration
+- Current status: CLOSED
+- Current step: P7-D Web and Operator Integration (closed)
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-7.3-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -84,3 +84,30 @@ Phase 7.3 closes only when every P7-04 item in
 evidence is recorded here, validated work is committed, and final review finds
 no actionable Phase 7.3 issue. Closure hands control to Phase 7.4 but does not
 start it.
+
+## Closure Evidence
+
+Phase 7.3 closed on 2026-08-15. P7-D was committed as
+`6ced99478b35db65ccb8b2a0977b723f8376ec52`, adding the profile-aware Static
+Form, shareable selection state, complete no-JavaScript attribution and
+failure rendering, safe progressive behavior, CAR packaging, and
+operator/developer guidance.
+
+- Focused Web validation passed 5/5 tests in invocation
+  `78441-20260814T202417Z`.
+- Accumulated focused validation passed 14/14 tests in invocation
+  `82683-20260814T202434Z`.
+- The accumulated full review passed with no actionable findings.
+- The Phase-release full suite passed 8 suites and 53/53 tests in invocation
+  `39705-20260814T204856Z`.
+- `cozyBuildCAR` passed in invocation `39040-20260814T204747Z`; the resulting
+  CAR SHA-256 was
+  `240b9a9e1a2df348e1704ea6455955a157817969d004e91008686ef7e1eccd88`.
+- Normal CAR lint accepted the canonical schema-v3 identity, structure,
+  packaging, CML descriptions, manuals, component factory, and internal DSL.
+  The outer legacy-descriptor helper finding is the already-recorded
+  `P7.1-HY-01`, not a Phase 7.3 blocker; inherited ABI, SNAPSHOT, and nominal
+  wrapper warnings remain outside this Phase. Semantic documentation review
+  found no actionable issue.
+
+Phase 7.4 is the next delivery unit and remains unstarted.
