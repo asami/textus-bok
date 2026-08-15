@@ -261,10 +261,10 @@ trap _cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-mkdir -p "$component_dir" "$sar_root"
-cp "$SIE_CAR" "$BOK_CAR" "$SCRAPER_CAR" "$component_dir/"
+mkdir -p "$component_dir" "$sar_root/component"
+cp "$SIE_CAR" "$BOK_CAR" "$SCRAPER_CAR" "$sar_root/component/"
 cp "$SAR_DESCRIPTOR" "$sar_root/subsystem-descriptor.yaml"
-(cd "$sar_root" && zip -qr "$sar_file" subsystem-descriptor.yaml)
+(cd "$sar_root" && zip -qr "$sar_file" subsystem-descriptor.yaml component)
 
 cat >"$config_file" <<EOF
 textus.bok.profile-registry:
@@ -322,6 +322,7 @@ env \
     "--textus.subsystem=textus-bok-profile-selection" \
     server \
     --no-project-classpath \
+    --no-default-components \
     --component-dir "$component_dir" >"$server_log" 2>&1 &
 server_pid=$!
 server_pid_signature="$(_process_signature "$server_pid" || true)"

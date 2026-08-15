@@ -12,7 +12,7 @@ import org.simplemodeling.textus.bok.value.{BokEvidence, BokKnowledgeSource}
  * Private deterministic bindings from BoK profile identities to admitted generations.
  *
  * @since   Aug. 14, 2026
- * @version Aug. 14, 2026
+ * @version Aug. 15, 2026
  * @author  ASAMI, Tomoharu
  */
 private[bok] enum BokProfileKind(val selectionName: String) {
@@ -381,10 +381,13 @@ private[bok] object BokProfileResolutionFailure {
     message: String
   ): Consequence[A] = {
     val keyfacets = key.toVector.map(x => Descriptor.Facet.Key(x.render))
-    Consequence.fail(
+    val conclusion = Consequence.fail(
       failure.taxonomy,
       message,
       Descriptor.Facet.Reason(failure.code) +: keyfacets
+    ).conclusion
+    Consequence.Failure(
+      conclusion.copy(status = conclusion.status.copy(appStatus = Some(failure.code)))
     )
   }
 

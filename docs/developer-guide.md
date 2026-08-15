@@ -47,6 +47,12 @@ fails. Keep the stable failure codes and their meanings intact:
 `unavailable`, `stale`, `ambiguous`, `unauthorized`, and
 `conflicting-selection`.
 
+The stable failure code remains the internal `Reason` facet classification and
+is explicitly materialized as `Conclusion.status.appStatus`. `appStatus` is the
+canonical structured transport projection for REST, Web, and MCP consumers;
+do not parse messages, promote `Reason` framework-wide, or return a fallback
+or foreign result when a selection fails.
+
 The Web selectors invoke the same public Knowledge Map operation and remain
 read-only. Resource locations, source registration/replacement, provider
 credentials, and MCP readiness stay outside the Web surface. Knowledge Map
@@ -182,15 +188,17 @@ BOK_PROFILE_SELECTION_SAR_STARTUP_TIMEOUT_SECONDS and
 BOK_PROFILE_SELECTION_SAR_SHUTDOWN_TIMEOUT_SECONDS; the example README
 documents the complete list.
 
-P7-E1 has prepared and focused/static-validated the fixture, lifecycle, probe,
-and executable specification. That evidence does not substitute for live
-runtime evidence: the lifecycle has not yet been executed. The Phase 7.4
-release gate alone owns live scripts/check-bok-profile-selection-sar.sh
-execution, the full test suite, CAR build/lint, final review, and closure.
+Prepared fixture, lifecycle, probe, and executable-specification artifacts do
+not substitute for live runtime evidence. The Phase 7.4 release gate alone
+owns live scripts/check-bok-profile-selection-sar.sh execution, the full test
+suite, CAR build/lint, final review, and closure. The incomplete- and
+unknown-project probes require MCP's exact
+`structuredContent.error.appStatus` and Static Form's HTTP-200 escaped
+`error.appStatus` property, with no fallback selection attribution.
 Expected live markers are:
 
 ```text
-BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4
+BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2
 BOK_PROFILE_SELECTION_SAR_LIFECYCLE_OK profiles=4
 ```
 

@@ -18,6 +18,16 @@ READ_TOOLS = {
     "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
     "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
 }
+FAILURE_CODES = {
+    "invalid-selection",
+    "project-identity-required",
+    "unregistered",
+    "unavailable",
+    "stale",
+    "ambiguous",
+    "unauthorized",
+    "conflicting-selection",
+}
 
 _server_pid: int | None = None
 _server_pid_signature: str | None = None
@@ -285,6 +295,43 @@ def _mcp_call(
     return decoded
 
 
+def _mcp_failure(
+    base_url: str,
+    request_id: str,
+    name: str,
+    arguments: dict,
+    expected_app_status: str,
+    timeout: float,
+) -> None:
+    status, envelope = _post_json(
+        base_url,
+        "/mcp",
+        {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        },
+        timeout,
+        mcp=True,
+    )
+    _require(200 <= status < 300, f"MCP {request_id} returned HTTP {status}: {envelope}")
+    _require(envelope.get("jsonrpc") == "2.0", f"MCP {request_id} returned an invalid JSON-RPC version: {envelope}")
+    _require(envelope.get("id") == request_id, f"MCP {request_id} returned a mismatched response id: {envelope}")
+    _require("error" not in envelope, f"MCP {request_id} returned a JSON-RPC protocol error: {envelope}")
+    result = envelope.get("result")
+    _require(isinstance(result, dict) and set(result) == {"isError", "content", "structuredContent"}, f"MCP {request_id} returned an unexpected failure result: {envelope}")
+    _require(result.get("isError") is True, f"MCP {request_id} did not mark the operation failure: {envelope}")
+    content = result.get("content")
+    _require(isinstance(content, list) and len(content) == 1, f"MCP {request_id} did not retain one legacy text block: {envelope}")
+    block = content[0]
+    _require(isinstance(block, dict) and set(block) == {"type", "text"} and block.get("type") == "text" and isinstance(block.get("text"), str), f"MCP {request_id} did not retain one legacy text block: {envelope}")
+    structured = result.get("structuredContent")
+    _require(isinstance(structured, dict) and set(structured) == {"error"}, f"MCP {request_id} returned an unexpected structured failure projection: {envelope}")
+    error = structured.get("error")
+    _require(isinstance(error, dict) and set(error) == {"appStatus"} and error.get("appStatus") == expected_app_status, f"MCP {request_id} appStatus mismatch: {envelope}")
+
+
 def _selection_arguments(profile: dict) -> dict:
     arguments = {}
     if profile["name"] != "official":
@@ -515,20 +562,32 @@ def _script_model(page: str) -> dict:
     return _body(json.loads(html.unescape(match.group(1))))
 
 
+def _web_failure(
+    base_url: str,
+    parameters: dict[str, str],
+    expected_app_status: str,
+    timeout: float,
+    label: str,
+) -> None:
+    status, page = _get_text(base_url, "/web/bok/textus-bok/map", parameters, timeout)
+    _require(200 <= status < 300, f"{label} returned HTTP {status}")
+    _require("error.appStatus" in page, f"{label} did not render the error.appStatus property")
+    _require(html.escape(expected_app_status) in page, f"{label} did not render its exact application status")
+    for profile in PROFILES:
+        for attribution in (
+            profile["dataset_id"],
+            profile["source_id"],
+            profile["generation"],
+            profile["evidence_uri"],
+        ):
+            _require(attribution not in page, f"{label} leaked fallback selection attribution {attribution}")
+
+
 def _failure_code(value: object) -> str | None:
     if isinstance(value, dict):
-        for name in ("code", "reason", "failureCode", "failure_code", "status"):
+        for name in ("appStatus", "app_status", "code", "reason", "failureCode", "failure_code", "status"):
             candidate = value.get(name)
-            if isinstance(candidate, str) and candidate in {
-                "invalid-selection",
-                "project-identity-required",
-                "unregistered",
-                "unavailable",
-                "stale",
-                "ambiguous",
-                "unauthorized",
-                "conflicting-selection",
-            }:
+            if isinstance(candidate, str) and candidate in FAILURE_CODES:
                 return candidate
         for candidate in value.values():
             found = _failure_code(candidate)
@@ -724,6 +783,21 @@ def _run(base_url: str, fixture_root: Path, timeout: float) -> None:
     )
     _require(incomplete_status >= 400, f"Incomplete project selection unexpectedly succeeded: {incomplete}")
     _require(_failure_code(incomplete) == "project-identity-required", f"Incomplete project failure is not structured: {incomplete}")
+    _mcp_failure(
+        base_url,
+        "profile-incomplete-project",
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms",
+        {"query": "Official Profile Marker", "limit": 10, "profile": "project"},
+        "project-identity-required",
+        timeout,
+    )
+    _web_failure(
+        base_url,
+        {"profile": "project"},
+        "project-identity-required",
+        timeout,
+        "Static Form incomplete project selection",
+    )
 
     unknown_status, unknown = _post_json(
         base_url,
@@ -733,11 +807,26 @@ def _run(base_url: str, fixture_root: Path, timeout: float) -> None:
     )
     _require(unknown_status >= 400, f"Unknown project selection unexpectedly succeeded: {unknown}")
     _require(_failure_code(unknown) == "unregistered", f"Unknown project failure is not structured: {unknown}")
+    _mcp_failure(
+        base_url,
+        "profile-unknown-project",
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms",
+        {"query": "Official Profile Marker", "limit": 10, "profile": "project", "projectId": "project-missing"},
+        "unregistered",
+        timeout,
+    )
+    _web_failure(
+        base_url,
+        {"profile": "project", "projectId": "project-missing"},
+        "unregistered",
+        timeout,
+        "Static Form unknown project selection",
+    )
 
     print(
         "BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 "
         "web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 "
-        "negative_rest_maps=4 negative_web_maps=4"
+        "negative_rest_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2"
     )
 
 

@@ -86,9 +86,20 @@ without exposing administrative configuration.
 
 Each resolver failure is a `Consequence.Failure` with an Observation taxonomy
 and a structured `Reason` facet containing the stable Phase 7 failure code.
-The registry retains the closed outcomes `invalid-selection`,
+That `Reason` facet remains the registry's internal classification; the same
+code is explicitly materialized as `Conclusion.status.appStatus`, the canonical
+structured transport projection for REST, Web, and MCP consumers. This does
+not parse a message, promote `Reason` in framework-wide behavior, or create a
+fallback or foreign result. The registry retains the closed outcomes `invalid-selection`,
 `project-identity-required`, `unregistered`, `unavailable`, `stale`,
 `ambiguous`, `unauthorized`, and `conflicting-selection`.
+
+MCP retains its legacy operation-failure result (`isError` and one text block)
+and projects the code only as `structuredContent.error.appStatus`. The Static
+Form Knowledge Map retains its intentional HTTP `200` operation-result page
+and renders that code only as the escaped `error.appStatus` property. Neither
+surface recovers a code from the Reason or message, and neither may attribute a
+failure to a fallback profile.
 
 The private resource reference and identities of unrelated project bindings
 are not included in those failures.

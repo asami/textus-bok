@@ -17,7 +17,7 @@ import org.simplemodeling.textus.bok.value.{BokEvidence, BokKnowledgeSource}
 
 /*
  * @since   Aug. 14, 2026
- * @version Aug. 14, 2026
+ * @version Aug. 15, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -39,8 +39,12 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
         )
 
         Then("duplicate and official-shadowing attempts remain distinct structured failures")
-        _failure_code(duplicate) shouldBe Some(BokProfileResolutionFailure.Ambiguous)
-        _failure_code(shadow) shouldBe Some(BokProfileResolutionFailure.ConflictingSelection)
+        _failure_projection(duplicate) shouldBe Some(
+          BokProfileResolutionFailure.Ambiguous -> Some(BokProfileResolutionFailure.Ambiguous.code)
+        )
+        _failure_projection(shadow) shouldBe Some(
+          BokProfileResolutionFailure.ConflictingSelection -> Some(BokProfileResolutionFailure.ConflictingSelection.code)
+        )
       }
 
       "reject malformed component configuration through the closed structured failure vocabulary" in {
@@ -68,9 +72,9 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
         )
 
         Then("every parser failure carries invalid-selection instead of an unclassified argument failure")
-        results.map(_failure_code) shouldBe Vector.fill(3)(
-          Some(BokProfileResolutionFailure.InvalidSelection)
-        )
+        results.map(_failure_projection) shouldBe Vector.fill(3)(Some(
+          BokProfileResolutionFailure.InvalidSelection -> Some(BokProfileResolutionFailure.InvalidSelection.code)
+        ))
       }
 
       "fail production component initialization for malformed private configuration" in {
@@ -89,7 +93,9 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
         )
 
         Then("initialization fails before an ActionCall can observe the malformed registry")
-        _failure_code(result) shouldBe Some(BokProfileResolutionFailure.InvalidSelection)
+        _failure_projection(result) shouldBe Some(
+          BokProfileResolutionFailure.InvalidSelection -> Some(BokProfileResolutionFailure.InvalidSelection.code)
+        )
       }
     }
 
@@ -194,7 +200,9 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
         val result = registry.loadConfiguredSource(context, BokProfileKey.official)
 
         Then("the failure is unavailable and does not expose the private resource value")
-        _failure_code(result) shouldBe Some(BokProfileResolutionFailure.Unavailable)
+        _failure_projection(result) shouldBe Some(
+          BokProfileResolutionFailure.Unavailable -> Some(BokProfileResolutionFailure.Unavailable.code)
+        )
         val display = result match {
           case Consequence.Failure(conclusion) => conclusion.display
           case Consequence.Success(_) => fail("Expected the configured resource load to fail")
@@ -256,13 +264,27 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
         )
 
         Then("the requested key fails explicitly and neither another profile nor process context is consulted")
-        _failure_code(invalid) shouldBe Some(BokProfileResolutionFailure.InvalidSelection)
-        _failure_code(projectidentityrequired) shouldBe Some(BokProfileResolutionFailure.ProjectIdentityRequired)
-        _failure_code(unavailable) shouldBe Some(BokProfileResolutionFailure.Unavailable)
-        _failure_code(unauthorized) shouldBe Some(BokProfileResolutionFailure.Unauthorized)
-        _failure_code(unauthorizedunregistered) shouldBe Some(BokProfileResolutionFailure.Unauthorized)
-        _failure_code(unregistered) shouldBe Some(BokProfileResolutionFailure.Unregistered)
-        _failure_code(conflicting) shouldBe Some(BokProfileResolutionFailure.ConflictingSelection)
+        _failure_projection(invalid) shouldBe Some(
+          BokProfileResolutionFailure.InvalidSelection -> Some(BokProfileResolutionFailure.InvalidSelection.code)
+        )
+        _failure_projection(projectidentityrequired) shouldBe Some(
+          BokProfileResolutionFailure.ProjectIdentityRequired -> Some(BokProfileResolutionFailure.ProjectIdentityRequired.code)
+        )
+        _failure_projection(unavailable) shouldBe Some(
+          BokProfileResolutionFailure.Unavailable -> Some(BokProfileResolutionFailure.Unavailable.code)
+        )
+        _failure_projection(unauthorized) shouldBe Some(
+          BokProfileResolutionFailure.Unauthorized -> Some(BokProfileResolutionFailure.Unauthorized.code)
+        )
+        _failure_projection(unauthorizedunregistered) shouldBe Some(
+          BokProfileResolutionFailure.Unauthorized -> Some(BokProfileResolutionFailure.Unauthorized.code)
+        )
+        _failure_projection(unregistered) shouldBe Some(
+          BokProfileResolutionFailure.Unregistered -> Some(BokProfileResolutionFailure.Unregistered.code)
+        )
+        _failure_projection(conflicting) shouldBe Some(
+          BokProfileResolutionFailure.ConflictingSelection -> Some(BokProfileResolutionFailure.ConflictingSelection.code)
+        )
         registry.resolve(
           BokProfileSelection(),
           BokProfileCompatibilityFilter(),
@@ -319,7 +341,9 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
         )
 
         Then("retention does not make the older generation current under that freshness policy")
-        _failure_code(stale) shouldBe Some(BokProfileResolutionFailure.Stale)
+        _failure_projection(stale) shouldBe Some(
+          BokProfileResolutionFailure.Stale -> Some(BokProfileResolutionFailure.Stale.code)
+        )
 
         When("the replacement is later admitted as complete")
         registry.admit(
@@ -410,11 +434,12 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
        |  }]
        |}""".stripMargin
 
-  private def _failure_code(
+  private def _failure_projection(
     result: Consequence[?]
-  ): Option[BokProfileResolutionFailure] =
+  ): Option[(BokProfileResolutionFailure, Option[String])] =
     result match {
-      case Consequence.Failure(conclusion) => BokProfileResolutionFailure.from(conclusion)
+      case Consequence.Failure(conclusion) =>
+        BokProfileResolutionFailure.from(conclusion).map(_ -> conclusion.status.appStatus)
       case Consequence.Success(_) => None
     }
 
