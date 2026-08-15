@@ -319,14 +319,18 @@ publication. It also cycles foreign-term and foreign-focus queries across the
 four bindings: each must retain the selected attribution while returning no
 match with empty results or topology. The checks prove that a selected read
 does not union generations, cross project boundaries, or fall back. REST and
-Web map projections must agree. `tools/list` keeps Knowledge Map absent from
-MCP, and `replaceKnowledgeSource` remains protected and non-MCP; callers do
-not provide private resource roots.
+Web map projections must agree. For incomplete and unknown project selectors,
+the two MCP calls retain their legacy error text and expose the exact
+`structuredContent.error.appStatus`; the two Static Form Web checks intentionally
+return HTTP 200 result pages with escaped `error.appStatus` and no fallback
+selection attribution. `tools/list` keeps Knowledge Map absent from MCP, and
+`replaceKnowledgeSource` remains protected and non-MCP; callers do not provide
+private resource roots.
 
 On a live release-gate run, the probe reports these stable markers:
 
 ```text
-BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4
+BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2
 BOK_PROFILE_SELECTION_SAR_LIFECYCLE_OK profiles=4
 ```
 
@@ -337,10 +341,10 @@ Repository, CAR, fixture, CNCF, port, URL, timeout, and runtime-development
 overrides are documented in the
 [profile-selection SAR README](../../../../examples/bok-profile-selection-sar/README.md).
 
-P7-E1 prepared and focused/static-validated these fixtures, the lifecycle,
-the probe, and the executable specification; this prepared artifact has not
-been live-passed. Only the Phase 7.4 release gate may execute the lifecycle and
-claim live runtime, full-test, CAR build/lint, review, or closure evidence.
+Phase 7.4's release gate has live-passed this representative lifecycle and
+probe. Full-test and CAR build/lint evidence is recorded separately in the
+Phase ledger; final re-review, release commit, and phase closure remain
+separate gates until they complete.
 
 ## MCP Use
 

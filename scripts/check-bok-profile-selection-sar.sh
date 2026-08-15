@@ -201,37 +201,107 @@ _listener_belongs_to_server() {
   return 1
 }
 
+_captured_server_state() {
+  local current
+  local process_state
+
+  if [[ -z "$server_pid" || -z "$server_pid_signature" ]]; then
+    printf '%s\n' "absent"
+    return 0
+  fi
+  current="$(_process_signature "$server_pid" || true)"
+  if [[ -z "$current" ]]; then
+    printf '%s\n' "absent"
+    return 0
+  fi
+  if [[ "$current" != "$server_pid_signature" ]]; then
+    printf '%s\n' "identity-mismatch"
+    return 0
+  fi
+  process_state="$(ps -o stat= -p "$server_pid" 2>/dev/null || true)"
+  process_state="${process_state#"${process_state%%[![:space:]]*}"}"
+  process_state="${process_state%"${process_state##*[![:space:]]}"}"
+  if [[ "$process_state" == Z* ]]; then
+    printf '%s\n' "zombie"
+  else
+    printf '%s\n' "live"
+  fi
+}
+
+_reap_captured_server() {
+  local state
+
+  state="$(_captured_server_state)"
+  case "$state" in
+    absent|zombie)
+      # The captured child is already absent or a zombie, so wait cannot block.
+      if [[ -n "$server_pid" ]]; then
+        wait "$server_pid" >/dev/null 2>&1 || true
+      fi
+      server_pid=""
+      server_pid_signature=""
+      return 0
+      ;;
+    live)
+      return 1
+      ;;
+    identity-mismatch)
+      echo "Refusing to reap profile-selection SAR server PID $server_pid because its captured identity no longer matches." >&2
+      return 1
+      ;;
+    *)
+      echo "Could not determine the captured profile-selection SAR server state: $state" >&2
+      return 1
+      ;;
+  esac
+}
+
 _stop_server() {
   local deadline
   local listener_pids
+  local server_state
   local stop_failed=0
 
   if [[ -z "$server_pid" && -z "$server_listener_pid" ]]; then
     return 0
   fi
 
+  deadline=$((SECONDS + SHUTDOWN_TIMEOUT_SECONDS))
   _terminate_captured_process "profile-selection SAR listener" "$server_listener_pid" "$server_listener_pid_signature" || stop_failed=1
   _terminate_captured_process "profile-selection SAR server" "$server_pid" "$server_pid_signature" || stop_failed=1
-  if [[ -n "$server_pid" ]]; then
-    wait "$server_pid" >/dev/null 2>&1 || true
-  fi
-  deadline=$((SECONDS + SHUTDOWN_TIMEOUT_SECONDS))
   while :; do
+    server_state="$(_captured_server_state)"
+    case "$server_state" in
+      absent|zombie)
+        if ! _reap_captured_server; then
+          return 1
+        fi
+        server_state="absent"
+        ;;
+      live)
+        ;;
+      identity-mismatch)
+        echo "Captured profile-selection SAR server PID $server_pid changed identity during shutdown; refusing to wait for or stop the reused PID." >&2
+        return 1
+        ;;
+      *)
+        echo "Could not determine the captured profile-selection SAR server state: $server_state" >&2
+        return 1
+        ;;
+    esac
     if ! listener_pids="$(_listening_pids)"; then
       return 1
     fi
-    if [[ -z "$listener_pids" ]]; then
+    if [[ -z "$listener_pids" && "$server_state" == "absent" ]]; then
       if ((stop_failed != 0)); then
         return 1
       fi
-      server_pid=""
-      server_pid_signature=""
       server_listener_pid=""
       server_listener_pid_signature=""
       return 0
     fi
     if ((SECONDS >= deadline)); then
-      echo "Timed out waiting for port $CNCF_SERVER_PORT to have no listener after profile-selection SAR shutdown." >&2
+      echo "Timed out shutting down profile-selection SAR: captured server state=$server_state; listener PID(s) on port $CNCF_SERVER_PORT=${listener_pids:-none}." >&2
       return 1
     fi
     sleep 0.25
