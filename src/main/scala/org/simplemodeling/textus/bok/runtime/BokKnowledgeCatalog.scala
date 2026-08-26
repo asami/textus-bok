@@ -8,10 +8,12 @@ import org.simplemodeling.textus.bok.value.*
  * BoK-owned matching state, replaced only after a complete SIE publication.
  *
  * @since   Jul. 21, 2026
- * @version Aug. 15, 2026
+ * @version Aug. 27, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalog {
+  private val _semantic_manifest_kinds = Set("component-manifest", "component-knowledge-consumer-contract", "semantic-index")
+
   private final case class TermEntry(datasetid: String, sourceid: String, term: BokTerm)
   private final case class ComponentEntry(datasetid: String, sourceid: String, reference: ComponentReference)
   private final case class MapSource(normalized: NormalizedBokSource)
@@ -198,6 +200,100 @@ final class BokKnowledgeCatalog {
     }
     ComponentReferenceLookupResponse(BokQueryStatus(status), _selection(resolved), reference, _warnings(status))
   }
+
+  def searchSemanticKnowledge(
+    access: BokSemanticAccess,
+    query: String,
+    limit: Int
+  )(candidateScores: Set[BokCandidateKey] => Consequence[Map[BokCandidateKey, Double]]): Consequence[SemanticKnowledgeSearchResponse] = {
+    val bound = _semantic_limit(limit)
+    val records = _semantic_records(access).filter(_semantic_matches(_, query))
+    if (records.nonEmpty) Consequence.success(_semantic_search_response(access.selection, query, records, bound))
+    else candidateScores(Set.empty).map(_ => _semantic_search_response(access.selection, query, Vector.empty, bound))
+  }
+
+  def discoverSemanticKnowledge(access: BokSemanticAccess, limit: Int): SemanticKnowledgeDiscoveryResponse =
+    discoverSemanticKnowledge(access, "", limit)
+
+  def discoverSemanticKnowledge(access: BokSemanticAccess, query: String, limit: Int): SemanticKnowledgeDiscoveryResponse = {
+    val bound = _semantic_limit(limit)
+    val records = _semantic_records(access).filter(x => query.trim.isEmpty || _semantic_matches(x, query))
+    val results = records
+    SemanticKnowledgeDiscoveryResponse(
+      BokQueryStatus(if (results.nonEmpty) "matched" else "no-match"),
+      _selection(access.selection),
+      query,
+      results.take(bound).map(_semantic_record),
+      bound,
+      results.size > bound,
+      Vector.empty
+    )
+  }
+
+  def getSemanticManifest(access: BokSemanticAccess, identity: String): SemanticManifestResponse =
+    _semantic_lookup(access, _all_semantic_records(access.selection).filter(record =>
+      record.identity == identity && _semantic_manifest_kinds.contains(record.kind)
+    )) { record =>
+      SemanticManifestResponse(BokQueryStatus("matched"), _selection(access.selection), Some(_semantic_record(record)), Some(record.summary), Some(record.authority), record.componentReference, Vector.empty)
+    } { status => SemanticManifestResponse(BokQueryStatus(status), _selection(access.selection), None, None, None, None, _warnings(status)) }
+
+  def getSemanticResource(access: BokSemanticAccess, identity: String): SemanticResourceResponse =
+    _semantic_lookup(access, _all_semantic_records(access.selection).filter(record =>
+      record.identity == identity && !_semantic_manifest_kinds.contains(record.kind) && record.kind != "smartdox-section"
+    )) { record =>
+      SemanticResourceResponse(BokQueryStatus("matched"), _selection(access.selection), Some(_semantic_record(record)), Some(record.summary), Some(record.authority), record.componentReference, Vector.empty)
+    } { status => SemanticResourceResponse(BokQueryStatus(status), _selection(access.selection), None, None, None, None, _warnings(status)) }
+
+  def getSemanticSection(access: BokSemanticAccess, documentId: String, sectionId: String): SemanticSectionResponse = {
+    _semantic_lookup(access, _all_semantic_records(access.selection).filter(record =>
+      record.kind == "smartdox-section" && record.documentId == documentId && record.sectionId.contains(sectionId)
+    )) { record =>
+      SemanticSectionResponse(BokQueryStatus("matched"), _selection(access.selection), Some(_semantic_record(record)), Some(record.summary), Some(record.authority), record.componentReference, Vector.empty)
+    } { status => SemanticSectionResponse(BokQueryStatus(status), _selection(access.selection), None, None, None, None, _warnings(status)) }
+  }
+
+  private def _semantic_lookup[A](
+    access: BokSemanticAccess,
+    candidates: Vector[BokSemanticRecord]
+  )(matched: BokSemanticRecord => A)(missing: String => A): A =
+    candidates match {
+      case Vector() => missing("no-match")
+      case _ if candidates.size > 1 => missing("ambiguous")
+      case Vector(record) if record.stale => missing("stale")
+      case Vector(record) if !access.permits(record) => missing("forbidden")
+      case Vector(record) => matched(record)
+    }
+
+  private def _semantic_records(access: BokSemanticAccess): Vector[BokSemanticRecord] =
+    _all_semantic_records(access.selection).filter(x => !x.stale && access.permits(x))
+
+  private def _all_semantic_records(resolved: ResolvedBokProfile): Vector[BokSemanticRecord] = synchronized {
+    _selected_sources(resolved).flatMap(_.semanticRecords)
+  }
+
+  private def _semantic_matches(record: BokSemanticRecord, query: String): Boolean = {
+    val needle = _normalize(query)
+    val searchable = Vector(
+      record.identity,
+      record.kind,
+      record.title,
+      record.summary,
+      record.documentId,
+      record.sectionId.getOrElse(""),
+      record.canonicalUrl
+    ).mkString(" ")
+    needle.nonEmpty && _normalize(searchable).contains(needle)
+  }
+
+  private def _semantic_limit(value: Int): Int = value.max(1).min(100)
+
+  private def _semantic_search_response(resolved: ResolvedBokProfile, query: String, records: Vector[BokSemanticRecord], bound: Int): SemanticKnowledgeSearchResponse = {
+    val results = records.sortBy(x => (x.kind, x.identity))
+    SemanticKnowledgeSearchResponse(BokQueryStatus(if (results.nonEmpty) "matched" else "no-match"), _selection(resolved), query, results.take(bound).map(_semantic_record), bound, results.size > bound, None, None, None, Vector.empty)
+  }
+
+  private def _semantic_record(record: BokSemanticRecord): SemanticKnowledgeRecord =
+    SemanticKnowledgeRecord(record.kind, record.identity, record.title, record.summary, record.documentId, record.sectionId, record.canonicalUrl, record.indexedAt, record.visibility, record.authority, record.sourceId, record.datasetId, record.generation, record.digest, record.stale, record.componentReference, record.evidence)
 
   private def _terms(resolved: ResolvedBokProfile): Vector[TermEntry] = synchronized {
     _selected_sources(resolved).flatMap { source =>

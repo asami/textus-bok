@@ -10,14 +10,14 @@ import org.goldenport.cncf.unitofwork.ExecUowM
 import org.goldenport.protocol.operation.OperationResponse
 import org.goldenport.record.Record
 import org.simplemodeling.textus.bok.datatype.*
-import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader, NormalizedBokSource, ResolvedBokProfile}
+import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSemanticAccess, BokSourceReader, NormalizedBokSource, ResolvedBokProfile}
 import org.simplemodeling.textus.bok.value.*
 import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Aug. 15, 2026
+ * @version Aug. 27, 2026
  * @author  ASAMI, Tomoharu
  */
 
@@ -101,6 +101,106 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       action: GetKnowledgeMapRequest
     ): GetKnowledgeMapActionCall =
       GetKnowledgeMapActionCallImpl(core, action)
+
+    override def createSearchSemanticKnowledgeActionCall(
+      core: ActionCall.Core,
+      action: SemanticKnowledgeSearchRequest
+    ): SearchSemanticKnowledgeActionCall =
+      SearchSemanticKnowledgeActionCallImpl(core, action)
+
+    override def createGetSemanticManifestActionCall(
+      core: ActionCall.Core,
+      action: SemanticManifestRequest
+    ): GetSemanticManifestActionCall =
+      GetSemanticManifestActionCallImpl(core, action)
+
+    override def createGetSemanticResourceActionCall(
+      core: ActionCall.Core,
+      action: SemanticResourceRequest
+    ): GetSemanticResourceActionCall =
+      GetSemanticResourceActionCallImpl(core, action)
+
+    override def createGetSemanticSectionActionCall(
+      core: ActionCall.Core,
+      action: SemanticSectionRequest
+    ): GetSemanticSectionActionCall =
+      GetSemanticSectionActionCallImpl(core, action)
+
+    override def createDiscoverSemanticKnowledgeActionCall(
+      core: ActionCall.Core,
+      action: SemanticKnowledgeDiscoveryRequest
+    ): DiscoverSemanticKnowledgeActionCall =
+      DiscoverSemanticKnowledgeActionCallImpl(core, action)
+  }
+
+  private final case class SearchSemanticKnowledgeActionCallImpl(
+    core: ActionCall.Core,
+    override val action: BokComponent.BokRetrievalService.SemanticKnowledgeSearchRequest
+  ) extends BokComponent.BokRetrievalService.SearchSemanticKnowledgeActionCall {
+    protected def build_Program: ExecUowM[OperationResponse] = exec_from {
+      for {
+        query <- _required_string(action.record, "query")
+        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+        response <- _catalog.searchSemanticKnowledge(
+          BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public),
+          query,
+          action.record.getInt("limit").getOrElse(10)
+        )(_ => Consequence.success(Map.empty))
+      } yield OperationResponse(response.toRecord())
+    }
+  }
+
+  private final case class GetSemanticManifestActionCallImpl(
+    core: ActionCall.Core,
+    override val action: BokComponent.BokRetrievalService.SemanticManifestRequest
+  ) extends BokComponent.BokRetrievalService.GetSemanticManifestActionCall {
+    protected def build_Program: ExecUowM[OperationResponse] = exec_from {
+      for {
+        identity <- _required_string(action.record, "identity")
+        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+      } yield OperationResponse(_catalog.getSemanticManifest(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
+    }
+  }
+
+  private final case class GetSemanticResourceActionCallImpl(
+    core: ActionCall.Core,
+    override val action: BokComponent.BokRetrievalService.SemanticResourceRequest
+  ) extends BokComponent.BokRetrievalService.GetSemanticResourceActionCall {
+    protected def build_Program: ExecUowM[OperationResponse] = exec_from {
+      for {
+        identity <- _required_string(action.record, "identity")
+        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+      } yield OperationResponse(_catalog.getSemanticResource(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
+    }
+  }
+
+  private final case class GetSemanticSectionActionCallImpl(
+    core: ActionCall.Core,
+    override val action: BokComponent.BokRetrievalService.SemanticSectionRequest
+  ) extends BokComponent.BokRetrievalService.GetSemanticSectionActionCall {
+    protected def build_Program: ExecUowM[OperationResponse] = exec_from {
+      for {
+        documentid <- _required_string(action.record, "documentId")
+        sectionid <- _required_string(action.record, "sectionId")
+        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+      } yield OperationResponse(_catalog.getSemanticSection(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), documentid, sectionid).toRecord())
+    }
+  }
+
+  private final case class DiscoverSemanticKnowledgeActionCallImpl(
+    core: ActionCall.Core,
+    override val action: BokComponent.BokRetrievalService.SemanticKnowledgeDiscoveryRequest
+  ) extends BokComponent.BokRetrievalService.DiscoverSemanticKnowledgeActionCall {
+    protected def build_Program: ExecUowM[OperationResponse] = exec_from {
+      for {
+        query <- _required_string(action.record, "query")
+        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+      } yield OperationResponse(_catalog.discoverSemanticKnowledge(
+        BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public),
+        query,
+        action.record.getInt("limit").getOrElse(10)
+      ).toRecord())
+    }
   }
 
   private final case class ReplaceKnowledgeSourceActionCallImpl(
@@ -362,7 +462,12 @@ final class BokPrimaryComponent extends BokComponent {
     "BokRetrieval.searchTerms",
     "BokRetrieval.explainTerm",
     "BokRetrieval.searchComponentReferences",
-    "BokRetrieval.getComponentReference"
+    "BokRetrieval.getComponentReference",
+    "BokRetrieval.searchSemanticKnowledge",
+    "BokRetrieval.getSemanticManifest",
+    "BokRetrieval.getSemanticResource",
+    "BokRetrieval.getSemanticSection",
+    "BokRetrieval.discoverSemanticKnowledge"
   )
 }
 

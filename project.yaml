@@ -15,10 +15,10 @@ project:
 
 build:
   scalaVersion: "3.3.8"
-  cozyVersion: "0.3.4-SNAPSHOT"
+  cozyVersion: "0.3.3-SNAPSHOT"
   dependencies:
     compile:
-      - "org.goldenport::goldenport-cncf:0.5.2-SNAPSHOT"
+      - "org.goldenport::goldenport-cncf:0.5.3-SNAPSHOT"
     provided:
       - "org.simplemodeling.textus::textus-semantic-integration-engine:0.2.0-SNAPSHOT"
     test:
@@ -42,10 +42,10 @@ packaging:
       domain: "bok"
     runtime:
       cncf:
-        minimum: "0.5.2-SNAPSHOT"
+        minimum: "0.5.3-SNAPSHOT"
         excluded: []
         tested:
-          - "0.5.2-SNAPSHOT"
+          - "0.5.3-SNAPSHOT"
 
 warehouse:
   repository_artifacts:

@@ -2,8 +2,14 @@ package org.simplemodeling.textus.bok.runtime
 
 import io.circe.{Decoder, HCursor, Json, JsonObject}
 import io.circe.parser
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import org.goldenport.Consequence
 import org.goldenport.cncf.context.ExecutionContext
+import org.goldenport.cncf.knowledge.{
+  ComponentKnowledgeManifestConsumerContractCodec,
+  PublicMetadataVisibility
+}
 import org.goldenport.cncf.repository.ComponentRepositoryIndex
 import org.goldenport.cncf.resource.ResourceReference
 import org.simplemodeling.textus.bok.datatype.*
@@ -14,7 +20,7 @@ import org.simplemodeling.textus.bok.value.*
  *
  * @since   Jul. 21, 2026
  *  version Jul. 24, 2026
- * @version Aug. 14, 2026
+ * @version Aug. 27, 2026
  * @author  ASAMI, Tomoharu
  */
 final case class NormalizedBokSource(
@@ -22,7 +28,8 @@ final case class NormalizedBokSource(
   terms: Vector[BokTerm],
   components: Vector[ComponentReference],
   warnings: Vector[BokWarning],
-  topology: BokKnowledgeTopology = BokKnowledgeTopology.empty
+  topology: BokKnowledgeTopology = BokKnowledgeTopology.empty,
+  semanticRecords: Vector[BokSemanticRecord] = Vector.empty
 )
 
 final case class BokKnowledgeSourceReference(kind: String, value: String, uri: Option[String])
@@ -69,6 +76,12 @@ object BokSourceReader {
   private val _repository_kind = "component-repository-index"
   private val _reference_kind = "component-reference-index"
   private val _reference_schema = "cncf.component-reference-index.v1"
+  private val _manifest_kind = "component-manifest"
+  private val _consumer_kind = "component-knowledge-consumer-contract"
+  private val _semantic_kind = "semantic-index"
+  private val _semantic_schema = "cncf.semantic-index.v1"
+  private val _semantic_kinds = Set(_manifest_kind, _consumer_kind, _semantic_kind, "smartdox-document", "smartdox-section", "rdf-jsonld", "glossary", "ontology", "schema", "catalog")
+  private val _semantic_source_kinds = Set(_consumer_kind, _semantic_kind)
   private val _graph_kind = "rdf-graph-summary"
   private val _graph_schema = "cozy.rdf-graph-summary.v1"
   private val _maximum_graph_nodes = 512
@@ -88,9 +101,11 @@ object BokSourceReader {
       manifesttext <- context.resources.readText(manifestreference)
       manifest <- _parse_manifest(manifesttext)
       references <- _resolve_resources(base, manifest.resources)
+      semanticresources <- _resolve_semantic_resources(base, manifest.resources)
       recognized = references.filter(x =>
-        x._1 == _glossary_kind || x._1 == _repository_kind || x._1 == _reference_kind
+        x._1 == _glossary_kind || x._1 == _repository_kind || x._1 == _reference_kind || _semantic_source_kinds.contains(x._1)
       )
+      _ <- _validate_semantic_manifest(manifest.resources)
       _ <- _require(
         recognized.nonEmpty,
         "BoK KnowledgeSource contains no recognized glossary or component repository metadata"
@@ -112,14 +127,210 @@ object BokSourceReader {
       _ <- _unique("BoK component reference", components.map(BokComponentReferenceIdentity.identityKey))
       topology <- _read_topology(context, source, references.filter(_._1 == _graph_kind).map(_._2))
       _ <- _validate_topology_component_references(topology, components)
+      semanticrecords <- _read_semantic(context, source, semanticresources, components)
       warnings = _warnings(manifest, terms, components) ++ Option.when(topology.truncated)(BokWarning("BoK graph summary is truncated"))
     } yield NormalizedBokSource(
       source,
       terms.sortBy(_.termId.value),
       components.sortBy(BokComponentReferenceIdentity.orderKey),
       warnings,
-      topology
+      topology,
+      semanticrecords
     )
+
+  private def _validate_semantic_manifest(resources: Vector[KnowledgeSourceResource]): Consequence[Unit] = {
+    val semantic = resources.filter(x => _semantic_source_kinds.contains(x.kind))
+    if (semantic.isEmpty) Consequence.unit
+    else for {
+      _ <- _require(semantic.count(_.kind == _consumer_kind) == 1, "BoK semantic source requires one consumer contract")
+      _ <- _require(semantic.count(_.kind == _semantic_kind) == 1, "BoK semantic source requires one semantic index")
+      _ <- _require(semantic.map(_.kind).distinct.size == semantic.size, "BoK semantic source contains duplicate resources")
+    } yield ()
+  }
+
+  private def _resolve_semantic_resources(base: ResourceReference, resources: Vector[KnowledgeSourceResource]): Consequence[Vector[(KnowledgeSourceResource, ResourceReference)]] =
+    _sequence(resources.filter(x => _semantic_source_kinds.contains(x.kind)).map { resource =>
+      if (!_safe_relative_href(resource.href)) Consequence.resourceInvalid("BoK semantic resource href is unsafe")
+      else resource.sha256 match {
+        case Some(digest) if digest.matches("[0-9a-f]{64}") => ResourceReference.resolveC(base, resource.href).map(resource -> _)
+        case _ => Consequence.resourceInvalid("BoK semantic resource requires a valid SHA-256 digest")
+      }
+    })
+
+  private def _safe_relative_href(value: String): Boolean = {
+    val href = value.trim
+    href.nonEmpty && !href.startsWith("/") && !href.contains("://") && !href.split('/').contains("..")
+  }
+
+  private def _read_semantic(context: ExecutionContext, source: BokKnowledgeSource, resources: Vector[(KnowledgeSourceResource, ResourceReference)], components: Vector[ComponentReference]): Consequence[Vector[BokSemanticRecord]] = {
+    val consumer = resources.find(_._1.kind == _consumer_kind)
+    val index = resources.find(_._1.kind == _semantic_kind)
+    (consumer, index) match {
+      case (None, None) => Consequence.success(Vector.empty)
+      case (Some(contract), Some(semanticindex)) => for {
+        contracttext <- _read_verified(context, contract._1, contract._2)
+        indextext <- _read_verified(context, semanticindex._1, semanticindex._2)
+        consumerrecords <- _decode_consumer(source, contracttext)
+        indexrecords <- _decode_semantic_index(source, indextext, components)
+        records = consumerrecords ++ indexrecords
+        _ <- _unique("BoK semantic record", records.map(_.identity))
+      } yield records
+      case _ => Consequence.resourceInvalid("BoK semantic resources are incomplete")
+    }
+  }
+
+  private def _read_verified(context: ExecutionContext, resource: KnowledgeSourceResource, reference: ResourceReference): Consequence[String] =
+    context.resources.readText(reference).flatMap { text =>
+      if (resource.sha256.contains(_sha256(text))) Consequence.success(text)
+      else Consequence.resourceInvalid("BoK semantic resource digest mismatch")
+    }
+
+  private def _decode_consumer(source: BokKnowledgeSource, value: String): Consequence[Vector[BokSemanticRecord]] =
+    ComponentKnowledgeManifestConsumerContractCodec.decodeC(value)
+      .recoverWith(_ => Consequence.resourceInvalid("Invalid BoK component knowledge consumer contract"))
+      .map(_consumer_records(source, _))
+
+  private def _consumer_records(
+    source: BokKnowledgeSource,
+    contract: org.goldenport.cncf.knowledge.ComponentKnowledgeManifestConsumerContract
+  ): Vector[BokSemanticRecord] =
+    contract.frameworkPublication.toVector.map(_framework_publication_record(source, _)) ++
+      contract.publicDirective.toVector.map(_public_directive_record(source, _)) ++
+      contract.skillCatalog.toVector.map(_skill_catalog_record(source, _))
+
+  private def _framework_publication_record(
+    source: BokKnowledgeSource,
+    value: org.goldenport.cncf.knowledge.ComponentKnowledgeManifestConsumerFrameworkPublicationEvidence
+  ): BokSemanticRecord = {
+    val title = s"${value.product} ${value.version}"
+    BokSemanticRecord(
+      "framework-publication",
+      value.sourceIdentity,
+      title,
+      s"Framework publication metadata for $title.",
+      value.documentId,
+      value.sectionId,
+      value.canonicalUrl,
+      value.publicationGeneration,
+      "public",
+      "framework-publication",
+      source.sourceId.value,
+      source.datasetId.value,
+      source.generation.value,
+      value.sourceSha256,
+      false
+    )
+  }
+
+  private def _public_directive_record(
+    source: BokKnowledgeSource,
+    value: org.goldenport.cncf.knowledge.ComponentKnowledgeManifestConsumerPublicDirectiveMetadata
+  ): BokSemanticRecord =
+    BokSemanticRecord(
+      "directive-metadata",
+      value.logicalIdentity.logicalResource,
+      value.directiveId,
+      s"Directive ${value.directiveId} rule ${value.ruleId}.",
+      value.directiveId,
+      Some(value.ruleId),
+      value.guideReference,
+      source.generation.value,
+      _public_visibility(value.visibility),
+      value.authority.code,
+      source.sourceId.value,
+      source.datasetId.value,
+      source.generation.value,
+      value.sourceSha256,
+      false
+    )
+
+  private def _skill_catalog_record(
+    source: BokKnowledgeSource,
+    value: org.goldenport.cncf.knowledge.ComponentKnowledgeManifestConsumerSkillCatalogMetadata
+  ): BokSemanticRecord =
+    BokSemanticRecord(
+      "skill-metadata",
+      value.logicalIdentity.logicalResource,
+      value.catalogId,
+      s"${value.purpose} (owner: ${value.owner}, version: ${value.version}).",
+      value.catalogId,
+      None,
+      value.installationReference,
+      source.generation.value,
+      _public_visibility(value.visibility),
+      "skill-catalog",
+      source.sourceId.value,
+      source.datasetId.value,
+      source.generation.value,
+      value.sourceSha256,
+      false
+    )
+
+  private def _public_visibility(value: PublicMetadataVisibility): String = value match {
+    case PublicMetadataVisibility.Public | PublicMetadataVisibility.Ecosystem => "public"
+    case _ => "restricted"
+  }
+
+  private def _decode_semantic_index(
+    source: BokKnowledgeSource,
+    value: String,
+    components: Vector[ComponentReference]
+  ): Consequence[Vector[BokSemanticRecord]] =
+    parser.parse(value).left.map(_.message).flatMap(_.asObject.toRight("semantic index must be a JSON object")) match {
+      case Left(message) => Consequence.resourceInvalid(s"Invalid BoK semantic index: $message")
+      case Right(index) if !index("schemaVersion").flatMap(_.asString).contains(_semantic_schema) || !index("kind").flatMap(_.asString).contains(_semantic_kind) => Consequence.resourceInvalid("Unsupported semantic index kind or schema")
+      case Right(index) if index("sourceId").flatMap(_.asString).forall(_ != source.sourceId.value) || index("datasetId").flatMap(_.asString).forall(_ != source.datasetId.value) || index("generation").flatMap(_.asString).forall(_ != source.generation.value) => Consequence.resourceInvalid("Semantic index source, dataset, or generation mismatch")
+      case Right(index) => index("records").flatMap(_.asArray) match {
+        case Some(records) => _sequence(records.toVector.map(_decode_record(source, _, components)))
+        case None => Consequence.resourceInvalid("Semantic index records must be an array")
+      }
+    }
+
+  private def _decode_record(source: BokKnowledgeSource, value: Json, components: Vector[ComponentReference]): Consequence[BokSemanticRecord] = value.asObject match {
+    case None => Consequence.resourceInvalid("Semantic index record must be an object")
+    case Some(record) =>
+      val fields = Vector("kind", "identity", "title", "summary", "documentId", "canonicalUrl", "indexedAt", "visibility", "authority", "sha256")
+      val strings = fields.map(x => record(x).flatMap(_.asString))
+      val supported = Set(_manifest_kind, _consumer_kind, _semantic_kind, "smartdox-document", "smartdox-section", "rdf-jsonld", "glossary", "ontology", "schema", "catalog")
+      if (strings.exists(_.forall(_.isEmpty))) Consequence.resourceInvalid("Semantic index record is missing public metadata")
+      else if (!supported.contains(strings.head.get) || !strings(5).get.startsWith("https://") || !strings(9).get.matches("[0-9a-f]{64}")) Consequence.resourceInvalid("Invalid semantic index record metadata")
+      else if (strings.exists(_.exists(value => value.contains("<") || value.contains(">")))) Consequence.resourceInvalid("Semantic index record is not public metadata")
+      else _decode_semantic_component_reference(record, components).fold(
+        message => Consequence.resourceInvalid(message),
+        componentreference => Consequence.success(
+          BokSemanticRecord(strings(0).get, strings(1).get, strings(2).get, strings(3).get, strings(4).get, record("sectionId").flatMap(_.asString), strings(5).get, strings(6).get, strings(7).get, strings(8).get, source.sourceId.value, source.datasetId.value, source.generation.value, strings(9).get, record("stale").flatMap(_.asBoolean).getOrElse(false), componentreference)
+        )
+      )
+  }
+
+  private def _decode_semantic_component_reference(
+    record: JsonObject,
+    components: Vector[ComponentReference]
+  ): Either[String, Option[ComponentReference]] =
+    record("componentReference") match {
+      case None | Some(Json.Null) => Right(None)
+      case Some(value) => for {
+        reference <- value.asObject.toRight("Semantic index componentReference must be an object")
+        kind <- reference("kind").flatMap(_.asString).filter(_.nonEmpty).toRight("Semantic index componentReference.kind is required")
+        name <- reference("name").flatMap(_.asString).filter(_.nonEmpty).toRight("Semantic index componentReference.name is required")
+        organization <- _semantic_optional_string(reference, "organization")
+        version <- _semantic_optional_string(reference, "version")
+      } yield components.filter { component =>
+        BokComponentReferenceIdentity.matches(component, kind, organization, name) &&
+          version.forall(value => component.version.exists(_.value == value))
+      } match {
+        case Vector(single) => Some(single)
+        case _ => None
+      }
+    }
+
+  private def _semantic_optional_string(value: JsonObject, field: String): Either[String, Option[String]] =
+    value(field) match {
+      case None | Some(Json.Null) => Right(None)
+      case Some(json) => json.asString.filter(_.nonEmpty).toRight(s"Semantic index componentReference.$field must be a non-empty string").map(Some(_))
+    }
+
+  private def _sha256(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)).map(x => f"${x & 0xff}%02x").mkString
 
   private def _read_topology(context: ExecutionContext, source: BokKnowledgeSource, references: Vector[ResourceReference]): Consequence[BokKnowledgeTopology] =
     if (references.isEmpty) Consequence.success(BokKnowledgeTopology.empty)
@@ -332,13 +543,42 @@ object BokSourceReader {
     }
 
   private def _parse_manifest(value: String): Consequence[KnowledgeSourceManifest] =
-    parser.parse(value).left.map(_.message).flatMap(_.as[KnowledgeSourceManifest]) match {
-      case Right(manifest) if manifest.schemaVersion == _manifest_schema =>
-        Consequence.success(manifest)
-      case Right(manifest) =>
-        Consequence.resourceInvalid(s"Unsupported BoK KnowledgeSource schemaVersion: ${manifest.schemaVersion}")
+    parser.parse(value).left.map(_.message).flatMap(_.asObject.toRight("manifest must be a JSON object")) match {
       case Left(message) =>
         Consequence.resourceInvalid(s"Invalid BoK KnowledgeSource manifest: $message")
+      case Right(manifest) =>
+        val parsed = for {
+          schemaversion <- _manifest_string(manifest, "schemaVersion")
+          values <- manifest("resources").flatMap(_.asArray).toRight("manifest field resources must be an array")
+          resources <- _sequence_either(values.toVector.zipWithIndex.map { case (value, index) =>
+            _parse_manifest_resource(value, index)
+          })
+        } yield KnowledgeSourceManifest(schemaversion, resources)
+        parsed match {
+          case Right(parsedmanifest) if parsedmanifest.schemaVersion == _manifest_schema =>
+            Consequence.success(parsedmanifest)
+          case Right(parsedmanifest) =>
+            Consequence.resourceInvalid(s"Unsupported BoK KnowledgeSource schemaVersion: ${parsedmanifest.schemaVersion}")
+          case Left(message) =>
+            Consequence.resourceInvalid(s"Invalid BoK KnowledgeSource manifest: $message")
+        }
+    }
+
+  private def _manifest_string(value: JsonObject, field: String): Either[String, String] =
+    value(field).flatMap(_.asString).filter(_.nonEmpty).toRight(s"manifest field $field must be a non-empty string")
+
+  private def _parse_manifest_resource(value: Json, index: Int): Either[String, KnowledgeSourceResource] =
+    value.asObject.toRight(s"manifest resources[$index] must be an object").flatMap { resource =>
+      for {
+        kind <- _manifest_string(resource, "kind")
+        href <- _manifest_string(resource, "href")
+        sha256 <- resource("sha256") match {
+          case None | Some(Json.Null) => Right(None)
+          case Some(value) => value.asString.filter(_.nonEmpty)
+            .toRight(s"manifest resources[$index] field sha256 must be a non-empty string")
+            .map(Some(_))
+        }
+      } yield KnowledgeSourceResource(kind, href, sha256)
     }
 
   private def _resolve_resources(
@@ -346,7 +586,8 @@ object BokSourceReader {
     resources: Vector[KnowledgeSourceResource]
   ): Consequence[Vector[(String, ResourceReference)]] =
     _sequence(resources.map { resource =>
-      ResourceReference.resolveC(base, resource.href).map(resource.kind -> _)
+      if (!_safe_relative_href(resource.href)) Consequence.resourceInvalid("BoK KnowledgeSource resource href is unsafe")
+      else ResourceReference.resolveC(base, resource.href).map(resource.kind -> _)
     })
 
   private def _read_terms(
@@ -532,7 +773,8 @@ object BokSourceReader {
 
   private final case class KnowledgeSourceResource(
     kind: String,
-    href: String
+    href: String,
+    sha256: Option[String]
   )
 
   private final case class TermIndex(terms: Vector[TermDocument])
@@ -562,18 +804,6 @@ object BokSourceReader {
     summary: Option[String],
     termType: Option[String]
   )
-
-  private given Decoder[KnowledgeSourceResource] = (cursor: HCursor) =>
-    for {
-      kind <- cursor.downField("kind").as[String]
-      href <- cursor.downField("href").as[String]
-    } yield KnowledgeSourceResource(kind, href)
-
-  private given Decoder[KnowledgeSourceManifest] = (cursor: HCursor) =>
-    for {
-      schemaversion <- cursor.downField("schemaVersion").as[String]
-      resources <- cursor.downField("resources").as[Vector[KnowledgeSourceResource]]
-    } yield KnowledgeSourceManifest(schemaversion, resources)
 
   private given Decoder[TermDocument] = (cursor: HCursor) =>
     for {

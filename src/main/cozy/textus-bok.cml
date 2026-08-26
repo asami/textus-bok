@@ -190,6 +190,116 @@ GetKnowledgeMapResponse
 
 Return a bounded factual topology from selected complete BoK generations. This public read is not MCP Ready.
 
+#### searchSemanticKnowledge
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+
+SemanticKnowledgeSearchRequest
+
+##### OUTPUT
+
+###### TYPE
+
+SemanticKnowledgeSearchResponse
+
+##### DESCRIPTION
+
+Search attributable public semantic metadata with bounded lexical retrieval and optional secondary provider candidates.
+
+#### getSemanticManifest
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+
+SemanticManifestRequest
+
+##### OUTPUT
+
+###### TYPE
+
+SemanticManifestResponse
+
+##### DESCRIPTION
+
+Return one attributable public semantic manifest record.
+
+#### getSemanticResource
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+
+SemanticResourceRequest
+
+##### OUTPUT
+
+###### TYPE
+
+SemanticResourceResponse
+
+##### DESCRIPTION
+
+Return one attributable public semantic resource record.
+
+#### getSemanticSection
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+
+SemanticSectionRequest
+
+##### OUTPUT
+
+###### TYPE
+
+SemanticSectionResponse
+
+##### DESCRIPTION
+
+Return one attributable public semantic section record.
+
+#### discoverSemanticKnowledge
+
+##### TYPE
+
+QUERY
+
+##### INPUT
+
+###### TYPE
+
+SemanticKnowledgeDiscoveryRequest
+
+##### OUTPUT
+
+###### TYPE
+
+SemanticKnowledgeDiscoveryResponse
+
+##### DESCRIPTION
+
+Discover bounded attributable public semantic metadata.
+
 # DATATYPE
 
 ## BokTermId
@@ -579,6 +689,69 @@ Input command identifying one logical BoK source generation.
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
 
+## SemanticKnowledgeSearchRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| query | string | 1 |
+| limit | int | ? |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
+
+## SemanticManifestRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| identity | string | 1 |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
+
+## SemanticResourceRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| identity | string | 1 |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
+
+## SemanticSectionRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| documentId | string | 1 |
+| sectionId | string | 1 |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
+
+## SemanticKnowledgeDiscoveryRequest
+
+- input-kind :: QUERY
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| query | string | 1 |
+| limit | int | ? |
+| profile | BokProfile | ? |
+| projectId | BokProjectId | ? |
+
 # VALUE
 
 ## BokKnowledgeSource
@@ -846,4 +1019,105 @@ Attributable factual relationship whose endpoints are returned map nodes.
 | nodeLimit | int | 1 |
 | relationshipLimit | int | 1 |
 | truncated | boolean | 1 |
+| warnings | BokWarning | * |
+
+## SemanticKnowledgeRecord
+
+### DESCRIPTION
+
+Public value-only semantic metadata. Source contents, directives, skill bodies, and execution or mutation authority are excluded.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| kind | string | 1 |
+| identity | string | 1 |
+| title | string | 1 |
+| summary | string | 1 |
+| documentId | string | 1 |
+| sectionId | string | ? |
+| canonicalUrl | string | 1 |
+| indexedAt | string | 1 |
+| visibility | string | 1 |
+| authority | string | 1 |
+| sourceId | string | 1 |
+| datasetId | string | 1 |
+| generation | string | 1 |
+| digest | string | 1 |
+| stale | boolean | 1 |
+| componentReference | ComponentReference | ? |
+| evidence | BokEvidence | 1 |
+
+## SemanticKnowledgeSearchResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
+| query | string | 1 |
+| results | SemanticKnowledgeRecord | * |
+| limit | int | 1 |
+| truncated | boolean | 1 |
+| summary | string | ? |
+| authority | string | ? |
+| componentReference | ComponentReference | ? |
+| warnings | BokWarning | * |
+
+## SemanticKnowledgeDiscoveryResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
+| query | string | 1 |
+| results | SemanticKnowledgeRecord | * |
+| limit | int | 1 |
+| truncated | boolean | 1 |
+| warnings | BokWarning | * |
+
+## SemanticManifestResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
+| result | SemanticKnowledgeRecord | ? |
+| summary | string | ? |
+| authority | string | ? |
+| componentReference | ComponentReference | ? |
+| warnings | BokWarning | * |
+
+## SemanticResourceResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
+| result | SemanticKnowledgeRecord | ? |
+| summary | string | ? |
+| authority | string | ? |
+| componentReference | ComponentReference | ? |
+| warnings | BokWarning | * |
+
+## SemanticSectionResponse
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| status | BokQueryStatus | 1 |
+| selection | BokResolvedSelection | 1 |
+| result | SemanticKnowledgeRecord | ? |
+| summary | string | ? |
+| authority | string | ? |
+| componentReference | ComponentReference | ? |
 | warnings | BokWarning | * |

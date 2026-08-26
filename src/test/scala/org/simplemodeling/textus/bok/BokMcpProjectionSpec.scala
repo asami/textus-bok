@@ -12,7 +12,7 @@ import org.simplemodeling.textus.bok.impl
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Aug. 15, 2026
+ * @version Aug. 27, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -31,14 +31,24 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       val explainschema = tools.find(_.name.endsWith(".explainTerm")).map(_.inputSchema).get
       val componentsearchschema = tools.find(_.name.endsWith(".searchComponentReferences")).map(_.inputSchema).get
       val componentlookupschema = tools.find(_.name.endsWith(".getComponentReference")).map(_.inputSchema).get
+      val semanticsearchschema = tools.find(_.name.endsWith(".searchSemanticKnowledge")).map(_.inputSchema).get
+      val manifestchema = tools.find(_.name.endsWith(".getSemanticManifest")).map(_.inputSchema).get
+      val resourceschema = tools.find(_.name.endsWith(".getSemanticResource")).map(_.inputSchema).get
+      val sectionschema = tools.find(_.name.endsWith(".getSemanticSection")).map(_.inputSchema).get
+      val discoverschema = tools.find(_.name.endsWith(".discoverSemanticKnowledge")).map(_.inputSchema).get
       val outputs = component.operationDefinitions.map(x => x.name -> x.outputType).toMap
 
-      Then("all four BoK reads are discoverable while source replacement is absent")
+      Then("all four existing and exactly five new semantic reads are discoverable while source replacement is absent")
       names shouldBe Set(
         "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms",
         "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
         "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
-        "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference"
+        "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchSemanticKnowledge",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticManifest",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticResource",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticSection",
+        "org.simplemodeling.textus.Bok.BokRetrieval.discoverSemanticKnowledge"
       )
       names.exists(_.endsWith(".replaceKnowledgeSource")) shouldBe false
       names.exists(_.endsWith(".getKnowledgeMap")) shouldBe false
@@ -75,9 +85,52 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "projectId"
       )
       componentlookupschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("name"))
+      semanticsearchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
+        "query",
+        "limit",
+        "profile",
+        "projectId"
+      )
+      semanticsearchschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
+      manifestchema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
+        "identity",
+        "profile",
+        "projectId"
+      )
+      manifestchema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("identity"))
+      resourceschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
+        "identity",
+        "profile",
+        "projectId"
+      )
+      resourceschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("identity"))
+      sectionschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
+        "documentId",
+        "sectionId",
+        "profile",
+        "projectId"
+      )
+      sectionschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("documentId", "sectionId"))
+      discoverschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
+        "query",
+        "limit",
+        "profile",
+        "projectId"
+      )
+      discoverschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
 
       And("the closed logical selector remains optional on every MCP-ready read")
-      Vector(searchschema, explainschema, componentsearchschema, componentlookupschema).foreach { schema =>
+      Vector(
+        searchschema,
+        explainschema,
+        componentsearchschema,
+        componentlookupschema,
+        semanticsearchschema,
+        manifestchema,
+        resourceschema,
+        sectionschema,
+        discoverschema
+      ).foreach { schema =>
         schema.hcursor.downField("properties").downField("profile").get[String]("type") shouldBe Right("string")
         schema.hcursor.downField("properties").downField("projectId").get[String]("type") shouldBe Right("string")
       }
@@ -86,6 +139,11 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       outputs.get("searchComponentReferences") shouldBe Some("ComponentReferenceSearchResponse")
       outputs.get("getComponentReference") shouldBe Some("ComponentReferenceLookupResponse")
       outputs.get("getKnowledgeMap") shouldBe Some("GetKnowledgeMapResponse")
+      outputs.get("searchSemanticKnowledge") shouldBe Some("SemanticKnowledgeSearchResponse")
+      outputs.get("getSemanticManifest") shouldBe Some("SemanticManifestResponse")
+      outputs.get("getSemanticResource") shouldBe Some("SemanticResourceResponse")
+      outputs.get("getSemanticSection") shouldBe Some("SemanticSectionResponse")
+      outputs.get("discoverSemanticKnowledge") shouldBe Some("SemanticKnowledgeDiscoveryResponse")
     }
 
     "allow deployment policy to narrow reads without publishing source mutation" in {
@@ -128,7 +186,12 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       narrowednames shouldBe Set(
         "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
         "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
-        "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference"
+        "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchSemanticKnowledge",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticManifest",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticResource",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticSection",
+        "org.simplemodeling.textus.Bok.BokRetrieval.discoverSemanticKnowledge"
       )
       called.hcursor.downField("error").get[Int]("code") shouldBe Right(-32602)
 
