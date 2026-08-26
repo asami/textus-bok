@@ -83,7 +83,17 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
         record.digest shouldBe _sha256("framework:cncf:source:1.0.0")
         record.authority shouldBe "framework-publication"
         record.visibility shouldBe "public"
+        record.product shouldBe Some("cncf")
+        record.version shouldBe Some("1.0.0")
+        record.publicationGeneration shouldBe Some("2026-08-26")
+        record.publicationDigest shouldBe Some(_sha256("framework:cncf:1.0.0"))
+        record.profile shouldBe empty
+        record.owner shouldBe empty
+        record.license shouldBe empty
+        record.logicalPath shouldBe empty
+        record.chunkId shouldBe empty
       }
+      normalized.semanticRecords.find(_.identity == "urn:cncf:resource:fixture:directive") shouldBe defined
       normalized.semanticRecords.find(_.identity == "urn:cncf:resource:fixture:directive").foreach { record =>
         record.title shouldBe "mounted-directive"
         record.documentId shouldBe "mounted-directive"
@@ -93,7 +103,17 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
         record.digest shouldBe _sha256("directive:core:public")
         record.authority shouldBe "mounted-directive-remains-authoritative"
         record.visibility shouldBe "public"
+        record.product shouldBe empty
+        record.version shouldBe Some("1.0.0")
+        record.profile shouldBe Some("public-profile")
+        record.owner shouldBe empty
+        record.license shouldBe Some("Apache-2.0")
+        record.logicalPath shouldBe Some("directive/public.yaml")
+        record.chunkId shouldBe empty
+        record.publicationGeneration shouldBe empty
+        record.publicationDigest shouldBe empty
       }
+      normalized.semanticRecords.find(_.identity == "urn:cncf:resource:fixture:skill") shouldBe defined
       normalized.semanticRecords.find(_.identity == "urn:cncf:resource:fixture:skill").foreach { record =>
         record.title shouldBe "public-skill-catalog"
         record.summary should include("descriptive public catalog metadata")
@@ -104,6 +124,15 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
         record.digest shouldBe _sha256("skill:catalog:public")
         record.authority shouldBe "skill-catalog"
         record.visibility shouldBe "public"
+        record.product shouldBe empty
+        record.version shouldBe Some("1.0.0")
+        record.profile shouldBe empty
+        record.owner shouldBe Some("cncf")
+        record.license shouldBe Some("Apache-2.0")
+        record.logicalPath shouldBe Some("skills/catalog.json")
+        record.chunkId shouldBe empty
+        record.publicationGeneration shouldBe empty
+        record.publicationDigest shouldBe empty
       }
       normalized.semanticRecords.map(_.identity) should contain allOf(
         "component:org.example:account:1.0.0",
@@ -145,8 +174,8 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
       normalized.semanticRecords.map(_.identity) should not contain "urn:cncf:resource:fixture:skill"
     }
 
-    "reject digest mismatch, unsafe child href, unknown kind, and malformed structured input before ambient selection" in {
-      Given("one valid structured source and four independently hostile manifest or resource variants")
+    "reject digest mismatch, unsafe child href, unknown kind, malformed input, and invalid declared metadata before ambient selection" in {
+      Given("one valid structured source and nine independently hostile manifest or resource variants")
       val mismatch = _context(Map(
         "fixture/metadata/cncf/knowledge-source.json" -> _manifest.replace(
           _sha256(_semantic_index),
@@ -176,13 +205,67 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
         "fixture/metadata/cncf/component-knowledge-consumer-contract.json" -> _consumer_contract,
         "fixture/metadata/cncf/semantic-index.json" -> "{ malformed structured index"
       ))
+      val publicationgenerationmarkupcontract = _consumer_contract.replace(
+        "\"publicationGeneration\": \"2026-08-26\"",
+        "\"publicationGeneration\": \"<2026-08-26>\""
+      )
+      val publicationgenerationmarkup = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _manifest.replace(
+          _sha256(_consumer_contract),
+          _sha256(publicationgenerationmarkupcontract)
+        ),
+        "fixture/metadata/cncf/component-knowledge-consumer-contract.json" -> publicationgenerationmarkupcontract,
+        "fixture/metadata/cncf/semantic-index.json" -> _semantic_index
+      ))
+      val emptypublicindex = _semantic_index.replace(
+        "\"summary\":\"Account component manifest metadata\"",
+        "\"summary\":\"Account component manifest metadata\",\"product\":\"\""
+      )
+      val emptypublic = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _semantic_manifest_for(emptypublicindex),
+        "fixture/metadata/cncf/component-knowledge-consumer-contract.json" -> _consumer_contract,
+        "fixture/metadata/cncf/semantic-index.json" -> emptypublicindex
+      ))
+      val markupindex = _semantic_index.replace(
+        "\"summary\":\"Account component manifest metadata\"",
+        "\"summary\":\"Account component manifest metadata\",\"profile\":\"<public>\""
+      )
+      val markup = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _semantic_manifest_for(markupindex),
+        "fixture/metadata/cncf/component-knowledge-consumer-contract.json" -> _consumer_contract,
+        "fixture/metadata/cncf/semantic-index.json" -> markupindex
+      ))
+      val unsafepathindex = _semantic_index.replace(
+        "\"summary\":\"Account component manifest metadata\"",
+        "\"summary\":\"Account component manifest metadata\",\"logicalPath\":\"../outside.md\""
+      )
+      val unsafepath = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _semantic_manifest_for(unsafepathindex),
+        "fixture/metadata/cncf/component-knowledge-consumer-contract.json" -> _consumer_contract,
+        "fixture/metadata/cncf/semantic-index.json" -> unsafepathindex
+      ))
+      val invalidpublicationdigestindex = _semantic_index.replace(
+        "\"summary\":\"Account component manifest metadata\"",
+        "\"summary\":\"Account component manifest metadata\",\"publicationDigest\":\"ABC\""
+      )
+      val invalidpublicationdigest = _context(Map(
+        "fixture/metadata/cncf/knowledge-source.json" -> _semantic_manifest_for(invalidpublicationdigestindex),
+        "fixture/metadata/cncf/component-knowledge-consumer-contract.json" -> _consumer_contract,
+        "fixture/metadata/cncf/semantic-index.json" -> invalidpublicationdigestindex
+      ))
 
       When("each input is read through the explicitly selected source")
+      val publicationgenerationmarkupresult = BokSourceReader.read(publicationgenerationmarkup, _source)
       val results = Vector(
         BokSourceReader.read(mismatch, _source),
         BokSourceReader.read(unsafe, _source),
         BokSourceReader.read(unknown, _source),
-        BokSourceReader.read(malformed, _source)
+        BokSourceReader.read(malformed, _source),
+        publicationgenerationmarkupresult,
+        BokSourceReader.read(emptypublic, _source),
+        BokSourceReader.read(markup, _source),
+        BokSourceReader.read(unsafepath, _source),
+        BokSourceReader.read(invalidpublicationdigest, _source)
       )
 
       Then("every unsafe input is rejected before inferred or ambient source selection and does not expose source content")
@@ -195,6 +278,11 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
             conclusion.display should not include "malformed structured index"
           case Consequence.Success(value) => fail("hostile semantic input was admitted: " + value)
         }
+      }
+      publicationgenerationmarkupresult match {
+        case Consequence.Failure(conclusion) =>
+          conclusion.display should include("BoK consumer record.publicationGeneration")
+        case Consequence.Success(value) => fail("digest-valid direct consumer publicationGeneration markup was admitted: " + value)
       }
     }
   }
@@ -521,6 +609,9 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
       """"}
        |  ]
        |}""".stripMargin
+
+  private def _semantic_manifest_for(semanticindex: String): String =
+    _manifest.replace(_sha256(_semantic_index), _sha256(semanticindex))
 
   private lazy val _consumer_contract =
     """{

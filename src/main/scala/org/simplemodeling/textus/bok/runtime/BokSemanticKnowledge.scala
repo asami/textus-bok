@@ -26,7 +26,16 @@ final case class BokSemanticRecord(
   generation: String,
   digest: String,
   stale: Boolean,
-  componentReference: Option[ComponentReference] = None
+  componentReference: Option[ComponentReference] = None,
+  product: Option[String] = None,
+  version: Option[String] = None,
+  profile: Option[String] = None,
+  owner: Option[String] = None,
+  license: Option[String] = None,
+  logicalPath: Option[String] = None,
+  chunkId: Option[String] = None,
+  publicationGeneration: Option[String] = None,
+  publicationDigest: Option[String] = None
 ) {
   def evidence: BokEvidence = BokEvidence(
     org.simplemodeling.textus.bok.datatype.BokEvidenceUri(canonicalUrl),

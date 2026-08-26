@@ -293,7 +293,34 @@ final class BokKnowledgeCatalog {
   }
 
   private def _semantic_record(record: BokSemanticRecord): SemanticKnowledgeRecord =
-    SemanticKnowledgeRecord(record.kind, record.identity, record.title, record.summary, record.documentId, record.sectionId, record.canonicalUrl, record.indexedAt, record.visibility, record.authority, record.sourceId, record.datasetId, record.generation, record.digest, record.stale, record.componentReference, record.evidence)
+    SemanticKnowledgeRecord(
+      record.kind,
+      record.identity,
+      record.title,
+      record.summary,
+      record.documentId,
+      record.sectionId,
+      record.canonicalUrl,
+      record.indexedAt,
+      record.visibility,
+      record.authority,
+      record.sourceId,
+      record.datasetId,
+      record.generation,
+      record.digest,
+      record.stale,
+      record.componentReference,
+      record.evidence,
+      record.product,
+      record.version,
+      record.profile,
+      record.owner,
+      record.license,
+      record.logicalPath,
+      record.chunkId,
+      record.publicationGeneration,
+      record.publicationDigest
+    )
 
   private def _terms(resolved: ResolvedBokProfile): Vector[TermEntry] = synchronized {
     _selected_sources(resolved).flatMap { source =>

@@ -20,7 +20,7 @@ embedding provider, the host filesystem, or the network.
 
 ## Service Contract
 
-`BokRetrieval` provides six operations:
+`BokRetrieval` provides eleven operations:
 
 | Operation | Kind | Purpose | MCP policy |
 |---|---|---|---|
@@ -30,12 +30,21 @@ embedding provider, the host filesystem, or the network.
 | `searchComponentReferences` | query | Search existence-only CAR/SAR references | ready |
 | `getComponentReference` | query | Resolve one exact CAR/SAR identity | ready |
 | `getKnowledgeMap` | query | Read one bounded, attributable selected-generation topology | never ready |
+| `searchSemanticKnowledge` | query | Search bounded attributable semantic metadata | ready, read-only |
+| `getSemanticManifest` | query | Resolve one semantic manifest record | ready, read-only |
+| `getSemanticResource` | query | Resolve one semantic resource record | ready, read-only |
+| `getSemanticSection` | query | Resolve one semantic section record | ready, read-only |
+| `discoverSemanticKnowledge` | query | Discover bounded attributable semantic metadata | ready, read-only |
 
 CAR or SAR configuration may disable an MCP-ready operation but may never make
 `replaceKnowledgeSource` or another undeclared operation visible through MCP.
 `cncf.mcp.enabled`, `cncf.mcp.disabled-services`, and
 `cncf.mcp.disabled-operations` are narrowing controls, not readiness
 declarations.
+
+The five semantic reads expose only public, value-only metadata and never
+mutate a source or activate, install, execute, configure, or grant authority
+to a directive, skill, MCP operation, or CBD detail surface.
 
 ## Knowledge Source
 

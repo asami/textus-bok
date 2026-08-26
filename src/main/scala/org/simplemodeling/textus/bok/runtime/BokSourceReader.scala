@@ -8,6 +8,7 @@ import org.goldenport.Consequence
 import org.goldenport.cncf.context.ExecutionContext
 import org.goldenport.cncf.knowledge.{
   ComponentKnowledgeManifestConsumerContractCodec,
+  ComponentKnowledgeManifestConsumerResourceEvidence,
   PublicMetadataVisibility
 }
 import org.goldenport.cncf.repository.ComponentRepositoryIndex
@@ -188,15 +189,46 @@ object BokSourceReader {
   private def _decode_consumer(source: BokKnowledgeSource, value: String): Consequence[Vector[BokSemanticRecord]] =
     ComponentKnowledgeManifestConsumerContractCodec.decodeC(value)
       .recoverWith(_ => Consequence.resourceInvalid("Invalid BoK component knowledge consumer contract"))
-      .map(_consumer_records(source, _))
+      .flatMap(_consumer_records(source, _))
 
   private def _consumer_records(
     source: BokKnowledgeSource,
     contract: org.goldenport.cncf.knowledge.ComponentKnowledgeManifestConsumerContract
-  ): Vector[BokSemanticRecord] =
-    contract.frameworkPublication.toVector.map(_framework_publication_record(source, _)) ++
-      contract.publicDirective.toVector.map(_public_directive_record(source, _)) ++
-      contract.skillCatalog.toVector.map(_skill_catalog_record(source, _))
+  ): Consequence[Vector[BokSemanticRecord]] = {
+    val records = contract.frameworkPublication.toVector.map(_framework_publication_record(source, _)) ++
+      contract.publicDirective.toVector.map(_public_directive_record(source, contract.resources, _)) ++
+      contract.skillCatalog.toVector.map(_skill_catalog_record(source, contract.resources, _))
+    _sequence(records.map(_validate_consumer_record))
+  }
+
+  private def _validate_consumer_record(record: BokSemanticRecord): Consequence[BokSemanticRecord] = {
+    val optionalmetadata = Vector(
+      "product" -> record.product,
+      "version" -> record.version,
+      "profile" -> record.profile,
+      "owner" -> record.owner,
+      "license" -> record.license,
+      "logicalPath" -> record.logicalPath,
+      "chunkId" -> record.chunkId,
+      "publicationGeneration" -> record.publicationGeneration,
+      "publicationDigest" -> record.publicationDigest
+    )
+    optionalmetadata.collectFirst {
+      case (field, Some(value)) if !_is_public_metadata(value) =>
+        s"BoK consumer record.$field must be a non-empty public string"
+    } match {
+      case Some(message) => Consequence.resourceInvalid(message)
+      case None => record.logicalPath match {
+        case Some(value) if !_safe_relative_logical_path(value) =>
+          Consequence.resourceInvalid("BoK consumer record.logicalPath must be a safe relative logical path")
+        case _ => record.publicationDigest match {
+          case Some(value) if !value.matches("[0-9a-f]{64}") =>
+            Consequence.resourceInvalid("BoK consumer record.publicationDigest must be a lowercase SHA-256 digest")
+          case _ => Consequence.success(record)
+        }
+      }
+    }
+  }
 
   private def _framework_publication_record(
     source: BokKnowledgeSource,
@@ -218,14 +250,20 @@ object BokSourceReader {
       source.datasetId.value,
       source.generation.value,
       value.sourceSha256,
-      false
+      false,
+      product = Some(value.product),
+      version = Some(value.version),
+      publicationGeneration = Some(value.publicationGeneration),
+      publicationDigest = Some(value.sha256)
     )
   }
 
   private def _public_directive_record(
     source: BokKnowledgeSource,
+    resources: Vector[ComponentKnowledgeManifestConsumerResourceEvidence],
     value: org.goldenport.cncf.knowledge.ComponentKnowledgeManifestConsumerPublicDirectiveMetadata
-  ): BokSemanticRecord =
+  ): BokSemanticRecord = {
+    val (logicalpath, license) = _public_resource_metadata(resources, value.logicalIdentity.logicalResource)
     BokSemanticRecord(
       "directive-metadata",
       value.logicalIdentity.logicalResource,
@@ -241,13 +279,20 @@ object BokSourceReader {
       source.datasetId.value,
       source.generation.value,
       value.sourceSha256,
-      false
+      false,
+      version = Some(value.version),
+      profile = Some(value.profileId),
+      license = license,
+      logicalPath = logicalpath
     )
+  }
 
   private def _skill_catalog_record(
     source: BokKnowledgeSource,
+    resources: Vector[ComponentKnowledgeManifestConsumerResourceEvidence],
     value: org.goldenport.cncf.knowledge.ComponentKnowledgeManifestConsumerSkillCatalogMetadata
-  ): BokSemanticRecord =
+  ): BokSemanticRecord = {
+    val (logicalpath, license) = _public_resource_metadata(resources, value.logicalIdentity.logicalResource)
     BokSemanticRecord(
       "skill-metadata",
       value.logicalIdentity.logicalResource,
@@ -263,8 +308,22 @@ object BokSourceReader {
       source.datasetId.value,
       source.generation.value,
       value.sourceSha256,
-      false
+      false,
+      version = Some(value.version),
+      owner = Some(value.owner),
+      license = license,
+      logicalPath = logicalpath
     )
+  }
+
+  private def _public_resource_metadata(
+    resources: Vector[ComponentKnowledgeManifestConsumerResourceEvidence],
+    logicalresource: String
+  ): (Option[String], Option[String]) =
+    resources.filter(_.logicalIdentity.logicalResource == logicalresource) match {
+      case Vector(resource) => (Some(resource.logicalPath), Some(resource.metadata.license))
+      case _ => (None, None)
+    }
 
   private def _public_visibility(value: PublicMetadataVisibility): String = value match {
     case PublicMetadataVisibility.Public | PublicMetadataVisibility.Ecosystem => "public"
@@ -292,15 +351,55 @@ object BokSourceReader {
       val fields = Vector("kind", "identity", "title", "summary", "documentId", "canonicalUrl", "indexedAt", "visibility", "authority", "sha256")
       val strings = fields.map(x => record(x).flatMap(_.asString))
       val supported = Set(_manifest_kind, _consumer_kind, _semantic_kind, "smartdox-document", "smartdox-section", "rdf-jsonld", "glossary", "ontology", "schema", "catalog")
-      if (strings.exists(_.forall(_.isEmpty))) Consequence.resourceInvalid("Semantic index record is missing public metadata")
+      if (strings.exists(_.forall(value => !_is_public_metadata(value)))) Consequence.resourceInvalid("Semantic index record is missing public metadata")
       else if (!supported.contains(strings.head.get) || !strings(5).get.startsWith("https://") || !strings(9).get.matches("[0-9a-f]{64}")) Consequence.resourceInvalid("Invalid semantic index record metadata")
-      else if (strings.exists(_.exists(value => value.contains("<") || value.contains(">")))) Consequence.resourceInvalid("Semantic index record is not public metadata")
-      else _decode_semantic_component_reference(record, components).fold(
-        message => Consequence.resourceInvalid(message),
-        componentreference => Consequence.success(
-          BokSemanticRecord(strings(0).get, strings(1).get, strings(2).get, strings(3).get, strings(4).get, record("sectionId").flatMap(_.asString), strings(5).get, strings(6).get, strings(7).get, strings(8).get, source.sourceId.value, source.datasetId.value, source.generation.value, strings(9).get, record("stale").flatMap(_.asBoolean).getOrElse(false), componentreference)
+      else {
+        val decoded = for {
+          sectionid <- _semantic_optional_string(record, "sectionId", "Semantic index record.sectionId")
+          product <- _semantic_optional_string(record, "product", "Semantic index record.product")
+          version <- _semantic_optional_string(record, "version", "Semantic index record.version")
+          profile <- _semantic_optional_string(record, "profile", "Semantic index record.profile")
+          owner <- _semantic_optional_string(record, "owner", "Semantic index record.owner")
+          license <- _semantic_optional_string(record, "license", "Semantic index record.license")
+          logicalpath <- _semantic_optional_string(record, "logicalPath", "Semantic index record.logicalPath")
+          _ <- logicalpath.map(value => _require_either(_safe_relative_logical_path(value), "Semantic index record.logicalPath must be a safe relative logical path")).getOrElse(Right(()))
+          chunkid <- _semantic_optional_string(record, "chunkId", "Semantic index record.chunkId")
+          publicationgeneration <- _semantic_optional_string(record, "publicationGeneration", "Semantic index record.publicationGeneration")
+          publicationdigest <- _semantic_optional_string(record, "publicationDigest", "Semantic index record.publicationDigest")
+          _ <- publicationdigest.map(value => _require_either(value.matches("[0-9a-f]{64}"), "Semantic index record.publicationDigest must be a lowercase SHA-256 digest")).getOrElse(Right(()))
+          componentreference <- _decode_semantic_component_reference(record, components)
+        } yield BokSemanticRecord(
+          strings(0).get,
+          strings(1).get,
+          strings(2).get,
+          strings(3).get,
+          strings(4).get,
+          sectionid,
+          strings(5).get,
+          strings(6).get,
+          strings(7).get,
+          strings(8).get,
+          source.sourceId.value,
+          source.datasetId.value,
+          source.generation.value,
+          strings(9).get,
+          record("stale").flatMap(_.asBoolean).getOrElse(false),
+          componentreference,
+          product,
+          version,
+          profile,
+          owner,
+          license,
+          logicalpath,
+          chunkid,
+          publicationgeneration,
+          publicationdigest
         )
-      )
+        decoded.fold(
+          message => Consequence.resourceInvalid(message),
+          record => Consequence.success(record)
+        )
+      }
   }
 
   private def _decode_semantic_component_reference(
@@ -311,10 +410,10 @@ object BokSourceReader {
       case None | Some(Json.Null) => Right(None)
       case Some(value) => for {
         reference <- value.asObject.toRight("Semantic index componentReference must be an object")
-        kind <- reference("kind").flatMap(_.asString).filter(_.nonEmpty).toRight("Semantic index componentReference.kind is required")
-        name <- reference("name").flatMap(_.asString).filter(_.nonEmpty).toRight("Semantic index componentReference.name is required")
-        organization <- _semantic_optional_string(reference, "organization")
-        version <- _semantic_optional_string(reference, "version")
+        kind <- reference("kind").flatMap(_.asString).filter(_is_public_metadata).toRight("Semantic index componentReference.kind is required")
+        name <- reference("name").flatMap(_.asString).filter(_is_public_metadata).toRight("Semantic index componentReference.name is required")
+        organization <- _semantic_optional_string(reference, "organization", "Semantic index componentReference.organization")
+        version <- _semantic_optional_string(reference, "version", "Semantic index componentReference.version")
       } yield components.filter { component =>
         BokComponentReferenceIdentity.matches(component, kind, organization, name) &&
           version.forall(value => component.version.exists(_.value == value))
@@ -324,11 +423,25 @@ object BokSourceReader {
       }
     }
 
-  private def _semantic_optional_string(value: JsonObject, field: String): Either[String, Option[String]] =
+  private def _semantic_optional_string(value: JsonObject, field: String, label: String): Either[String, Option[String]] =
     value(field) match {
       case None | Some(Json.Null) => Right(None)
-      case Some(json) => json.asString.filter(_.nonEmpty).toRight(s"Semantic index componentReference.$field must be a non-empty string").map(Some(_))
+      case Some(json) => json.asString.filter(_is_public_metadata).toRight(s"$label must be a non-empty public string").map(Some(_))
     }
+
+  private def _is_public_metadata(value: String): Boolean =
+    value.trim.nonEmpty && !value.contains("<") && !value.contains(">")
+
+  private def _safe_relative_logical_path(value: String): Boolean = {
+    val segments = value.split("/", -1)
+    value == value.trim &&
+      value.nonEmpty &&
+      !value.startsWith("/") &&
+      !value.matches("(?i)^[a-z]:.*") &&
+      !value.contains("\\") &&
+      !value.exists(character => Character.isISOControl(character)) &&
+      segments.forall(segment => segment.nonEmpty && segment != "." && segment != "..")
+  }
 
   private def _sha256(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)).map(x => f"${x & 0xff}%02x").mkString
 

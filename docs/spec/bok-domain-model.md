@@ -39,6 +39,12 @@ evidence-bearing result types, and typed warnings. MCP readiness is
 operation-scoped: the four terminology/component reads are ready, while source
 mutation and the public Knowledge Map query remain outside the MCP catalog.
 
+The five semantic reads use `SemanticKnowledgeRecord` as their shared
+value-only output. Its direct and semantic-index projection contract is
+normatively defined in [Semantic Retrieval Contract](bok-semantic-retrieval-contract.md).
+Optional semantic fields are attributable metadata; they do not turn an
+existence handoff into CBD detail or usage guidance.
+
 A `BokKnowledgeMapNode` retains zero or more `ComponentReference` values only
 when Cozy explicitly declares `componentRef.kind` and `componentRef.name` and
 they exactly match a CAR/SAR index entry in the same selected generation; a

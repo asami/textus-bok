@@ -1025,7 +1025,9 @@ Attributable factual relationship whose endpoints are returned map nodes.
 
 ### DESCRIPTION
 
-Public value-only semantic metadata. Source contents, directives, skill bodies, and execution or mutation authority are excluded.
+Public value-only semantic metadata with optional attributable projection fields.
+Source contents, directives, skill bodies, physical paths, credentials,
+permissions, and execution or mutation authority are excluded.
 
 ### ATTRIBUTE
 
@@ -1048,6 +1050,15 @@ Public value-only semantic metadata. Source contents, directives, skill bodies, 
 | stale | boolean | 1 |
 | componentReference | ComponentReference | ? |
 | evidence | BokEvidence | 1 |
+| product | string | ? |
+| version | string | ? |
+| profile | string | ? |
+| owner | string | ? |
+| license | string | ? |
+| logicalPath | string | ? |
+| chunkId | string | ? |
+| publicationGeneration | string | ? |
+| publicationDigest | string | ? |
 
 ## SemanticKnowledgeSearchResponse
 
