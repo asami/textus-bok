@@ -31,7 +31,12 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
           "explainTerm" -> List("ExplainTermResponse"),
           "searchComponentReferences" -> List("ComponentReferenceSearchResponse"),
           "getComponentReference" -> List("ComponentReferenceLookupResponse"),
-          "getKnowledgeMap" -> List("GetKnowledgeMapResponse")
+          "getKnowledgeMap" -> List("GetKnowledgeMapResponse"),
+          "searchSemanticKnowledge" -> List("SemanticKnowledgeSearchResponse"),
+          "getSemanticManifest" -> List("SemanticManifestResponse"),
+          "getSemanticResource" -> List("SemanticResourceResponse"),
+          "getSemanticSection" -> List("SemanticSectionResponse"),
+          "discoverSemanticKnowledge" -> List("SemanticKnowledgeDiscoveryResponse")
         )
       }
 
