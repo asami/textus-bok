@@ -63,8 +63,11 @@ exposes no Fuseki, Chroma, embedding, filesystem, or network type.
 `BokSourceReader` resolves `metadata/cncf/knowledge-source.json` from the
 logical `BokKnowledgeSource.resource` root and reads every child exclusively
 through `ExecutionContext.resources`. The v1 manifest recognizes structured
-`glossary-terms` and CNCF `component-repository-index` resources. Child hrefs
-must be safe relative paths.
+`glossary-terms`, CNCF `component-repository-index`, and the paired digest-bound
+`component-knowledge-consumer-contract` and `semantic-index` resources. The
+latter two are manifest children read through `ExecutionContext.resources`;
+their hrefs must be safe relative paths, and each declared SHA-256 value is
+verified before semantic metadata is admitted.
 
 Glossary metadata becomes typed `BokTerm` values. The CNCF repository codec
 validates `repository/catalog/index.json` as

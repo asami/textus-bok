@@ -61,8 +61,17 @@ resolves `metadata/cncf/knowledge-source.json` below the selected root. Schema
   definitions, optional category, and term type;
 - `component-repository-index`, using the canonical CNCF repository index for
   CAR/SAR existence.
+- `component-knowledge-consumer-contract`, a digest-bound semantic resource
+  describing the value-only consumer contract;
+- `semantic-index`, a digest-bound semantic resource containing structured
+  semantic metadata.
 - `rdf-graph-summary`, a versioned Cozy topology projection with source
   evidence, factual edges, and optional validated `componentRef` handoffs.
+
+The `component-knowledge-consumer-contract` and `semantic-index` kinds are
+paired manifest children read only through `ExecutionContext.resources`. Their
+hrefs must be safe relative paths, and each declared SHA-256 value is verified
+before its semantic metadata is admitted.
 
 Child references must be safe relative paths. Metadata-only operation is the
 default; rendered HTML and CAR/SAR archive inspection are not required.

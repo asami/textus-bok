@@ -298,15 +298,15 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
         fixture.catalog.searchSemanticKnowledge(access, "Introduction", 2)(_ => Consequence.success(Map.empty)).TAKE
       val discovered: SemanticKnowledgeDiscoveryResponse =
         fixture.catalog.discoverSemanticKnowledge(access, 2)
-      val allDiscovered: SemanticKnowledgeDiscoveryResponse =
+      val alldiscovered: SemanticKnowledgeDiscoveryResponse =
         fixture.catalog.discoverSemanticKnowledge(access, 20)
       val manifest: SemanticManifestResponse =
         fixture.catalog.getSemanticManifest(access, "component:org.example:account:1.0.0")
-      val manifestAsResource: SemanticResourceResponse =
+      val manifestasresource: SemanticResourceResponse =
         fixture.catalog.getSemanticResource(access, "component:org.example:account:1.0.0")
       val resource: SemanticResourceResponse =
         fixture.catalog.getSemanticResource(access, "rdf:framework:graph")
-      val resourceAsManifest: SemanticManifestResponse =
+      val resourceasmanifest: SemanticManifestResponse =
         fixture.catalog.getSemanticManifest(access, "rdf:framework:graph")
       val section: SemanticSectionResponse =
         fixture.catalog.getSemanticSection(access, "smartdox-framework-guide", "intro")
@@ -327,16 +327,16 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
       discovered.results should have size 2
       discovered.limit shouldBe 2
       discovered.truncated shouldBe true
-      allDiscovered.results.map(_.kind).toSet shouldBe _public_kinds
-      allDiscovered.results should have size 13
-      allDiscovered.truncated shouldBe false
+      alldiscovered.results.map(_.kind).toSet shouldBe _public_kinds
+      alldiscovered.results should have size 13
+      alldiscovered.truncated shouldBe false
       manifest.status.value shouldBe "matched"
       manifest.result.map(_.identity) shouldBe Some("component:org.example:account:1.0.0")
       manifest.result.flatMap(_.componentReference) shouldBe Some(_component_reference)
-      manifestAsResource.status.value shouldBe "no-match"
-      manifestAsResource.result shouldBe empty
-      resourceAsManifest.status.value shouldBe "no-match"
-      resourceAsManifest.result shouldBe empty
+      manifestasresource.status.value shouldBe "no-match"
+      manifestasresource.result shouldBe empty
+      resourceasmanifest.status.value shouldBe "no-match"
+      resourceasmanifest.result shouldBe empty
       resource.status.value shouldBe "matched"
       resource.result.map(_.documentId) shouldBe Some("rdf-framework-graph")
       section.status.value shouldBe "matched"
@@ -398,7 +398,7 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
           providercalls += 1
           Consequence.success(Map.empty)
         }.TAKE
-      val noMatch: SemanticKnowledgeSearchResponse =
+      val nomatch: SemanticKnowledgeSearchResponse =
         fixture.catalog.searchSemanticKnowledge(privilegedaccess, "no lexical match", 1) { _ =>
           providercalls += 1
           Consequence.success(Map(inventedcandidate -> 0.99))
@@ -416,11 +416,11 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
       forbidden.authority shouldBe empty
       forbidden.componentReference shouldBe empty
       exact.status.value shouldBe "matched"
-      noMatch.status.value shouldBe "no-match"
-      noMatch.results shouldBe empty
+      nomatch.status.value shouldBe "no-match"
+      nomatch.results shouldBe empty
       providercalls shouldBe 1
-      noMatch.componentReference shouldBe empty
-      noMatch.authority shouldBe empty
+      nomatch.componentReference shouldBe empty
+      nomatch.authority shouldBe empty
     }
   }
 
