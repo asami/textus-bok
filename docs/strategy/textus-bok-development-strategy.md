@@ -37,7 +37,8 @@ guidance belongs to Textus CBD Support.
 9. Phase 7.2: Read Contract Integration
 10. Phase 7.3: Web and Operator Integration
 11. Phase 7.4: Representative Verification and Closure
-12. Phase 8: Configured KnowledgeSource Startup Bootstrap
+12. Phase 7.5: Information Profile Verification
+13. Phase 8: Configured KnowledgeSource Startup Bootstrap
 
 ## Current Priority
 
@@ -72,6 +73,11 @@ with one four-profile representative SAR, cross-surface positive and negative
 isolation, exact REST/Web/MCP attribution, structured MCP and HTTP-200 Web
 failure status, full framework and Textus test gates, CAR validation, and
 converged review. The approved Phase 7 split is now complete.
+
+Phase 7.5 is planned as a separate, bounded verification Phase for the
+remaining Information-profile coverage relocated from CNCF Phase 61.5.1. It
+does not reopen Phases 7--7.4, does not include the SIE-owned packaged-runtime
+composition, and does not delay Phase 8.
 
 Phase 8 is planned but not started. It consumes Cozy Phase 29 project-owned
 site metadata finalization and CNCF Phase 70 post-assembly component activation
