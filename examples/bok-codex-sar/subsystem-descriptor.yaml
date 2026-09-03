@@ -12,6 +12,17 @@ components:
     version: 0.1.1-SNAPSHOT
 config:
   textus.subsystem.user-mode: standalone
+  textus.bok.profile-registry:
+    profiles:
+      - profile: official
+        source:
+          sourceId: urn:textus:bok:packaged-demo
+          datasetId: urn:textus:bok:packaged-demo
+          generation: packaged-car-sar-v1
+          resource: file:///workspace/bok-fixture/
+        evidence:
+          uri: urn:textus:bok:packaged-demo:evidence:packaged-car-sar-v1
+          sourceId: urn:textus:bok:packaged-demo
 security:
   authentication:
     convention: disabled
