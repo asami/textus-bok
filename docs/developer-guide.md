@@ -163,7 +163,7 @@ only for explicit HTTP(S) URLs.
 
 The representative profile-selection SAR is prepared at
 examples/bok-profile-selection-sar and is launched by
-scripts/check-bok-profile-selection-sar.sh. It composes the existing Textus
+scripts/test/check-bok-profile-selection-sar.sh. It composes the existing Textus
 BoK, Semantic Integration Engine, and Scraper SNAPSHOT CARs without changing
 their repositories. The private four-binding model is official,
 development, project-alpha, and project-beta; each has distinct source,
@@ -190,7 +190,7 @@ documents the complete list.
 
 Prepared fixture, lifecycle, probe, and executable-specification artifacts do
 not substitute for live runtime evidence. The Phase 7.4 release gate alone
-owns live scripts/check-bok-profile-selection-sar.sh execution, the full test
+owns live scripts/test/check-bok-profile-selection-sar.sh execution, the full test
 suite, CAR build/lint, final review, and closure. The incomplete- and
 unknown-project probes require MCP's exact
 `structuredContent.error.appStatus` and Static Form's HTTP-200 escaped
@@ -213,7 +213,7 @@ Run:
 sbt --batch test cozyBuildCAR
 cozy lint car .
 TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT=/path/to/website.d \
-  scripts/run-bok-knowledge-map-sar.sh start
+  scripts/test/run-bok-knowledge-map-sar.sh start
 ```
 
 Executable specifications must cover normalization failures, complete and

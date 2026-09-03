@@ -40,7 +40,7 @@ Provider-configurable SAR boundary implemented on 2026-07-21 JST:
 - This removed the configuration blocker for moving KS-14 provider-backed
   smoke to the BoK-owned SAR. The provider-backed lifecycle was still open at
   this checkpoint and was completed by the later smoke recorded below.
-- `scripts/check-bok-codex-provider-config.sh` verifies the in-memory defaults
+- `scripts/test/check-bok-codex-provider-config.sh` verifies the in-memory defaults
   and captures Fuseki, Chroma, endpoint, and embedding overrides at the CNCF
   process boundary without starting external providers.
 - A live restart on the standard `18005` endpoint wrote the requested provider

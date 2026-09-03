@@ -31,7 +31,7 @@ case "${1:-status}" in
       CNCF_SERVER_PORT="$PORT" CNCF_HTTP_BASEURL="$BASE_URL" \
       TEXTUS_BOK_CODEX_RUN_DIR="$RUN_DIR" TEXTUS_BOK_CODEX_LAUNCH_LABEL="$LABEL" \
       "$SCRIPT_DIR/run-bok-codex-sar.sh" start
-    "$SCRIPT_DIR/probe-bok-knowledge-map-sar.py" \
+      "$SCRIPT_DIR/lib/probe-bok-knowledge-map-sar.py" \
       --base-url "$BASE_URL" --source-root "$SOURCE_ROOT" \
       --dataset-id "$DATASET_ID" --source-id "$SOURCE_ID" --generation "$GENERATION"
     ;;

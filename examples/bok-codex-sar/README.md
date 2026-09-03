@@ -8,9 +8,9 @@ its generic retrieval tools remain independent.
 Manage the local server from the Textus BoK project root:
 
 ```bash
-scripts/run-bok-codex-sar.sh start
-scripts/run-bok-codex-sar.sh status
-scripts/run-bok-codex-sar.sh stop
+scripts/test/run-bok-codex-sar.sh start
+scripts/test/run-bok-codex-sar.sh status
+scripts/test/run-bok-codex-sar.sh stop
 ```
 
 The default endpoint is `http://127.0.0.1:18005/mcp`, using the SIE component's
@@ -49,7 +49,7 @@ values are not copied into the state file.
 Verify both the in-memory defaults and provider override propagation with:
 
 ```sh
-scripts/check-bok-codex-provider-config.sh
+scripts/test/check-bok-codex-provider-config.sh
 ```
 
 The corresponding global Codex configuration is

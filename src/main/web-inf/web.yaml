@@ -4,3 +4,4 @@ apps:
     kind: static-form
     root: /web/textus-bok
     route: /web/{component}/textus-bok
+    entry: true

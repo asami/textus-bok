@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "$0")"
 SIE_ROOT="${TEXTUS_SIE_ROOT:-$(cd "$PROJECT_ROOT/.." && pwd)/textus-semantic-integration-engine}"
 SCRAPER_ROOT="${TEXTUS_SCRAPER_ROOT:-$(cd "$PROJECT_ROOT/.." && pwd)/textus-scraper}"
@@ -288,7 +288,7 @@ _serve() {
     expected_vector_provider="in-memory-vector"
   fi
   if [[ "$SKIP_PROBE" != "true" ]]; then
-    "$SCRIPT_DIR/probe-bok-codex-sar.py" \
+    "$SCRIPT_DIR/lib/probe-bok-codex-sar.py" \
       --base-url "$CNCF_HTTP_BASEURL" \
       --source-uri "$(cd "$FIXTURE_ROOT" && pwd -P | sed 's#^#file://#')/" \
       --expected-rdf-provider "$expected_rdf_provider" \

@@ -7,7 +7,7 @@ SIE's declared scraper component API.
 Run the complete local lifecycle from the Textus BoK project root:
 
 ```bash
-scripts/check-bok-migration-sar.sh
+scripts/test/check-bok-migration-sar.sh
 ```
 
 The check builds all three CARs, assembles the descriptor as a temporary SAR,

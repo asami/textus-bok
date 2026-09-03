@@ -1,0 +1,26 @@
+schemaVersion: 2
+kind: car
+namespace: org.simplemodeling.textus
+id: Bok
+artifactId: textus-bok
+latestSnapshot: 0.1.0-SNAPSHOT
+status: active
+aliases: []
+tags: []
+terms: []
+versions:
+  - version: 0.1.0-SNAPSHOT
+    channel: snapshot
+    status: active
+    component: org.simplemodeling.textus.Bok
+    publishedAt: 2026-08-16T04:50:50.238417+09:00
+    file: repository/car/org/simplemodeling/textus/textus-bok/0.1.0-SNAPSHOT/textus-bok-0.1.0-SNAPSHOT.car
+    runtime:
+      cncf:
+        minimum: 0.5.2-SNAPSHOT
+        excluded: []
+        tested:
+          - 0.5.2-SNAPSHOT
+    checksum:
+      sha256: fd52c181f4b336bd3f42d20a0221ebd56133a96bd347c28890d0246debd62bae
+    integrityKey: org.simplemodeling.textus:textus-bok:0.1.0-SNAPSHOT@sha256:fd52c181f4b336bd3f42d20a0221ebd56133a96bd347c28890d0246debd62bae

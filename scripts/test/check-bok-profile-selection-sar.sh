@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SIE_ROOT="${TEXTUS_SIE_ROOT:-$(cd "$PROJECT_ROOT/.." && pwd)/textus-semantic-integration-engine}"
 SCRAPER_ROOT="${TEXTUS_SCRAPER_ROOT:-$(cd "$PROJECT_ROOT/.." && pwd)/textus-scraper}"
 CNCF_BIN="${CNCF_BIN:-$(command -v cncf || true)}"
@@ -455,7 +455,7 @@ if [[ -z "$server_listener_pid_signature" ]]; then
   exit 1
 fi
 
-if ! "$PYTHON_BIN" "$SCRIPT_DIR/probe-bok-profile-selection-sar.py" \
+if ! "$PYTHON_BIN" "$SCRIPT_DIR/lib/probe-bok-profile-selection-sar.py" \
   --base-url "$CNCF_HTTP_BASEURL" \
   --fixture-root "$fixture_root" \
   --server-pid "$server_pid" \

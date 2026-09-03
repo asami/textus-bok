@@ -37,6 +37,7 @@ guidance belongs to Textus CBD Support.
 9. Phase 7.2: Read Contract Integration
 10. Phase 7.3: Web and Operator Integration
 11. Phase 7.4: Representative Verification and Closure
+12. Phase 8: Configured KnowledgeSource Startup Bootstrap
 
 ## Current Priority
 
@@ -70,8 +71,22 @@ CAR packaging, and operator/developer guidance. Phase 7.4 closed on 2026-08-15
 with one four-profile representative SAR, cross-surface positive and negative
 isolation, exact REST/Web/MCP attribution, structured MCP and HTTP-200 Web
 failure status, full framework and Textus test gates, CAR validation, and
-converged review. The approved Phase 7 split is now complete. No successor
-Phase is approved or started.
+converged review. The approved Phase 7 split is now complete.
+
+Phase 8 is planned but not started. It consumes Cozy Phase 29 project-owned
+site metadata finalization and CNCF Phase 70 post-assembly component activation
+to load explicitly selected registered KnowledgeSource profiles before managed
+server readiness. The immediate SimpleModeling.org target is a default-off
+`development` bootstrap: rebuild `website.d`, restart the control-center-managed
+Textus BoK instance, then read attributable terms with `profile=development`.
+Phase 8 does not watch files, control the supervisor, infer profiles, expose
+administration through MCP, or add another publication implementation.
+
+Phase 59.7 completion record: DOC-07 adds one additive, value-only semantic
+metadata projection for the five existing semantic reads. It preserves source
+digest meaning, validates only declared public values through ResourceAccess,
+and retains the BOK existence-only handoff to CBD Support. Focused GREEN
+validation, CAR lint, review, and phase transition remain parent-owned.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside active feature

@@ -47,7 +47,7 @@ declared read tools. This completes P6-32.
 
 ## Migration SAR Evidence
 
-On 2026-07-21, `scripts/check-bok-migration-sar.sh` built current SIE, BoK, and
+On 2026-07-21, `scripts/test/check-bok-migration-sar.sh` built current SIE, BoK, and
 Scraper CARs and ran a temporary SAR on CNCF `0.5.1-SNAPSHOT`. One canonical
 metadata superset was loaded through the legacy SIE path and the BoK replacement
 path. The probe verified:

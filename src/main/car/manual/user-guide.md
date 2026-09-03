@@ -285,7 +285,7 @@ control.
 
 For the representative Cozy handoff verification, set
 `TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT` to the generated `website.d` directory
-and run `scripts/run-bok-knowledge-map-sar.sh start`. The probe replaces the
+and run `scripts/test/run-bok-knowledge-map-sar.sh start`. The probe replaces the
 source and proves REST and Web agreement on generation, topology, evidence,
 truncation, and `componentRef` handoffs.
 
@@ -299,7 +299,7 @@ Use `PYTHON_BIN` to choose the Python 3.10+ interpreter when the default
 `python3` is not suitable. From the Textus BoK repository, run:
 
 ```sh
-scripts/check-bok-profile-selection-sar.sh
+scripts/test/check-bok-profile-selection-sar.sh
 ```
 
 The logical bindings are official (omitted selector), development,
@@ -361,7 +361,7 @@ deployment may narrow the tool list but cannot broaden it to private or
 administration operations.
 
 For a local Codex endpoint, use the repository-owned
-`examples/bok-codex-sar` assembly and `scripts/run-bok-codex-sar.sh`. That SAR
+`examples/bok-codex-sar` assembly and `scripts/test/run-bok-codex-sar.sh`. That SAR
 disables the transitional SIE BoK tools, loads metadata through Textus BoK, and
 keeps SIE's provider-neutral component API available in the same subsystem.
 

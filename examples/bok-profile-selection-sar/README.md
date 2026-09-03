@@ -26,7 +26,7 @@ Integration Engine, and Textus Scraper, a compatible `cncf` runtime, Python
 3.10 or newer, `zip`, `curl`, and `lsof`. The one-shot lifecycle is:
 
 ```sh
-scripts/check-bok-profile-selection-sar.sh
+scripts/test/check-bok-profile-selection-sar.sh
 ```
 
 The script does not build, publish, or mutate the source repositories. It

@@ -20,6 +20,12 @@ project model. Generate and verify the CAR with:
 sbt --batch test cozyBuildCAR
 ```
 
+Canonical script roles are:
+
+- `scripts/prepare-development-runtime.sh` prepares complete development runtime evidence through SBT;
+- `scripts/test/run-server.sh` starts a test/development server through the CNCF launcher; and
+- `scripts/run-server.sh` starts the production/operator server through the Textus launcher.
+
 Generated Scala sources are written under `target/scala-3.3.8/src_managed/main/scala`.
 
 `replaceKnowledgeSource` reads logical metadata through the CNCF resource DSL
@@ -40,7 +46,7 @@ and its Static Form view at `/web/bok/textus-bok/map`. Both project one bounded
 selected generation with source evidence and an existence-only CBD handoff;
 neither operation is MCP-ready and the browser never performs source mutation.
 To verify a real Cozy source locally, build it with Cozy 0.3.0-SNAPSHOT and run
-`scripts/run-bok-knowledge-map-sar.sh start` with
+`scripts/test/run-bok-knowledge-map-sar.sh start` with
 `TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT` set to its generated `website.d` root.
 
 Phase 7.4 also prepares one representative profile-selection SAR with official,

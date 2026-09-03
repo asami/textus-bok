@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SIE_ROOT="${TEXTUS_SIE_ROOT:-$(cd "$PROJECT_ROOT/.." && pwd)/textus-semantic-integration-engine}"
 SCRAPER_ROOT="${TEXTUS_SCRAPER_ROOT:-$(cd "$PROJECT_ROOT/.." && pwd)/textus-scraper}"
 CNCF_BIN="${CNCF_BIN:-$(command -v cncf || true)}"
@@ -124,7 +124,7 @@ if [[ ! "$server_listener_pid" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
-if ! "$SCRIPT_DIR/probe-bok-migration-sar.py" \
+if ! "$SCRIPT_DIR/lib/probe-bok-migration-sar.py" \
   --base-url "$CNCF_HTTP_BASEURL" \
   --source-uri "$(cd "$FIXTURE_ROOT" && pwd -P | sed 's#^#file://#')/"; then
   tail -n 300 "$server_log" >&2

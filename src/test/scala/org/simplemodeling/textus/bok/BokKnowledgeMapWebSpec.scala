@@ -201,18 +201,21 @@ final class BokKnowledgeMapWebSpec extends AnyWordSpec with Matchers with GivenW
     }
 
     "declare the Web entry policy explicitly" which {
-      "declare textus-bok as the configuration-free sole public application entry" in {
-      Given("the authored Web descriptor source")
-
-      When("the shared entry policy resolves the sole application for canonical component segment bok")
+      "select textus-bok as the explicit entry in a multi-component Web assembly" in {
+      Given("the authored BoK Web descriptor and a synthetic scraper application")
       val webdescriptor = WebDescriptor.load(Path.of("src", "main", "web-inf", "web.yaml")).fold(_fail_conclusion, identity)
+      val aggregate = webdescriptor.mergeOverride(
+        WebDescriptor(apps = Vector(WebDescriptor.App("textus-scraper")))
+      )
+
+      When("the shared entry policy resolves the aggregate multi-application assembly for canonical component segment bok")
       val entry = WebApplicationEntryPolicy.resolve(
-        webdescriptor,
+        aggregate,
         Some(GenericSubsystemDescriptor(Path.of("textus-bok.sar"), "textus-bok", implicitRootComponentName = Some("bok")))
       )
 
-      Then("the descriptor needs no entry flag while /web is the public entry and the canonical route remains configured")
-      webdescriptor.componentEntryApps shouldBe Vector.empty
+      Then("the explicit BoK entry is selected for component bok at /web and the canonical route remains configured")
+      webdescriptor.componentEntryApps shouldBe Vector(webdescriptor.apps.head)
       entry shouldBe WebApplicationEntryPolicy.Selected(webdescriptor.apps.head, "bok", "/web")
       webdescriptor.apps.head.completedFor(Some("bok")).effectiveRoute shouldBe "/web/bok/textus-bok"
       }

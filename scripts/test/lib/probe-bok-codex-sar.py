@@ -3,28 +3,38 @@
 import argparse
 import json
 import urllib.request
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 
 MCP_PROTOCOL_VERSION = "2025-11-25"
 BOK_TOOLS = {
-    "Bok.BokRetrieval.searchTerms",
-    "Bok.BokRetrieval.explainTerm",
-    "Bok.BokRetrieval.searchComponentReferences",
-    "Bok.BokRetrieval.getComponentReference",
+    "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms",
+    "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
+    "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
 }
 
 LEGACY_SIE_BOK_TOOLS = {
-    "SemanticIntegrationEngine.SemanticRetrieval.searchTerms",
-    "SemanticIntegrationEngine.SemanticRetrieval.explainTerm",
-    "SemanticIntegrationEngine.SemanticRetrieval.searchComponentReferences",
-    "SemanticIntegrationEngine.SemanticRetrieval.getComponentReference",
+    "org.simplemodeling.textus.SemanticIntegrationEngine.SemanticRetrieval.searchTerms",
+    "org.simplemodeling.textus.SemanticIntegrationEngine.SemanticRetrieval.explainTerm",
+    "org.simplemodeling.textus.SemanticIntegrationEngine.SemanticRetrieval.searchComponentReferences",
+    "org.simplemodeling.textus.SemanticIntegrationEngine.SemanticRetrieval.getComponentReference",
 }
 
 
 def _post_json(base_url: str, path: str, body: dict, timeout: float) -> dict:
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if path == "/mcp":
         headers["MCP-Protocol-Version"] = MCP_PROTOCOL_VERSION
+    else:
+        parsed_path = urlsplit(path)
+        query = parsed_path.query
+        format_query = urlencode({"textus.format": "json"})
+        if query:
+            query = f"{query}&{format_query}"
+        else:
+            query = format_query
+        path = urlunsplit(parsed_path._replace(query=query))
     request = urllib.request.Request(
         f"{base_url}{path}",
         data=json.dumps(body).encode("utf-8"),
@@ -89,7 +99,7 @@ def _run(
 
     replacement = _post_json(
         base_url,
-        "/rest/v1/bok/bok-retrieval/replace-knowledge-source",
+        "/rest/v1/org-simplemodeling-textus-bok/bok-retrieval/replace-knowledge-source",
         {
             "source": {
                 "sourceId": source_id,
@@ -105,7 +115,7 @@ def _run(
 
     provider_status = _call_tool(
         base_url,
-        "SemanticIntegrationEngine.SemanticRetrieval.status",
+        "org.simplemodeling.textus.SemanticIntegrationEngine.SemanticRetrieval.status",
         {},
         timeout,
     )
@@ -127,7 +137,7 @@ def _run(
         search_arguments["category"] = probe_category
     search = _call_tool(
         base_url,
-        "Bok.BokRetrieval.searchTerms",
+        "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms",
         search_arguments,
         timeout,
     )

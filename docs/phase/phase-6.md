@@ -124,7 +124,7 @@ Recorded P6-E evidence (2026-07-23):
   snake_case response fields;
 - on 2026-07-24, `sbt --batch 'clean; test; cozyBuildCAR'` passed with 24
   successful tests and produced `target/textus-bok-0.1.0-SNAPSHOT.car`;
-- normal CNCF CAR lint and `scripts/check-bok-codex-provider-config.sh` passed,
+- normal CNCF CAR lint and `scripts/test/check-bok-codex-provider-config.sh` passed,
   with only deferred release ABI-baseline and development-SNAPSHOT warnings.
 
 ## Boundaries
