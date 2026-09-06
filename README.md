@@ -22,33 +22,33 @@ sbt --batch test cozyBuildCAR
 
 Generated Scala sources are written under `target/scala-3.3.8/src_managed/main/scala`.
 
-`replaceKnowledgeSource` reads logical metadata through the CNCF resource DSL
-and replaces the complete source generation through SIE's generated
-`KnowledgeFederation` component contract. The CAR ABI dependency and exact
-development `provided` coordinate are declared separately in `project.yaml`,
-so SIE API classes are available while compiling but are not duplicated in the
-BoK CAR.
+The current pre-Phase-8 runtime path reads logical metadata through the CNCF
+resource DSL and replaces complete source generations through SIE's generated
+`KnowledgeFederation` component contract. Phase 8 changes this dependency
+shape by introducing a BoK-owned resident catalog with an in-memory runtime as
+the practical default while retaining SIE as an optional/future backend for
+larger knowledge volumes.
 
 Typed matching remains inside Textus BoK. Exact knowledge is distinct from
-provider-backed candidates, and complete source generations remove stale
-records only after SIE confirms publication. MCP publishes the four typed BoK
-read operations, including existence-only component references. Source
-replacement is permanently excluded.
+provider-backed candidates. MCP publishes the four typed BoK read operations,
+including existence-only component references. Source replacement is
+permanently excluded from MCP publication.
 
 The component also provides the public, read-only `getKnowledgeMap` operation
-and its Static Form view at `/web/bok/textus-bok/map`. Both project one bounded
-selected generation with source evidence and an existence-only CBD handoff;
-neither operation is MCP-ready and the browser never performs source mutation.
-To verify a real Cozy source locally, build it with Cozy 0.3.0-SNAPSHOT and run
-`scripts/run-bok-knowledge-map-sar.sh start` with
+and its Static Form view at `/web/bok/textus-bok/map`. Both currently project
+one bounded selected generation with source evidence and an existence-only CBD
+handoff; neither operation is MCP-ready and the browser never performs source
+mutation. To verify a real Cozy source locally, build it with Cozy
+0.3.0-SNAPSHOT and run `scripts/run-bok-knowledge-map-sar.sh start` with
 `TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT` set to its generated `website.d` root.
 
-Phase 7.4 also prepares one representative profile-selection SAR with official,
-development, and two distinct project keys. Its positive reads and cyclic
-foreign-term/foreign-node probes demonstrate selected generation, evidence, and
-project isolation without union or fallback; the prepared lifecycle is not
-claimed live-passed until the Phase release gate runs it. See the
-[representative profile-selection verification](examples/bok-profile-selection-sar/README.md).
+Phase 7.4 provides the closed profile-selection baseline with official,
+development, and project-local generations isolated by explicit selection.
+Phase 8 builds on that baseline by resolving each source independently, then
+combining accepted selected generations into one attributable resident catalog.
+Its representative target is simultaneous SimpleModeling.org and
+`bok-knowledgehub` terminology available from one running Textus BoK process
+and through the existing MCP read operations, without requiring SIE.
 
 ## Documentation
 
@@ -79,6 +79,8 @@ claimed live-passed until the Phase release gate runs it. See the
 - [Phase 7.3 checklist](docs/phase/phase-7.3-checklist.md)
 - [Phase 7.4: Representative Verification and Closure](docs/phase/phase-7.4.md)
 - [Phase 7.4 checklist](docs/phase/phase-7.4-checklist.md)
+- [Phase 8: Resident Multi-BoK Catalog and MCP Publication](docs/phase/phase-8.md)
+- [Phase 8 checklist](docs/phase/phase-8-checklist.md)
 - [Knowledge Map Web application specification draft](docs/notes/textus-bok-knowledge-map-web-application-spec-draft.md)
 - [Knowledge Map Web application consideration journal](docs/journal/2026/07/textus-bok-knowledge-map-web-application-consideration-2026-07-23.md)
 - [Temporary migration SAR](examples/bok-migration-sar/README.md)
