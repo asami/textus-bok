@@ -3,14 +3,17 @@
 ## Purpose
 
 Textus BoK owns BoK terminology, component-existence knowledge, source
-interpretation, and BoK-specific MCP operations. Generic knowledge federation
-belongs to Textus Semantic Integration Engine, while detailed CBD usage
-guidance belongs to Textus CBD Support.
+interpretation, resident BoK catalog semantics, and BoK-specific MCP
+operations. Generic large-scale knowledge federation belongs to Textus
+Semantic Integration Engine, while detailed CBD usage guidance belongs to
+Textus CBD Support.
 
 ## Development Principles
 
-- Keep BoK domain models and match semantics inside this CAR.
-- Access SIE only through its public component contract.
+- Keep BoK domain models, resident-catalog behavior, and match semantics inside
+  this CAR.
+- Access SIE only through its public component contract and do not make SIE a
+  mandatory dependency when an in-memory BoK runtime is sufficient.
 - Read source material through the CNCF resource DSL.
 - Keep generated component surfaces separate from handwritten domain behavior.
 - Project only attributable source relationships as knowledge facts; keep
@@ -23,6 +26,9 @@ guidance belongs to Textus CBD Support.
   `simplemodeling-org` BoK, and project-local BoKs as explicitly selected,
   attributable profiles. Never infer a profile from the current directory or
   let development/project content silently override official knowledge.
+- Keep profile resolution separate from resident catalog composition: resolve
+  and admit each complete generation independently before combining accepted
+  generations into one multi-BoK read catalog.
 
 ## Phase Overview
 
@@ -37,6 +43,7 @@ guidance belongs to Textus CBD Support.
 9. Phase 7.2: Read Contract Integration
 10. Phase 7.3: Web and Operator Integration
 11. Phase 7.4: Representative Verification and Closure
+12. Phase 8: Resident Multi-BoK Catalog and MCP Publication
 
 ## Current Priority
 
@@ -70,10 +77,20 @@ CAR packaging, and operator/developer guidance. Phase 7.4 closed on 2026-08-15
 with one four-profile representative SAR, cross-surface positive and negative
 isolation, exact REST/Web/MCP attribution, structured MCP and HTTP-200 Web
 failure status, full framework and Textus test gates, CAR validation, and
-converged review. The approved Phase 7 split is now complete. No successor
-Phase is approved or started.
+converged review. The approved Phase 7 split is complete.
+
+Phase 8 is the approved current successor. It makes the SIE-independent
+in-memory runtime the practical first path, composes multiple independently
+selected complete generations into one attributable resident BoK catalog, and
+routes the existing BoK read/MCP operations through that catalog. Its
+representative closure target is the simultaneous admission of
+SimpleModeling.org (or the working `simplemodeling-org` generation) and
+`bok-knowledgehub`, followed by one combined catalog read and MCP runtime check
+without an installed SIE component. Phase 8 does not require a new Cozy or CNCF
+feature Phase as a start gate; executable downstream evidence must identify any
+actual upstream gap before such a handoff is created.
 
 Release-only residuals from Phases 1–5 are intentionally deferred in
 `docs/phase/deferred-release-work.md`. They remain outside active feature
-phases until a release-readiness phase explicitly takes ownership; the Phase 7
-series does not implicitly admit them.
+phases until a release-readiness phase explicitly takes ownership; Phase 8 does
+not implicitly admit them.
