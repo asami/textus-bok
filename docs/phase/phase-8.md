@@ -1,9 +1,11 @@
 # Phase 8: Configured KnowledgeSource Startup Bootstrap
 
 Stage Status:
-- Current status: IN_PROGRESS
-- Accepted step: P8-A Contract and Supplier Handoffs
-- Next step: P8-B Bootstrap Publication (PLANNED, not started)
+- Current status: CLOSED
+- Accepted steps: P8-A Contract and Supplier Handoffs; P8-B Bootstrap
+  Publication; P8-C Managed Runtime Acceptance and Closure
+- Next step: None. Phase 8 is closed; no successor Phase is started by this
+  closure.
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-8-checklist.md` only from accepted
   executable, runtime, review, or dependency-handoff evidence.
@@ -93,6 +95,78 @@ P8-A is accepted as the configuration/contract and supplier-handoff Step. It
 does not claim production startup activation or publication. Acceptance using
 an actual SimpleModeling.org managed `website.d`, control-center restart, and
 MCP term retrieval remains reserved to P8-C.
+
+## P8-B Acceptance Record
+
+P8-B is accepted by commit
+`4893adc2c1aea752b6352f70f856c3b2c27b284e`. The primary component now opts
+into the CNCF Phase 70 post-assembly activation contract, decodes only the
+explicit registered profile selectors, and publishes profiles sequentially
+through the same package-private replacement authority used by protected
+`replaceKnowledgeSource`. Default-off and non-Server execution remain inert;
+complete-only admission, stop-on-first terminal outcome, cancellation/deadline
+handling, safe diagnostics, catalog visibility, atomic SIE replacement,
+profile attribution, and MCP mutation exclusion are executable behavior.
+
+The final focused P8-B repair proof ran the startup and federation suites in
+serialized SBT invocation `26688-20260908T092509Z`: 25 tests succeeded, 0
+failed, and the sole then-pending scenario was the P8-C managed-runtime case.
+The wrapper completed with `lock=released`. The accepted CNCF Phase 70 local
+SNAPSHOT prerequisite was refreshed without source mutation before that proof.
+
+## P8-C Acceptance Record
+
+P8-C is accepted by commit
+`21362f11ec32e9808a42a710888b7d194abb15f5`. It supplies the bounded
+SimpleModeling.org WIP snapshot preparer, marked private configuration writer,
+read-only loopback MCP probe, script-layout checks, and synchronized operator
+documentation. The final focused implementation proof ran four suites in
+serialized SBT invocation `84797-20260908T104541Z`: 43 tests succeeded and 0
+failed. `cozyPrepareRuntime` passed in invocation
+`85866-20260908T104738Z`; `MANAGED_BOOTSTRAP_TOOLS_OK`,
+`SCRIPT_ENTRYPOINT_LAYOUT_OK`, shell syntax, and diff checks passed.
+
+Historical managed acceptance used the ordinary Control Center/supervisor
+lifecycle on port 18014. The generated SimpleModeling.org 1.0.56 baseline
+published generation
+`sha256:40f96e99b2308e0474584513ff7602928008d57de8e3f3bd2494a5aa83402cec`
+with 215 terms and `architecture:availability`. Restarting against clean
+SimpleModeling.org commit `055061c2f97315fb51bca6a0f2f0b3cbfacfc5eb`
+published generation
+`sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f`
+with 212 terms and `literate-modeling:story`; the baseline-only identity was
+absent. This proves complete replacement rather than append behavior. A copied
+malformed manifest prevented readiness and returned a safe activation
+diagnostic without the private source locator. The private configuration was
+then restored to the clean current `website.d`; this record does not claim the
+managed process is still running.
+
+## Review and Release Closure
+
+The single comprehensive Phase review covered the complete
+`c81814894cc39640a7e0aa5578f15024a15a777a..21362f11ec32e9808a42a710888b7d194abb15f5`
+accumulator and returned PASS with no Current Phase Blocker or open question.
+Its typed disposition is
+`04a88d712571d18c7ea2ae9a183d6c634be709b0334e6e5ccd1d47805e1d2961`.
+Accepted residuals are persisted separately in the Phase 8 Hygiene and
+Development Candidate journals; none expands this Phase.
+
+Release validation used the final closure candidate:
+
+- full Textus BoK suite invocation `17905-20260908T162432Z`: 14 suites,
+  79 tests succeeded, 0 failed or aborted, SBT exit 0, wrapper exit 0, and
+  `lock=released`;
+- `cozyBuildCAR` invocation `18777-20260908T162632Z`: SBT exit 0, wrapper exit
+  0, `lock=released`, and
+  `target/textus-bok-0.1.0-SNAPSHOT.car` produced;
+- normal CAR lint, final managed-bootstrap tooling checks, and exact
+  closure-ledger checks run on the resulting final documentation tree before
+  the distinct Phase release commit.
+
+The Phase release commit carries the `PHASE-8` closure
+binding. It persists every accepted Hygiene and Development Candidate record,
+keeps `.gitignore` and private `.textus/config.yaml` outside the commit, and
+starts no successor Phase.
 
 ## Scope and invariants
 

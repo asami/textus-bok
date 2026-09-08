@@ -29,42 +29,60 @@ SimpleModeling.org managed-runtime acceptance remains in P8-C.
 
 ## P8-B: Bootstrap Publication
 
-Status: PLANNED
+Status: DONE
 
-- [ ] Decode bootstrap profile selectors through the existing typed
+- [x] Decode bootstrap profile selectors through the existing typed
       configuration and profile-registry boundary.
-- [ ] Activate only after the CNCF Phase 70 component/runtime-service handoff
+- [x] Activate only after the CNCF Phase 70 component/runtime-service handoff
       and before server readiness.
-- [ ] Extract/reuse one publication service shared by bootstrap and the
+- [x] Extract/reuse one publication service shared by bootstrap and the
       protected `replaceKnowledgeSource` Operation.
-- [ ] Publish configured profiles in deterministic order and require a
+- [x] Publish configured profiles in deterministic order and require a
       `complete` result for each required profile.
-- [ ] Preserve atomic later-generation replacement, catalog visibility,
+- [x] Preserve atomic later-generation replacement, catalog visibility,
       profile isolation, generation/evidence attribution, and rollback safety.
-- [ ] Prove default-off, once-only startup, unchanged-input restart,
+- [x] Prove default-off, once-only startup, unchanged-input restart,
       multi-profile ordering, invalid profile, missing/invalid metadata,
       absent SIE, degraded/failed publication, and safe diagnostics.
-- [ ] Preserve protected manual replacement and permanent MCP exclusion of
+- [x] Preserve protected manual replacement and permanent MCP exclusion of
       mutation/administration Operations.
+
+P8-B acceptance is commit
+`4893adc2c1aea752b6352f70f856c3b2c27b284e`; its final focused proof reported
+25 succeeded, 0 failed, and 1 then-pending P8-C managed scenario with
+`lock=released`.
 
 ## P8-C: Managed Runtime Acceptance and Closure
 
-Status: PLANNED
+Status: DONE
 
-- [ ] Configure the SimpleModeling.org development binding and explicit
+- [x] Configure the SimpleModeling.org development binding and explicit
       `development` bootstrap selector without adding another resource locator.
-- [ ] Generate the accepted `website.d` through the Cozy Phase 29 WIP path and
+- [x] Generate the accepted `website.d` through the Cozy Phase 29 WIP path and
       start Textus BoK through the normal Textus/control-center lifecycle.
-- [ ] Verify readiness only after bootstrap reports `complete`, then retrieve
+- [x] Verify readiness only after bootstrap reports `complete`, then retrieve
       attributable Glossary terms through MCP with `profile=development`.
-- [ ] Add one term, rebuild metadata, restart the managed instance, and prove
+- [x] Compare accepted baseline and current metadata, restart the managed
+      instance, and prove
       the new complete generation replaces the prior in-memory state.
-- [ ] Prove malformed or incompatible metadata prevents readiness and produces
+- [x] Prove malformed or incompatible metadata prevents readiness and produces
       safe actionable control-center diagnostics.
-- [ ] Run focused and full Textus/CNCF regression, `cozyBuildCAR`, normal CAR
+- [x] Run focused and full Textus/CNCF regression, `cozyBuildCAR`, normal CAR
       lint, managed runtime acceptance, documentation convergence, independent
       review, bounded repair/re-review when needed, and the Phase release
       commit.
 
-Phase 8 closes only when all Steps are DONE and exact supplier, runtime,
-validation, review, and commit evidence is recorded in `phase-8.md`.
+P8-C acceptance is commit
+`21362f11ec32e9808a42a710888b7d194abb15f5`. The managed baseline/current
+transition, malformed-metadata rejection, restoration, full-review PASS, final
+release validation, and distinct Phase release boundary are recorded in
+`phase-8.md`.
+
+Acceptance clarification (2026-09-09): the earlier draft's instruction to edit
+the live producer by adding one term was superseded by the accepted read-only
+comparison of the generated 1.0.56 baseline and the clean current publication.
+Their different term identities, counts, and generations prove the same
+restart/replacement behavior without mutating SimpleModeling.org.
+
+Phase 8 is CLOSED. All Steps are DONE; no successor Phase is started by this
+ledger transition.

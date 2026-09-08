@@ -79,14 +79,17 @@ remaining Information-profile coverage relocated from CNCF Phase 61.5.1. It
 does not reopen Phases 7--7.4, does not include the SIE-owned packaged-runtime
 composition, and does not delay Phase 8.
 
-Phase 8 is planned but not started. It consumes Cozy Phase 29 project-owned
-site metadata finalization and CNCF Phase 70 post-assembly component activation
-to load explicitly selected registered KnowledgeSource profiles before managed
-server readiness. The immediate SimpleModeling.org target is a default-off
-`development` bootstrap: rebuild `website.d`, restart the control-center-managed
-Textus BoK instance, then read attributable terms with `profile=development`.
-Phase 8 does not watch files, control the supervisor, infer profiles, expose
-administration through MCP, or add another publication implementation.
+Phase 8 closed on 2026-09-09. It consumes Cozy Phase 29 project-owned site
+metadata finalization and CNCF Phase 70 post-assembly component activation to
+load explicitly selected registered KnowledgeSource profiles before managed
+server readiness. The accepted default-off `development` path rebuilds or
+selects an accepted `website.d`, writes only the marked private profile and
+bootstrap configuration, restarts the Control Center-managed Textus BoK
+instance, and reads attributable terms with `profile=development`. Baseline,
+current-publication, complete-replacement, malformed-metadata, safe-diagnostic,
+and restoration behavior passed through the managed lifecycle. Phase 8 adds no
+watcher, supervisor control, inferred profile, MCP administration, or second
+publication implementation.
 
 Phase 59.7 completion record: DOC-07 adds one additive, value-only semantic
 metadata projection for the five existing semantic reads. It preserves source
