@@ -20,8 +20,9 @@ import org.simplemodeling.textus.bok.runtime.*
 
 /**
  * Executable specification for the private Phase 8 bootstrap selector,
- * replacement, and activation boundary. Managed readiness/MCP attribution
- * remains separately pending for P8-C.
+ * replacement, and activation boundary. Managed runtime readiness and MCP
+ * attribution are exercised by the bounded external P8-C acceptance probe,
+ * not by a synthetic unit assertion.
  *
  * @since   Sep. 8, 2026
  * @version Sep. 8, 2026
@@ -418,12 +419,6 @@ final class BokStartupBootstrapSpec extends AnyWordSpec with Matchers with Given
       operations should contain ("BokRetrieval.searchTerms")
     }
 
-    "attribute managed readiness and MCP reads to the selected profile" in {
-      Given("a managed server that becomes ready only after complete development publication")
-      When("a future MCP read selects profile=development")
-      Then("readiness follows completion and the response carries selected profile attribution (P8-C managed acceptance)")
-      pending
-    }
   }
 
   private def _context: ExecutionContext = {

@@ -56,6 +56,70 @@ project isolation without union or fallback; the prepared lifecycle is not
 claimed live-passed until the Phase release gate runs it. See the
 [representative profile-selection verification](examples/bok-profile-selection-sar/README.md).
 
+### Managed SimpleModeling.org Development Bootstrap
+
+Phase 8's managed development path is an explicit build → configure →
+Control Center restart → MCP verify sequence. Prepare an accepted WIP snapshot
+in a private temporary directory, then configure its generated `website.d`:
+
+```sh
+snapshot_root="$(mktemp -d /private/tmp/textus-bok-simplemodeling-wip.XXXXXX)"
+scripts/test/prepare-simplemodeling-wip-snapshot.sh \
+  --version 1.0.56 \
+  --output-dir "$snapshot_root"
+source_root="$snapshot_root/website.d"
+scripts/configure-simplemodeling-development.sh \
+  --source-root "$source_root"
+```
+
+The writer validates the `cncf.knowledge-source.v1` metadata, derives a
+content-bound `sha256:` generation, and atomically writes the marked private
+`.textus/config.yaml` with only the explicit `development` bootstrap binding,
+in-memory SIE policy, and exact read-only file root. It refuses an unmarked
+existing config and supports `--output PATH` for tests. Restart the managed
+instance through Textus Control Center, then use the read-only probe with the
+expected term count, present/absent term identities, and emitted generation:
+
+```sh
+scripts/test/probe-managed-bok.py \
+  --source-root "$source_root" \
+  --present-term-id architecture:availability \
+  --absent-term-id literate-modeling:story \
+  --expected-term-count 215 \
+  --generation sha256:40f96e99b2308e0474584513ff7602928008d57de8e3f3bd2494a5aa83402cec
+```
+
+The probe checks loopback readiness, exact profile/source attribution, term
+counts, and the absence of `replaceKnowledgeSource` from MCP without invoking
+replacement. Malformed metadata must fail before configuration changes. To
+roll back, restore the accepted `website.d`, rerun the writer, and restart via
+Control Center. This path has no watcher, polling, hot reload, restart
+controller, or Control Center API.
+
+For final restoration, use the current SimpleModeling.org `website.d` as a
+separate source root. Its accepted current values are
+`literate-modeling:story` present, `architecture:availability` absent, 212
+terms, and generation
+`sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f`:
+
+```sh
+current_source_root="/Users/asami/src/dev2025/simplemodeling-org/website.d"
+scripts/configure-simplemodeling-development.sh \
+  --source-root "$current_source_root"
+```
+
+Restart `textus-bok` through the normal Textus Control Center/supervisor
+lifecycle, then run the current read-only probe:
+
+```sh
+scripts/test/probe-managed-bok.py \
+  --source-root "$current_source_root" \
+  --present-term-id literate-modeling:story \
+  --absent-term-id architecture:availability \
+  --expected-term-count 212 \
+  --generation sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f
+```
+
 ## Documentation
 
 - [Development strategy](docs/strategy/textus-bok-development-strategy.md)
@@ -92,3 +156,4 @@ claimed live-passed until the Phase release gate runs it. See the
 - [Developer guide](docs/developer-guide.md)
 - [Packaged reference manual](src/main/car/manual/index.md)
 - [Packaged operator guide](src/main/car/manual/user-guide.md)
+- [Startup bootstrap contract](docs/spec/bok-startup-bootstrap-contract.md)

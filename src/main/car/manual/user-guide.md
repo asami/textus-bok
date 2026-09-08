@@ -72,6 +72,84 @@ Bindings are validated during component bootstrap. Duplicate or conflicting
 bindings, malformed source descriptors, and mismatched evidence are rejected
 before replacement starts.
 
+## Managed SimpleModeling.org Development Bootstrap
+
+The managed development profile is loaded during server assembly only when the
+project-local `.textus/config.yaml` explicitly selects `development`. Prepare
+the generated source from an accepted SimpleModeling.org WIP snapshot, without
+running the source checkout in place:
+
+```sh
+snapshot_root="$(mktemp -d /private/tmp/textus-bok-simplemodeling-wip.XXXXXX)"
+scripts/test/prepare-simplemodeling-wip-snapshot.sh \
+  --version 1.0.56 \
+  --output-dir "$snapshot_root"
+source_root="$snapshot_root/website.d"
+```
+
+Configure the resulting `website.d` root with the repository-owned writer:
+
+```sh
+scripts/configure-simplemodeling-development.sh \
+  --source-root "$source_root"
+```
+
+The writer validates `metadata/cncf/knowledge-source.json`, every declared
+resource, and the glossary terms. It derives a content-bound `sha256:`
+generation and atomically writes a marked private config with one
+`simplemodeling-development` binding, an explicit `development` bootstrap
+selector, in-memory RDF/Vector SIE providers, and the exact read-only file
+root. It refuses to overwrite an unmarked existing config; `--output PATH` is
+available for isolated tests.
+
+After configuration, restart the managed instance through the normal Textus
+Control Center/supervisor lifecycle. Do not call `replaceKnowledgeSource` for
+this startup path. Verify readiness and attribution through the bounded,
+read-only MCP probe:
+
+```sh
+scripts/test/probe-managed-bok.py \
+  --source-root "$source_root" \
+  --present-term-id architecture:availability \
+  --absent-term-id literate-modeling:story \
+  --expected-term-count 215 \
+  --generation sha256:40f96e99b2308e0474584513ff7602928008d57de8e3f3bd2494a5aa83402cec
+```
+
+The probe requires a local loopback endpoint, checks the expected present and
+absent term identities and counts, verifies the exact `development` profile,
+dataset, source, generation, and evidence attribution, and confirms that no
+mutation operation is MCP-ready. If metadata is malformed, unsafe, or
+incomplete, configuration fails before the prior marked config changes; do not
+restart that candidate. Restore the last accepted `website.d`, regenerate the
+marked config, and restart through Control Center to roll back. Updates are
+always build-then-configure-then-restart: there is no watcher, polling,
+hot-reload, or Control Center mutation API.
+
+For final restoration, use the current SimpleModeling.org `website.d` as a
+separate source root. Its accepted current values are
+`literate-modeling:story` present, `architecture:availability` absent, 212
+terms, and generation
+`sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f`:
+
+```sh
+current_source_root="/Users/asami/src/dev2025/simplemodeling-org/website.d"
+scripts/configure-simplemodeling-development.sh \
+  --source-root "$current_source_root"
+```
+
+Restart `textus-bok` through the normal Textus Control Center/supervisor
+lifecycle, then run the current read-only probe:
+
+```sh
+scripts/test/probe-managed-bok.py \
+  --source-root "$current_source_root" \
+  --present-term-id literate-modeling:story \
+  --absent-term-id architecture:availability \
+  --expected-term-count 212 \
+  --generation sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f
+```
+
 ## Prepare Metadata
 
 At the logical source root, provide

@@ -159,6 +159,195 @@ only for explicit HTTP(S) URLs.
 
 ## Verification
 
+### P8-C Managed Development Bootstrap
+
+The managed development path is an explicit build/configure/restart/read
+sequence. Generate a private WIP snapshot with the repository-owned preparer;
+it archives an exact accepted SimpleModeling.org commit and runs the snapshot's
+`etc/runweb-wip.sh` without changing the source checkout:
+
+```sh
+snapshot_root="$(mktemp -d /private/tmp/textus-bok-simplemodeling-wip.XXXXXX)"
+scripts/test/prepare-simplemodeling-wip-snapshot.sh \
+  --version 1.0.56 \
+  --output-dir "$snapshot_root"
+source_root="$snapshot_root/website.d"
+```
+
+The preparer accepts only this proven 1.0.56 baseline; no later historical
+snapshot or media-specific adapter is part of the managed path.
+
+The historical `runweb-wip.sh` keeps its own `dox` and `cozy` commands. The
+preparer supplies the historical `cozy` calls through the verified formal
+launcher `/Users/asami/src/dev2025/cozy/out.d/bin/launcher`, whose default
+SHA-256 is
+`2998aac2317fca4941467ca157abe93c8bcffc282ec7cb6e79af1ef108a3f885`.
+The launcher uses the prepared classpath
+`/Users/asami/src/dev2025/cozy/target/classpath.txt`, whose default SHA-256 is
+`c790d46829c0b6c683a44f48f31fd2f9ecbce2bfcbb85a32c92ade34583401f2`.
+`--cozy-launcher PATH`, `--cozy-launcher-sha256 DIGEST`, `--cozy-classpath PATH`,
+and `--cozy-classpath-sha256 DIGEST` provide explicit overrides;
+`TEXTUS_SIMPLEMODELING_COZY_LAUNCHER`,
+`TEXTUS_SIMPLEMODELING_COZY_LAUNCHER_SHA256`,
+`TEXTUS_SIMPLEMODELING_COZY_CLASSPATH`, and
+`TEXTUS_SIMPLEMODELING_COZY_CLASSPATH_SHA256` provide the corresponding
+environment defaults. The selected launcher must already be a regular,
+executable, non-symlink file with the expected digest; the selected classpath
+must be a nonempty regular, non-symlink file with its expected digest. The
+harness never prepares or updates Cozy or SBT. It writes one private executable
+`.cozy-tool-bin/cozy` shim outside `website.d`; its only execution line safely
+executes the verified launcher with `--classpath-file <verified classpath>
+--main-class cozy.Cozy -- "$@"`. The historical command gets only that
+snapshot-local tool directory in `PATH` and the producer's existing
+`node_modules` through `NODE_PATH`, preserving archived source and toolchain
+isolation without a symlink, inherited `MAIN_CLASS`, or dynamic `build.sbt`
+inference.
+
+The historical article-media descriptors for object-modeling and
+knowledge-modeling require four already-rendered, ignored `final.mp4` inputs
+that are not included by the Git archive. The preparer reads them from the
+frozen read-only runtime-evidence root
+`/Users/asami/src/dev2025/simplemodeling-org` (override with
+`--runtime-evidence-root PATH` or
+`TEXTUS_SIMPLEMODELING_RUNTIME_EVIDENCE_ROOT`) and accepts only these exact
+relative files and SHA-256 identities:
+
+| Relative runtime evidence path | SHA-256 |
+| --- | --- |
+| `target/media/development-process/object-modeling/ja/final.mp4` | `7af98dc34851b30e060e8c6e99b4f7e18e6ad61a7d3c9e8baf79e5e52f826135` |
+| `target/media/development-process/object-modeling/en/final.mp4` | `a880a4d4871c766e136d7a6edd5e7321826c119dbff4344fbc5d2f7226b71977` |
+| `target/media/development-process/knowledge-modeling/ja/final.mp4` | `123a2210df82ad98929c47059fce435b8f0e41961aafb43c66beb04f4af5afea` |
+| `target/media/development-process/knowledge-modeling/en/final.mp4` | `8f71997365f46ca9a53fef8aaf94fa95292d70a4cb7b45971f00b6b9f59b1afc` |
+
+Each source must be a nonempty regular non-symlink file with its exact
+lowercase digest. The four files alone are copied to matching paths in the
+private snapshot before `runweb-wip.sh`; they are producer runtime evidence
+for article registration, not semantic glossary/RDF inputs, and the producer
+checkout remains read-only. The four digest options and their corresponding
+`TEXTUS_SIMPLEMODELING_*_FINAL_MP4_SHA256` environment values are test-fixture
+overrides only; no other `target` content is admitted.
+
+Accepted snapshots reuse only ignored producer build/toolchain artifacts under
+exact lockfile identity: the producer root `node_modules` must be a real
+directory, both producer `package-lock.json` files must byte-match the
+archived snapshot lockfiles, and the producer Antora `ui-bundle.zip` must be a
+nonempty regular file rather than a symlink. The preparer copies the UI bundle
+and the four verified article-video inputs into matching archived paths and
+binds the historical run to
+the producer checkout's existing `node_modules` through `NODE_PATH`. It does
+not copy source, content, website output, metadata, or dependencies, and it
+does not install or download anything.
+
+The archived `etc/runarcadiasite.sh` invokes `arcadia site` without declaring
+the libraries required by its historical site. The preparer therefore validates
+the already prepared Arcadia classpath
+`/Users/asami/src/dev2025/arcadia/target/classpath.txt`, whose default SHA-256
+is `71d017afca9c296ee6653fd7ebd7bd68c1cc51cb5128b8b3a5b035c3d3e6b8bc`.
+`--arcadia-classpath PATH` and `--arcadia-classpath-sha256 DIGEST`, together
+with `TEXTUS_SIMPLEMODELING_ARCADIA_CLASSPATH` and
+`TEXTUS_SIMPLEMODELING_ARCADIA_CLASSPATH_SHA256`, are explicit test-fixture
+overrides; the selected classpath must be a nonempty regular non-symlink file
+with that lowercase digest. In the private snapshot only, it creates
+`src/main/website/WEB-INF/webapp.conf` when absent, containing exactly
+`name: material-kit-pro`, and generates an adjacent executable `arcadia` shim.
+The shim rejects every operation except `site`, then executes the verified
+formal launcher with Arcadia's classpath and
+`arcadia.standalone.Standalone`, followed by `site --library
+src/main/website,src/main/arcadialib` and the untouched historical positional
+arguments. This marker and shim are producer-compatibility inputs only; no
+Arcadia source, library, template, or application argument is rewritten.
+
+The accepted historical baseline is the complete private WIP snapshot at
+`/private/tmp/textus-bok-p8c-wip-1.0.56-r4/website.d`, archived from commit
+`f8ada934ad295f618d51a0d769847a9ffdd4bfbf`. Its KnowledgeSource declares the
+four resource kinds `glossary-terms`, `rdf-jsonld`, `rdf-turtle`, and
+`rdf-graph-summary`; its glossary contains 215 terms, and the selected
+`literate-modeling:story`, `literate-modeling:narrative`, and
+`literate-modeling:literate-modeling` identities are absent. The clean accepted
+current publication is SimpleModeling.org commit
+`055061c2f97315fb51bca6a0f2f0b3cbfacfc5eb` (version 1.0.58.2) at
+`/Users/asami/src/dev2025/simplemodeling-org/website.d`. Its manifest declares
+all four existing nonempty resources at `metadata/glossary/terms.json`,
+`rdf/site.jsonld`, `rdf/site.ttl`, and `metadata/rdf/graph.json`; its glossary
+contains 212 terms and all three selected identities. Its KnowledgeSource
+manifest and glossary were independently cmp-verified byte-identical to the
+current `website.d`; the tracked accepted Phase 29 publication in the
+SimpleModeling.org repository at `src/main/website` is that same verified
+content. Each of the four declared resource paths is checked for
+exact presence and nonempty regular-file content before use. Do not regenerate
+or mutate this read-only current publication.
+
+Managed acceptance is a complete replacement sequence: configure and start the
+1.0.56 baseline, probe its exact generated count and identity absence, then
+configure and restart with the current 1.0.58.2 publication and probe its exact
+generation, count, and identity presence. A malformed candidate must fail
+before readiness. Finally restore the same current `website.d`, restart through
+Control Center, and leave that publication live; append semantics are not a
+valid substitute because the current complete generation removes terms.
+
+Pass the resulting `website.d` root to
+`scripts/configure-simplemodeling-development.sh`. The writer validates the
+`cncf.knowledge-source.v1` manifest and its declared resources, derives a
+content-bound `sha256:` generation, and atomically writes a marked private
+`.textus/config.yaml` containing one development registry binding, the
+explicit development bootstrap selector, in-memory SIE policy, and the exact
+read-only file-root policy. It refuses an unmarked existing config and accepts
+`--output PATH` for isolated tests.
+
+Use the generated root from the executable baseline flow above:
+
+```sh
+scripts/configure-simplemodeling-development.sh \
+  --source-root "$source_root"
+```
+
+Restart the managed Textus BoK instance only through the normal Textus Control
+Center/supervisor lifecycle. Then run the read-only MCP probe, supplying the
+source term count, one expected-present term identity, one expected-absent term
+identity, and the generation emitted by configuration:
+
+```sh
+scripts/test/probe-managed-bok.py \
+  --source-root "$source_root" \
+  --present-term-id architecture:availability \
+  --absent-term-id literate-modeling:story \
+  --expected-term-count 215 \
+  --generation sha256:40f96e99b2308e0474584513ff7602928008d57de8e3f3bd2494a5aa83402cec
+```
+
+The probe checks loopback readiness, exact development attribution, source
+term counts, present/absent term behavior, and MCP's permanent mutation
+exclusion without calling `replaceKnowledgeSource`. A malformed manifest,
+unsafe reference, missing resource, or malformed glossary is rejected before
+the existing config changes; do not restart that candidate. Rollback is an
+explicit restoration of the last accepted `website.d`, followed by the same
+writer, Control Center restart, and probe. There is no watcher, polling,
+hot-reload, restart controller, or Control Center API in this path.
+
+For final restoration, use the current SimpleModeling.org `website.d` as a
+separate source root. Its accepted current values are
+`literate-modeling:story` present, `architecture:availability` absent, 212
+terms, and generation
+`sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f`:
+
+```sh
+current_source_root="/Users/asami/src/dev2025/simplemodeling-org/website.d"
+scripts/configure-simplemodeling-development.sh \
+  --source-root "$current_source_root"
+```
+
+Restart `textus-bok` through the normal Textus Control Center/supervisor
+lifecycle, then run the current read-only probe:
+
+```sh
+scripts/test/probe-managed-bok.py \
+  --source-root "$current_source_root" \
+  --present-term-id literate-modeling:story \
+  --absent-term-id architecture:availability \
+  --expected-term-count 212 \
+  --generation sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f
+```
+
 ### P7-E1 Representative Profile-Selection Preparation
 
 The representative profile-selection SAR is prepared at
