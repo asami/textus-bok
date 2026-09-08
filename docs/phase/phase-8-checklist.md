@@ -5,19 +5,27 @@ This checklist is the authoritative Phase 8 state ledger. Only one Step may be
 
 ## P8-A: Contract and Supplier Handoffs
 
-Status: PLANNED
+Status: DONE
 
-- [ ] Record the accepted Cozy Phase 29 metadata-finalization artifact and
+- [x] Record the accepted Cozy Phase 29 metadata-finalization artifact and
       prove its KnowledgeSource/Glossary handoff against the Textus BoK reader.
-- [ ] Record the accepted CNCF Phase 70 post-assembly activation artifact and
+- [x] Record the accepted CNCF Phase 70 post-assembly activation artifact and
       prove its ordering, readiness, failure, cleanup, and diagnostic contract.
-- [ ] Freeze `textus.bok.bootstrap.profiles` grammar, duplicate/unknown/empty
+- [x] Freeze `textus.bok.bootstrap.profiles` grammar, duplicate/unknown/empty
       profile behavior, deterministic order, default-off compatibility, and
       private configuration provenance.
-- [ ] Freeze once-per-server-assembly execution, `complete`-only readiness,
+- [x] Freeze once-per-server-assembly execution, `complete`-only readiness,
       failed/degraded startup rejection, and safe diagnostic fields.
-- [ ] Register failing-first executable specifications for every Phase 8
+- [x] Register failing-first executable specifications for every Phase 8
       acceptance group before runtime implementation.
+
+P8-A records Cozy Phase 29 release
+`238a078869b2d5ceffe0bf3677355b7e9bff3c83` and CNCF Phase 70 release
+`a7ce382245e20d52b517b323200805927e8045c0`. The reader and focused P8-A
+proofs, initial review, blocker repair, and clean focused re-review are bound
+in `phase-8.md`. P8-A acceptance covers the private configuration/contract and
+supplier handoff only. Production startup publication begins in P8-B; actual
+SimpleModeling.org managed-runtime acceptance remains in P8-C.
 
 ## P8-B: Bootstrap Publication
 
@@ -60,4 +68,3 @@ Status: PLANNED
 
 Phase 8 closes only when all Steps are DONE and exact supplier, runtime,
 validation, review, and commit evidence is recorded in `phase-8.md`.
-

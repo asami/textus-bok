@@ -1,8 +1,9 @@
 # Phase 8: Configured KnowledgeSource Startup Bootstrap
 
 Stage Status:
-- Current status: PLANNED
-- Current step: P8-A Contract and dependency handoff not started
+- Current status: IN_PROGRESS
+- Accepted step: P8-A Contract and Supplier Handoffs
+- Next step: P8-B Bootstrap Publication (PLANNED, not started)
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-8-checklist.md` only from accepted
   executable, runtime, review, or dependency-handoff evidence.
@@ -48,6 +49,50 @@ body.
   representative control-center-compatible runtime behavior.
 - `replaceKnowledgeSource` remains the single semantic publication authority;
   bootstrap reuses its internal normalization/federation/catalog commit path.
+
+## P8-A Acceptance Record
+
+P8-A1 records the frozen supplier identities consumed by the contract boundary:
+
+- Cozy Phase 29 release `238a078` (`cozy/docs/phase/phase-29.md`) supplies the
+  project-owned generated-site `cncf.knowledge-source.v1` metadata-finalization
+  handoff. It does not activate or publish a BoK generation here.
+- CNCF Phase 70 release `a7ce3822` (`cloud-native-component-framework/docs/phase/phase-70.md`)
+  and `docs/spec/component-activation-lifecycle.md` R9 supply the
+  consumer-neutral post-assembly Server activation seam. R9 leaves profile
+  selection, source loading, publication, and consumer diagnostics to Textus
+  BoK.
+
+The private bootstrap grammar and the pending acceptance-spec registration are
+recorded in `docs/spec/bok-startup-bootstrap-contract.md` and
+`src/test/scala/org/simplemodeling/textus/bok/BokStartupBootstrapSpec.scala`.
+The Cozy handoff and current reader agree on schema
+`cncf.knowledge-source.v1` and the `glossary-terms` resource at
+`metadata/glossary/terms.json`; the reader proof ran
+`BokSourceReaderSpec` in serialized SBT invocation
+`64903-20260908T070229Z` (attempt
+`03fb113cfa4765f5cfd8238eac552bebc088132a2367ab20bfdb8687b1904b9f`):
+10 tests succeeded, 0 failed, with `lock=released`.
+
+CNCF Phase 70 R3, R4, R7, and R9 establish the required post-assembly
+placement, deterministic once-only order, readiness/failure/cleanup/safe
+diagnostic behavior, and the Textus BoK ownership boundary. The P8-A focused
+implementation proof ran in serialized SBT invocation
+`50359-20260908T064736Z` (attempt
+`e1f71a8846dc888bd5027c1ffec605b817ddf7675282a9a23a0b7e09bf05307c`):
+5 tests succeeded, 0 failed, 8 pending, with `lock=released`.
+
+The initial Step review is recorded by Review Disposition Bundle
+`f189f3a89e5bf8a288d44dbcdfe25394c30260e02cc4e19eb93cba862112de17`.
+Its blocker `CPB-P8-001` was repaired and closed by the focused re-review
+bundle
+`ec0331e81be14e7eac8b12333e539a7f3dd0109368ff474c824ead285c798380`,
+which reports no remaining blocker, Hygiene item, or Development Candidate.
+
+P8-A is accepted as the configuration/contract and supplier-handoff Step. It
+does not claim production startup activation or publication. Acceptance using
+an actual SimpleModeling.org managed `website.d`, control-center restart, and
+MCP term retrieval remains reserved to P8-C.
 
 ## Scope and invariants
 
@@ -143,9 +188,11 @@ committed.
 - `docs/phase/phase-7.4.md`
 - `docs/design/bok-profile-registry.md`
 - `docs/spec/bok-profile-registry-contract.md`
+- `docs/spec/bok-startup-bootstrap-contract.md`
 - `src/main/scala/org/simplemodeling/textus/bok/impl/ComponentFactory.scala`
 - `src/main/scala/org/simplemodeling/textus/bok/runtime/BokProfileRegistry.scala`
 - `src/main/scala/org/simplemodeling/textus/bok/runtime/BokFederationPublisher.scala`
+- `src/main/scala/org/simplemodeling/textus/bok/runtime/BokStartupBootstrap.scala`
+- `src/test/scala/org/simplemodeling/textus/bok/BokStartupBootstrapSpec.scala`
 - `cozy:docs/phase/phase-29.md`
 - `cloud-native-component-framework:docs/phase/phase-70.md`
-
