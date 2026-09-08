@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
-import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublisher, BokFederationRetriever, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader}
+import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader}
 import org.simplemodeling.textus.bok.value.{BokEvidence, BokKnowledgeSource}
 import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.KnowledgeFederationService
 import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetQueryRequest, FederationDatasetQueryResult}
@@ -26,7 +26,7 @@ import org.simplemodeling.textus.scraper.api.TextusScraperApi
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Aug. 15, 2026
+ * @version Sep. 8, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -70,6 +70,69 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
         inspection.getInt("documentCount") shouldBe Some(4)
         inspection.getInt("assertionCount") shouldBe Some(4)
         inspection.getInt("evidenceCount") shouldBe Some(3)
+      }
+
+      "share configured bootstrap replacement with the protected manual operation" in {
+        Given("a registered official source, the admitted SIE provider, and the protected BoK operation")
+        val source = _source("generation-1")
+        val assembly = _assembly(includesie = true, configuration = _profile_configuration(source))
+        val context = _context(_first_resources)
+        val component = assembly.bok.asInstanceOf[BokPrimaryComponent]
+
+        When("bootstrap replaces the configured key twice and the protected operation replaces that same source")
+        val first = component.replacementService.replaceBootstrap(component, context, BokProfileKey.official).TAKE
+        val repeated = component.replacementService.replaceBootstrap(component, context, BokProfileKey.official).TAKE
+        val manual = _replace(assembly.bok, context, source)
+        val inspection = _inspect(assembly.sie.get, context, source)
+        val resolved = component.resolveProfile(
+          BokProfileSelection.official,
+          BokProfileCompatibilityFilter(),
+          BokProfileAuthorization.allow(BokProfileKey.official)
+        ).TAKE
+
+        Then("one replacement authority preserves the manual response, atomic SIE state, and registry attribution")
+        first.publication.state shouldBe "complete"
+        first.admission.admitted shouldBe true
+        first.admission.attribution.map(_.evidence.sourceId) shouldBe Some(source.sourceId)
+        repeated.publication.state shouldBe "complete"
+        manual.getString("status") shouldBe Some("complete")
+        manual.getString("generation") shouldBe Some("generation-1")
+        inspection.getInt("documentCount") shouldBe Some(4)
+        inspection.getInt("assertionCount") shouldBe Some(4)
+        resolved.evidence.sourceId shouldBe source.sourceId
+      }
+
+      "keep the prior catalog topology when admission or publication is not complete" in {
+        Given("a catalog with one prior complete generation and a later normalized generation")
+        val firstcontext = _context(_first_resources)
+        val firstnormalized = BokSourceReader.read(firstcontext, _source("generation-1")).TAKE
+        val secondcontext = _context(_second_resources)
+        val secondnormalized = BokSourceReader.read(secondcontext, _source("generation-2")).TAKE
+        val catalog = new BokKnowledgeCatalog()
+        val seedcommit = catalog.commit(BokFederationPublication("complete", Record.empty), firstnormalized)
+        val prior = catalog.selectedTopology(firstnormalized.source.datasetId.value)
+        val service = new BokKnowledgeSourceReplacementService(catalog)
+
+        When("the shared commit gate receives an admitted degraded publication and a rejected complete publication")
+        val degraded = service.commitIfAdmitted(
+          BokProfileAdmission(admitted = true, attribution = None),
+          BokFederationPublication("degraded", Record.empty),
+          secondnormalized
+        )
+        val afterdegraded = catalog.selectedTopology(firstnormalized.source.datasetId.value)
+        val rejected = service.commitIfAdmitted(
+          BokProfileAdmission(admitted = false, attribution = None),
+          BokFederationPublication("complete", Record.empty),
+          secondnormalized
+        )
+        val afterrejected = catalog.selectedTopology(firstnormalized.source.datasetId.value)
+
+        Then("both gate calls return false and the prior topology remains selected")
+        seedcommit shouldBe true
+        degraded shouldBe false
+        afterdegraded shouldBe prior
+        rejected shouldBe false
+        afterrejected shouldBe prior
       }
 
       "publish same-artifact CAR references from different organizations as distinct identities" in {
@@ -381,12 +444,19 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       "fail without bypassing the component boundary when SIE is absent" in {
         Given("a BoK component whose subsystem has no SemanticIntegrationEngine component")
         val assembly = _assembly(includesie = false)
+        val component = assembly.bok.asInstanceOf[BokPrimaryComponent]
+        val source = _source(
+          "generation-1",
+          sourceid = "absent-sie-source",
+          datasetid = "absent-sie-dataset"
+        )
 
         When("knowledge-source replacement is requested")
-        val result = _replace_c(assembly.bok, _context(_first_resources), _source("generation-1"))
+        val result = _replace_c(assembly.bok, _context(_first_resources), source)
 
         Then("the operation returns a structured service failure instead of using a provider directly")
         result should matchPattern { case Consequence.Failure(_) => }
+        component.hasSelectedTopology(source.datasetId.value) shouldBe false
       }
 
       "load and admit a private profile binding through production component wiring" in {

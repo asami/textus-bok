@@ -3,21 +3,22 @@ package org.simplemodeling.textus.bok.impl
 import org.goldenport.Consequence
 import org.goldenport.cncf.action.ActionCall
 import org.simplemodeling.textus.bok.BokComponent
-import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentId, ComponentInit}
+import org.goldenport.cncf.component.{Component, ComponentActivation, ComponentActivationContext, ComponentCreate, ComponentId, ComponentInit}
+import org.goldenport.cncf.cli.RunMode
 import org.goldenport.cncf.context.ExecutionContext
 import org.goldenport.cncf.spi.ComponentSelector
 import org.goldenport.cncf.unitofwork.ExecUowM
 import org.goldenport.protocol.operation.OperationResponse
 import org.goldenport.record.Record
 import org.simplemodeling.textus.bok.datatype.*
-import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSemanticAccess, BokSourceReader, NormalizedBokSource, ResolvedBokProfile}
+import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationRetriever, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSemanticAccess, BokSourceReader, BokStartupBootstrapConfiguration, BokStartupBootstrapCoordinator, BokStartupBootstrapDiagnostic, NormalizedBokSource, ResolvedBokProfile}
 import org.simplemodeling.textus.bok.value.*
 import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Aug. 27, 2026
+ * @version Sep. 8, 2026
  * @author  ASAMI, Tomoharu
  */
 
@@ -30,7 +31,8 @@ final class ComponentFactory extends Component.BundleFactory {
 }
 
 abstract class BokParticipantFactoryBase extends BokComponent.Factory {
-  private val _catalog = new BokKnowledgeCatalog()
+  protected val catalog = new BokKnowledgeCatalog()
+  protected val replacement_service = new BokKnowledgeSourceReplacementService(catalog)
 
   override protected def initialize_component_c(
     component: Component,
@@ -141,7 +143,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       for {
         query <- _required_string(action.record, "query")
         resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-        response <- _catalog.searchSemanticKnowledge(
+        response <- catalog.searchSemanticKnowledge(
           BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public),
           query,
           action.record.getInt("limit").getOrElse(10)
@@ -158,7 +160,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       for {
         identity <- _required_string(action.record, "identity")
         resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-      } yield OperationResponse(_catalog.getSemanticManifest(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
+      } yield OperationResponse(catalog.getSemanticManifest(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
     }
   }
 
@@ -170,7 +172,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       for {
         identity <- _required_string(action.record, "identity")
         resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-      } yield OperationResponse(_catalog.getSemanticResource(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
+      } yield OperationResponse(catalog.getSemanticResource(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
     }
   }
 
@@ -183,7 +185,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
         documentid <- _required_string(action.record, "documentId")
         sectionid <- _required_string(action.record, "sectionId")
         resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-      } yield OperationResponse(_catalog.getSemanticSection(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), documentid, sectionid).toRecord())
+      } yield OperationResponse(catalog.getSemanticSection(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), documentid, sectionid).toRecord())
     }
   }
 
@@ -195,7 +197,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       for {
         query <- _required_string(action.record, "query")
         resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-      } yield OperationResponse(_catalog.discoverSemanticKnowledge(
+      } yield OperationResponse(catalog.discoverSemanticKnowledge(
         BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public),
         query,
         action.record.getInt("limit").getOrElse(10)
@@ -212,11 +214,9 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
         for {
           source <- _source(action.record)
           component <- _component(core)
-          configured <- component.loadReplacementSource(executionContext, source)
-          (profilekey, normalized) = configured
-          publication <- BokFederationPublisher.replace(core, normalized)
-          admitted <- component.admitReplacement(profilekey, publication, normalized)
-          _ = if (admitted) _catalog.commit(publication, normalized)
+          replacement <- component.replacementService.replaceManual(component, executionContext, source)
+          normalized = replacement.normalized
+          publication = replacement.publication
         } yield OperationResponse(ReplaceKnowledgeSourceResponse(
           status = BokQueryStatus(publication.state),
           sourceId = normalized.source.sourceId,
@@ -240,7 +240,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
           category = _optional_string(action.record, "category")
           limit = action.record.getInt("limit").getOrElse(10)
           resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-          response <- _catalog.searchTerms(resolved, query, category, limit) { accepted =>
+          response <- catalog.searchTerms(resolved, query, category, limit) { accepted =>
             BokFederationRetriever.candidateScores(core, query, accepted, limit)
           }
         } yield OperationResponse(response.toRecord())
@@ -256,7 +256,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
         for {
           query <- _required_string(action.record, "term")
           resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-        } yield OperationResponse(_catalog.explainTerm(resolved, query).toRecord())
+        } yield OperationResponse(catalog.explainTerm(resolved, query).toRecord())
       }
   }
 
@@ -271,7 +271,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
           kind = _optional_string(action.record, "kind")
           limit = action.record.getInt("limit").getOrElse(10)
           resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-          response <- _catalog.searchComponentReferences(resolved, query, kind, limit) { accepted =>
+          response <- catalog.searchComponentReferences(resolved, query, kind, limit) { accepted =>
             BokFederationRetriever.candidateScores(core, query, accepted, limit)
           }
         } yield OperationResponse(response.toRecord())
@@ -287,7 +287,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
         for {
           name <- _required_string(action.record, "name")
           resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
-        } yield OperationResponse(_catalog.getComponentReference(
+        } yield OperationResponse(catalog.getComponentReference(
             resolved,
             name,
             _optional_string(action.record, "version"),
@@ -312,7 +312,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
               _optional_string(action.record, "sourceId")
             )
           )
-        } yield OperationResponse(_catalog.getKnowledgeMap(
+        } yield OperationResponse(catalog.getKnowledgeMap(
           resolved,
           _optional_string(action.record, "category"),
           _optional_string(action.record, "termType"),
@@ -402,8 +402,25 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     }
 }
 
-final class BokPrimaryComponent extends BokComponent {
+final class BokPrimaryComponent(
+  private val _catalog: BokKnowledgeCatalog = new BokKnowledgeCatalog(),
+  injectedReplacementService: Option[BokKnowledgeSourceReplacementService] = None
+) extends BokComponent with ComponentActivation {
   private var _profile_registry: Option[BokProfileRegistry] = None
+  private val _replacement_service = injectedReplacementService.getOrElse(
+    new BokKnowledgeSourceReplacementService(_catalog)
+  )
+  private var _startup_bootstrap_diagnostics = Vector.empty[BokStartupBootstrapDiagnostic]
+
+  private[bok] def replacementService: BokKnowledgeSourceReplacementService =
+    _replacement_service
+
+  private[bok] def hasSelectedTopology(datasetId: String): Boolean =
+    _catalog.selectedTopology(datasetId).nonEmpty
+
+  private[bok] def startupBootstrapDiagnostics: Vector[BokStartupBootstrapDiagnostic] = synchronized {
+    _startup_bootstrap_diagnostics
+  }
 
   private[bok] def configureProfileRegistry(
     configuration: Option[BokProfileRegistryConfiguration]
@@ -430,6 +447,19 @@ final class BokPrimaryComponent extends BokComponent {
       case None => BokSourceReader.read(context, requested).map(None -> _)
     }
 
+  private[bok] def loadConfiguredReplacementSource(
+    context: ExecutionContext,
+    key: BokProfileKey
+  ): Consequence[NormalizedBokSource] =
+    _profile_registry match {
+      case Some(registry) => registry.loadConfiguredSource(context, key)
+      case None => BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.Unregistered,
+        Some(key),
+        "BoK startup bootstrap requires a private registered profile"
+      )
+    }
+
   private[bok] def admitReplacement(
     key: Option[BokProfileKey],
     publication: BokFederationPublication,
@@ -438,6 +468,18 @@ final class BokPrimaryComponent extends BokComponent {
     (key, _profile_registry) match {
       case (Some(profilekey), Some(registry)) => registry.admit(profilekey, publication, normalized)
       case (None, None) => Consequence.success(true)
+      case _ => Consequence.stateInvalid("The BoK profile registry changed during source replacement")
+    }
+
+  private[bok] def admitReplacementWithAttribution(
+    key: Option[BokProfileKey],
+    publication: BokFederationPublication,
+    normalized: NormalizedBokSource
+  ): Consequence[BokProfileAdmission] =
+    (key, _profile_registry) match {
+      case (Some(profilekey), Some(registry)) =>
+        registry.admitWithAttribution(profilekey, publication, normalized)
+      case (None, None) => Consequence.success(BokProfileAdmission(true, None))
       case _ => Consequence.stateInvalid("The BoK profile registry changed during source replacement")
     }
 
@@ -458,6 +500,68 @@ final class BokPrimaryComponent extends BokComponent {
   )(using ExecutionContext): Consequence[SemanticIntegrationFederationApi] =
     semantic_integration_federation(selector)
 
+  override def activateC(context: ComponentActivationContext): Consequence[Unit] =
+    if (context.runMode != RunMode.Server)
+      Consequence.unit
+    else
+      BokStartupBootstrapConfiguration.fromConfiguration(context.configuration) match {
+        case Consequence.Success(None) =>
+          _set_startup_bootstrap_diagnostics(Vector.empty)
+          Consequence.unit
+        case Consequence.Success(Some(configuration)) =>
+          val coordinator = new BokStartupBootstrapCoordinator(_replacement_service)
+          val result = try {
+            coordinator.runC(
+              logic.executionContext(),
+              this,
+              configuration.profiles,
+              context.deadline,
+              context.cancellation
+            )
+          } catch {
+            case _: Throwable =>
+              Consequence.stateInvalid("BoK startup bootstrap failed: unexpected-callback-failure")
+          }
+          val diagnostics = coordinator.diagnostics
+          _set_startup_bootstrap_diagnostics(
+            if (diagnostics.nonEmpty) diagnostics
+            else result match {
+              case Consequence.Failure(_) => Vector(_startup_failure_diagnostic("unexpected-callback-failure"))
+              case Consequence.Success(_) => Vector.empty
+            }
+          )
+          result
+        case Consequence.Failure(_) =>
+          _set_startup_bootstrap_diagnostics(Vector(_configuration_failure_diagnostic))
+          Consequence.stateInvalid("BoK startup bootstrap failed: configuration")
+      }
+
+  private def _set_startup_bootstrap_diagnostics(
+    diagnostics: Vector[BokStartupBootstrapDiagnostic]
+  ): Unit = synchronized {
+    _startup_bootstrap_diagnostics = diagnostics
+  }
+
+  private def _configuration_failure_diagnostic: BokStartupBootstrapDiagnostic =
+    _startup_failure_diagnostic("configuration")
+
+  private def _startup_failure_diagnostic(category: String): BokStartupBootstrapDiagnostic =
+    BokStartupBootstrapDiagnostic(
+      profile = "startup",
+      projectId = None,
+      datasetId = None,
+      sourceId = None,
+      generation = None,
+      status = "failed",
+      category = category,
+      termCount = 0,
+      componentCount = 0,
+      topologyNodeCount = 0,
+      topologyRelationshipCount = 0,
+      warnings = Vector.empty,
+      attribution = None
+    )
+
   override def mcpReadyOperations: Set[String] = Set(
     "BokRetrieval.searchTerms",
     "BokRetrieval.explainTerm",
@@ -473,7 +577,7 @@ final class BokPrimaryComponent extends BokComponent {
 
 object BokPrimaryFactory extends BokParticipantFactoryBase with Component.PrimaryComponentFactory {
   override protected def create_Component(params: ComponentCreate): Component =
-    new BokPrimaryComponent()
+    new BokPrimaryComponent(catalog, Some(replacement_service))
 
   override protected def create_Core(
     params: ComponentCreate,

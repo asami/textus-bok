@@ -8,14 +8,13 @@ import org.goldenport.cncf.action.ActionCall
 import org.goldenport.record.Record
 import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
 import org.simplemodeling.textus.bok.value.{BokEvidence, BokTerm, ComponentReference}
-import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetReplacementRequest, FederationDatasetResponse}
 
 /*
  * BoK-owned projection into the provider-neutral SIE component contract.
  *
  * @since   Jul. 21, 2026
- * @version Aug. 14, 2026
+ * @version Sep. 8, 2026
  * @author  ASAMI, Tomoharu
  */
 final case class BokFederationPublication(
@@ -31,10 +30,29 @@ object BokFederationPublisher {
     core: ActionCall.Core,
     normalized: NormalizedBokSource
   ): Consequence[BokFederationPublication] =
+    core.component match {
+      case Some(component: BokPrimaryComponent) =>
+        replace(component, normalized)(using core.executionContext)
+      case Some(component) =>
+        Consequence.stateInvalid(s"BoK action is bound to an unsupported component: ${component.getClass.getName}")
+      case None =>
+        Consequence.serviceUnavailable("BoK component is not available in the current action context")
+    }
+
+  /**
+   * Publishes through the already admitted BoK component boundary.
+   *
+   * Startup activation deliberately uses this overload: its lifecycle callback
+   * has no ActionCall and must not manufacture one merely to reach SIE.
+   */
+  def replace(
+    component: BokPrimaryComponent,
+    normalized: NormalizedBokSource
+  )(using context: org.goldenport.cncf.context.ExecutionContext): Consequence[BokFederationPublication] =
     for {
-      api <- _api(core)
+      api <- component.semanticIntegrationFederation()
       request <- replacementRequest(normalized)
-      response <- api.replaceDataset(request)(using core.executionContext)
+      response <- api.replaceDataset(request)
       publication <- _publication(response)
     } yield publication
 
@@ -46,16 +64,6 @@ object BokFederationPublisher {
       "bok-component-document",
       BokComponentReferenceIdentity.identityValues(component)*
     )
-
-  private def _api(core: ActionCall.Core): Consequence[SemanticIntegrationFederationApi] =
-    core.component match {
-      case Some(component: BokPrimaryComponent) =>
-        component.semanticIntegrationFederation()(using core.executionContext)
-      case Some(component) =>
-        Consequence.stateInvalid(s"BoK action is bound to an unsupported component: ${component.getClass.getName}")
-      case None =>
-        Consequence.serviceUnavailable("BoK component is not available in the current action context")
-    }
 
   private[bok] def replacementRequest(
     normalized: NormalizedBokSource

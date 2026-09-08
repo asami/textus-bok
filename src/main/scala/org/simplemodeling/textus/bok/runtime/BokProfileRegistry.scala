@@ -12,7 +12,7 @@ import org.simplemodeling.textus.bok.value.{BokEvidence, BokKnowledgeSource}
  * Private deterministic bindings from BoK profile identities to admitted generations.
  *
  * @since   Aug. 14, 2026
- * @version Aug. 15, 2026
+ * @version Sep. 8, 2026
  * @author  ASAMI, Tomoharu
  */
 private[bok] enum BokProfileKind(val selectionName: String) {
@@ -334,6 +334,16 @@ private[bok] final case class ResolvedBokProfile(
   evidence: BokEvidence
 )
 
+/**
+ * The private replacement admission outcome.  Attribution is populated only
+ * after registry admission and is the same evidence projected by public read
+ * selection; no binding resource is exposed here.
+ */
+private[bok] final case class BokProfileAdmission(
+  admitted: Boolean,
+  attribution: Option[ResolvedBokProfile]
+)
+
 private[bok] enum BokProfileResolutionFailure(
   val code: String,
   val taxonomy: Taxonomy
@@ -486,6 +496,16 @@ private[bok] final class BokProfileRegistry private (
     }
   }
 
+  def admitWithAttribution(
+    key: BokProfileKey,
+    publication: BokFederationPublication,
+    normalized: NormalizedBokSource
+  ): Consequence[BokProfileAdmission] =
+    admit(key, publication, normalized).flatMap {
+      case true => _attribution(key).map(x => BokProfileAdmission(true, Some(x)))
+      case false => Consequence.success(BokProfileAdmission(false, None))
+    }
+
   def resolve(
     selection: BokProfileSelection,
     filter: BokProfileCompatibilityFilter,
@@ -546,6 +566,19 @@ private[bok] final class BokProfileRegistry private (
         s"BoK profile ${key.render} has no admitted complete generation"
       )
     }
+
+  private def _attribution(key: BokProfileKey): Consequence[ResolvedBokProfile] =
+    for {
+      entry <- _entry(key)
+      admitted <- _admitted(key, entry)
+    } yield ResolvedBokProfile(
+      key.kind.selectionName,
+      key.projectId.map(_.value),
+      admitted.datasetid,
+      admitted.sourceid,
+      admitted.generation,
+      admitted.evidence
+    )
 
   private def _fresh(
     key: BokProfileKey,

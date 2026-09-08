@@ -1,13 +1,14 @@
 # BoK Startup Bootstrap Contract
 
-Status: Phase 8 P8-A contract and supplier handoff in progress
+Status: Phase 8 P8-B bootstrap-publication implementation contract
 
 ## Scope and authority
 
-This private specification freezes the configuration decoder and the
-downstream handoff boundary for Textus BoK Phase 8, P8-A1. It does not accept
-the runtime activation hook, a publication implementation, managed-server
-readiness, or any Phase 8 closure evidence.
+This private specification defines the P8-B consumer implementation of the
+already accepted P8-A configuration and supplier handoff. It wires configured
+publication through the CNCF post-assembly activation seam. It does not claim
+the managed `website.d` runtime acceptance, bound-URL observation, or MCP term
+retrieval reserved to P8-C.
 
 The contract is subordinate to the existing private
 `BokProfileSelection`/`BokProfileRegistry` boundary and the structured
@@ -71,12 +72,17 @@ The decoder accepts logical profile identities only. It MUST NOT accept or
 derive a filesystem path, URL, resource locator, provider, credential,
 hostname, username, current directory, request body, or control-center value.
 
-## Activation handoff
+## Activation and replacement authority
 
-The decoder is unwired in P8-A1. A later P8-B implementation MAY consume its
-ordered normalized keys only through the existing private registry. The CNCF
-Phase 70 R9 handoff requires the consumer to use the post-assembly Server seam
-after:
+`BokPrimaryComponent` opts in to CNCF `ComponentActivation`. Its callback uses
+only `ComponentActivationContext`, is inert outside `RunMode.Server`, and
+decodes this private configuration from the context. Absence remains a
+successful no-op. For configured Server startup, the callback obtains its
+ordinary component-bound `ExecutionContext` from the already admitted
+component runtime (`logic.executionContext()`), rather than constructing an
+`Action`/`ActionCall` or performing a factory or implementation lookup.
+
+The CNCF Phase 70 R9 handoff invokes the callback only after:
 
 1. component bootstrap;
 2. Subsystem context injection and runtime-service binding;
@@ -87,26 +93,36 @@ after:
 
 Activation then completes before managed readiness or bound-URL publication.
 Textus BoK owns profile resolution, configured-source loading, complete
-generation publication, and consumer-facing diagnostics. The supplier seam
-does not receive Textus configuration and does not add a second publication
-authority.
+generation publication, and consumer-facing diagnostics. CNCF owns activation
+ordering, once-only outcome retention, readiness gating, and cleanup; BoK adds
+no global or per-process once-state.
+
+Both configured startup and protected `replaceKnowledgeSource` enter one
+package-private replacement service. The manual caller first resolves its
+request to the private configured key as before; bootstrap receives the
+already normalized configured key and loads it directly from that registry.
+Both then use the same source reader, `BokFederationPublisher` SIE dataset
+replacement, registry admission, and catalog replacement. The catalog commits
+only after admission succeeds. The publisher's ActionCall overload remains a
+compatibility path, while activation uses its component/context overload and
+never manufactures an artificial Action.
 
 ## Readiness and failure semantics
 
-The eventual bootstrap operation is default-off, Server-mode-only, once per
-managed server assembly, and sequential in declared profile order. It must
-resolve only already registered profiles. Every required publication must
-return `complete`; invalid configuration, an unavailable source, degraded or
-failed publication, timeout, cancellation, or an ordinary activation failure
-keeps the server unavailable and enters managed cleanup. Later callbacks must
-not begin after a terminal failure, and late work must not turn a failed
-assembly ready.
+Bootstrap is default-off, Server-mode-only, and sequential in declaration
+order. It resolves only already registered profiles. The BoK coordinator checks
+deadline and cancellation before and after each synchronous replacement and
+stops at the first terminal result. Every required result must be normalized
+`complete` and admitted; a configuration error, missing registry binding or
+SIE, unavailable source, non-complete publication, admission rejection,
+deadline, cancellation, or unexpected callback failure returns one sanitized
+structured BoK startup failure. CNCF then keeps the server unavailable and
+enters ordinary cleanup. Later profiles do not begin, and late work cannot turn
+a failed assembly ready.
 
-The protected `replaceKnowledgeSource` Operation remains available for later
-no-restart administration. Bootstrap and that Operation must eventually share
-the same `BokSourceReader`, `BokFederationPublisher`, atomic dataset
-replacement, and local catalog replacement path. P8-A1 does not extract or
-wire that service.
+The protected `replaceKnowledgeSource` Operation remains available for
+no-restart administration with its unchanged response shape. It remains absent
+from `mcpReadyOperations`; bootstrap adds no MCP mutation surface.
 
 An unchanged input presented on restart must eventually replace the same
 logical generation deterministically without duplicate terms, component
@@ -115,8 +131,8 @@ the same replacement semantics as in-memory SIE.
 
 ## Diagnostic boundary
 
-Future startup diagnostics MAY expose only bounded, safe fields needed for
-operator action:
+`BokStartupBootstrapDiagnostic` retains immutable bounded startup state on the
+component. It may expose only safe fields needed for operator action:
 
 - normalized profile (and project identity when selected);
 - dataset, source, and generation identities;
@@ -126,28 +142,28 @@ operator action:
 - bounded warnings; and
 - safe generation evidence already intended for attribution.
 
-Diagnostics MUST NOT expose private resource locators or paths, URLs,
-credentials, provider configuration, request bodies, control-center internals,
-raw `Throwable` payloads, or unbounded source content. A failure remains a
-structured `Conclusion` with its canonical `appStatus`; message parsing and
-foreign-profile fallback are prohibited.
+Diagnostics MUST NOT retain or expose the private source resource locator or
+path, provider/runtime configuration, credentials, request body,
+control-center internals, raw `Conclusion`/`Throwable` payload, or unbounded
+source content. Registered attribution evidence is retained only in its
+existing public profile form. Message parsing and foreign-profile fallback are
+prohibited.
 
 ## Acceptance matrix
 
-P8-A1 registers the following executable scenarios as pending specifications.
-They name future observable behavior and its Phase 8 acceptance mapping; their
-runtime behavior is intentionally not implemented here.
+P8-B implements and specifies the following observable scenarios. The managed
+runtime/readiness attribution scenario remains pending only for P8-C.
 
-| Scenario | Future observable expectation | Mapping |
+| Scenario | Observable expectation | Mapping |
 | --- | --- | --- |
-| Activation ordering and once-only | Eligible callbacks run sequentially in final admitted order exactly once per assembly. | P8-A / CNCF R3-R4 handoff |
-| Configured publication and default-off | Absent configuration does nothing; explicit ordered keys publish only selected registered profiles. | P8-A / P8-B default-off and selection |
-| Invalid/degraded/failed startup | Invalid configuration or any required non-`complete` result prevents readiness and reports one structured failure. | P8-A readiness/failure |
-| Shared manual/bootstrap publication | Bootstrap and protected manual replacement use one atomic publication authority; mutation remains outside MCP. | P8-A publication ownership |
-| Deterministic restart replacement | Repeating unchanged input does not duplicate records and later complete input replaces the prior generation atomically. | P8-A restart/idempotency |
-| Safe diagnostics | Profile/status/count/evidence fields are bounded while locators, credentials, and exceptions remain absent. | P8-A diagnostic redaction |
-| MCP mutation exclusion | Bootstrap adds no MCP mutation operation and `replaceKnowledgeSource` remains absent from MCP. | P8-A surface ownership |
-| Managed readiness and MCP attribution | Readiness follows complete bootstrap publication and later development reads retain profile/generation attribution. | P8-C managed acceptance |
+| Activation ordering and once-only | CNCF invokes opted-in components sequentially in final admitted order once per assembly; the BoK callback is inert outside Server mode. | CNCF R3-R4 / P8-B |
+| Configured publication and default-off | Absent configuration does nothing; explicit ordered keys publish only selected registered profiles. | P8-B |
+| Invalid/degraded/failed startup | Invalid configuration or any required non-`complete` result stops later profiles and returns one structured failure. | P8-B |
+| Shared manual/bootstrap publication | Bootstrap and protected manual replacement use one atomic publication authority; mutation remains outside MCP. | P8-B |
+| Deterministic restart replacement | Repeating unchanged input replaces the same logical generation without duplicate records. | P8-B |
+| Safe diagnostics | Profile/status/count/evidence fields are bounded while private locators, credentials, and raw failures remain absent. | P8-B |
+| MCP mutation exclusion | Bootstrap adds no MCP mutation operation and `replaceKnowledgeSource` remains absent from MCP. | P8-B |
+| Managed readiness and MCP attribution | Readiness follows complete bootstrap publication and later development reads retain profile/generation attribution. | P8-C pending managed acceptance |
 
 The active executable decoder specification separately proves absence/default-off,
 valid selector normalization, declaration order, blank/unknown/malformed/
@@ -156,14 +172,12 @@ project-identity failure inherited from `BokProfileSelection`.
 
 ## Non-goals
 
-P8-A1 does not:
+P8-B does not:
 
-- wire `ComponentActivation` or change production startup behavior;
-- load a configured source or publish a generation;
-- extract or create a second publication implementation;
-- change `BokProfileRegistry`, SIE, REST, Web, MCP, or managed readiness;
-- make `replaceKnowledgeSource` MCP-ready or public;
-- add a watcher, polling, hot reload, restart controller, or control-center API;
+- add a watcher, polling, hot reload, restart controller, control-center API,
+  real `website.d` acceptance, or bound-URL observation;
+- make `replaceKnowledgeSource` MCP-ready or public, or change its response;
+- change public API, schema, or configuration keys;
 - modify Cozy or CNCF repositories;
 - claim focused validation, review, Step completion, Phase completion, commit,
   publication, deployment, or push.

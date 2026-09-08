@@ -1,8 +1,13 @@
 package org.simplemodeling.textus.bok.runtime
 
+import java.time.Instant
 import org.goldenport.Consequence
+import org.goldenport.cncf.component.ComponentActivationCancellation
+import org.goldenport.cncf.context.ExecutionContext
 import org.goldenport.configuration.{ConfigurationValue, ResolvedConfiguration}
 import org.goldenport.record.Record
+import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
+import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 
 /**
  * The private, logical-profile portion of the Phase 8 startup contract.
@@ -157,4 +162,230 @@ private[bok] object BokStartupBootstrapConfiguration {
       None,
       message
     )
+}
+
+/**
+ * The single BoK replacement authority shared by the protected manual
+ * operation and configured startup.  The two callers differ only in how the
+ * configured source is selected; publication, registry admission, and local
+ * catalog visibility have exactly one implementation.
+ */
+private[bok] final class BokKnowledgeSourceReplacementService(
+  catalog: BokKnowledgeCatalog
+) {
+  def replaceManual(
+    component: BokPrimaryComponent,
+    context: ExecutionContext,
+    requested: BokKnowledgeSource
+  ): Consequence[BokKnowledgeSourceReplacementResult] =
+    component.loadReplacementSource(context, requested).flatMap { case (key, normalized) =>
+      _replace(component, context, key, normalized)
+    }
+
+  def replaceBootstrap(
+    component: BokPrimaryComponent,
+    context: ExecutionContext,
+    key: BokProfileKey
+  ): Consequence[BokKnowledgeSourceReplacementResult] =
+    component.loadConfiguredReplacementSource(context, key).flatMap { normalized =>
+      _replace(component, context, Some(key), normalized)
+    }
+
+  private def _replace(
+    component: BokPrimaryComponent,
+    context: ExecutionContext,
+    key: Option[BokProfileKey],
+    normalized: NormalizedBokSource
+  ): Consequence[BokKnowledgeSourceReplacementResult] =
+    for {
+      publication <- BokFederationPublisher.replace(component, normalized)(using context)
+      admission <- component.admitReplacementWithAttribution(key, publication, normalized)
+      _ = commitIfAdmitted(admission, publication, normalized)
+    } yield BokKnowledgeSourceReplacementResult(key, normalized, publication, admission)
+
+  private[bok] def commitIfAdmitted(
+    admission: BokProfileAdmission,
+    publication: BokFederationPublication,
+    normalized: NormalizedBokSource
+  ): Boolean =
+    admission.admitted && catalog.commit(publication, normalized)
+}
+
+private[bok] final case class BokKnowledgeSourceReplacementResult(
+  profileKey: Option[BokProfileKey],
+  normalized: NormalizedBokSource,
+  publication: BokFederationPublication,
+  admission: BokProfileAdmission
+)
+
+/**
+ * Bounded operator-safe startup state.  It intentionally retains neither a
+ * resource locator, configuration/source body, Conclusion, nor Throwable.
+ */
+private[bok] final case class BokStartupBootstrapDiagnostic(
+  profile: String,
+  projectId: Option[String],
+  datasetId: Option[String],
+  sourceId: Option[String],
+  generation: Option[String],
+  status: String,
+  category: String,
+  termCount: Int,
+  componentCount: Int,
+  topologyNodeCount: Int,
+  topologyRelationshipCount: Int,
+  warnings: Vector[String],
+  attribution: Option[ResolvedBokProfile]
+)
+
+/**
+ * Sequential profile coordinator for one activation callback.  CNCF owns
+ * once-only lifecycle coordination; this object deliberately has no global or
+ * per-process state.
+ */
+private[bok] final class BokStartupBootstrapCoordinator(
+  replacementService: BokKnowledgeSourceReplacementService,
+  injectedPublication: Option[(ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult]] = None
+) {
+  private val _maximum_warnings = 16
+  private val _maximum_warning_length = 240
+  private var _diagnostics = Vector.empty[BokStartupBootstrapDiagnostic]
+
+  def diagnostics: Vector[BokStartupBootstrapDiagnostic] = synchronized(_diagnostics)
+
+  def runC(
+    context: ExecutionContext,
+    component: BokPrimaryComponent,
+    profiles: Vector[BokProfileKey],
+    deadline: Instant,
+    cancellation: ComponentActivationCancellation
+  ): Consequence[Unit] =
+    _run(context, component, profiles, deadline, cancellation, 0)
+
+  private def _run(
+    context: ExecutionContext,
+    component: BokPrimaryComponent,
+    profiles: Vector[BokProfileKey],
+    deadline: Instant,
+    cancellation: ComponentActivationCancellation,
+    index: Int
+  ): Consequence[Unit] =
+    if (index >= profiles.size)
+      Consequence.unit
+    else {
+      val key = profiles(index)
+      _terminal_category(deadline, cancellation) match {
+        case Some(category) =>
+          _record(_failure_diagnostic(key, category))
+          _failure(category)
+        case None =>
+          val publisher = injectedPublication.getOrElse(
+            (ctx, target, profile) => _publish(ctx, target, profile)
+          )
+          val publication = try {
+            Some(publisher(context, component, key))
+          } catch {
+            case _: Throwable =>
+              _record(_failure_diagnostic(key, "unexpected-callback-failure"))
+              None
+          }
+          publication match {
+            case None =>
+              _failure("unexpected-callback-failure")
+            case Some(Consequence.Failure(_)) =>
+              _record(_failure_diagnostic(key, "publication-failed"))
+              _failure("publication-failed")
+            case Some(Consequence.Success(result)) =>
+              _terminal_category(deadline, cancellation) match {
+                case Some(category) =>
+                  _record(_diagnostic(result, category, category))
+                  _failure(category)
+                case None if _normalize(result.publication.state) != "complete" =>
+                  _record(_diagnostic(result, _normalize(result.publication.state), "publication-not-complete"))
+                  _failure("publication-not-complete")
+                case None if !result.admission.admitted =>
+                  _record(_diagnostic(result, "complete", "admission-rejected"))
+                  _failure("admission-rejected")
+                case None =>
+                  _record(_diagnostic(result, "complete", "complete"))
+                  _run(context, component, profiles, deadline, cancellation, index + 1)
+              }
+          }
+      }
+    }
+
+  private def _publish(
+    context: ExecutionContext,
+    component: BokPrimaryComponent,
+    key: BokProfileKey
+  ): Consequence[BokKnowledgeSourceReplacementResult] =
+    replacementService.replaceBootstrap(component, context, key)
+
+  private def _terminal_category(
+    deadline: Instant,
+    cancellation: ComponentActivationCancellation
+  ): Option[String] =
+    if (cancellation.isCancelled)
+      Some("cancelled")
+    else if (!Instant.now.isBefore(deadline))
+      Some("deadline-exceeded")
+    else
+      None
+
+  private def _record(diagnostic: BokStartupBootstrapDiagnostic): Unit = synchronized {
+    _diagnostics = _diagnostics :+ diagnostic
+  }
+
+  private def _diagnostic(
+    result: BokKnowledgeSourceReplacementResult,
+    status: String,
+    category: String
+  ): BokStartupBootstrapDiagnostic = {
+    val normalized = result.normalized
+    val key = result.profileKey
+    BokStartupBootstrapDiagnostic(
+      profile = key.map(_.kind.selectionName).getOrElse("manual"),
+      projectId = key.flatMap(_.projectId.map(_.value)),
+      datasetId = Some(normalized.source.datasetId.value),
+      sourceId = Some(normalized.source.sourceId.value),
+      generation = Some(normalized.source.generation.value),
+      status = status,
+      category = category,
+      termCount = normalized.terms.size,
+      componentCount = normalized.components.size,
+      topologyNodeCount = normalized.topology.nodes.size,
+      topologyRelationshipCount = normalized.topology.relationships.size,
+      warnings = normalized.warnings.take(_maximum_warnings).map(x => _bounded(x.value)),
+      attribution = result.admission.attribution
+    )
+  }
+
+  private def _failure_diagnostic(
+    key: BokProfileKey,
+    category: String
+  ): BokStartupBootstrapDiagnostic =
+    BokStartupBootstrapDiagnostic(
+      profile = key.kind.selectionName,
+      projectId = key.projectId.map(_.value),
+      datasetId = None,
+      sourceId = None,
+      generation = None,
+      status = "failed",
+      category = category,
+      termCount = 0,
+      componentCount = 0,
+      topologyNodeCount = 0,
+      topologyRelationshipCount = 0,
+      warnings = Vector.empty,
+      attribution = None
+    )
+
+  private def _bounded(value: String): String =
+    value.take(_maximum_warning_length)
+
+  private def _normalize(value: String): String =
+    value.trim.toLowerCase
+
+  private def _failure[A](category: String): Consequence[A] =
+    Consequence.stateInvalid(s"BoK startup bootstrap failed: $category")
 }

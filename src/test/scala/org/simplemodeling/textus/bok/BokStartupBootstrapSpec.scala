@@ -1,17 +1,27 @@
 package org.simplemodeling.textus.bok
 
+import java.time.Instant
 import org.goldenport.Consequence
+import org.goldenport.cncf.cli.RunMode
+import org.goldenport.cncf.component.{ComponentActivation, ComponentActivationCancellation, ComponentActivationContext, ComponentCreate, ComponentOrigin}
+import org.goldenport.cncf.context.ExecutionContext
+import org.goldenport.cncf.resource.{InMemoryTextusUrnResourceProvider, ResourceAccessTestProfile}
+import org.goldenport.cncf.subsystem.Subsystem
+import org.goldenport.cncf.testutil.RuntimeBindingAdmissionFixture
 import org.goldenport.configuration.{Configuration, ConfigurationTrace, ConfigurationValue, ResolvedConfiguration}
 import org.goldenport.record.Record
 import org.scalatest.GivenWhenThen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.simplemodeling.textus.bok.datatype.{BokDatasetId, BokResourceReference, BokSourceGeneration, BokSourceId}
+import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
+import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 import org.simplemodeling.textus.bok.runtime.*
 
 /**
- * Executable specification for the private Phase 8 bootstrap selector
- * boundary.  Runtime activation and publication remain pending until their
- * separately owned Phase 8 slices.
+ * Executable specification for the private Phase 8 bootstrap selector,
+ * replacement, and activation boundary. Managed readiness/MCP attribution
+ * remains separately pending for P8-C.
  *
  * @since   Sep. 8, 2026
  * @version Sep. 8, 2026
@@ -149,61 +159,322 @@ final class BokStartupBootstrapSpec extends AnyWordSpec with Matchers with Given
   }
 
   "The Phase 8 startup bootstrap acceptance" should {
-    "activate eligible components in final admitted order exactly once" in {
-      Given("a complete managed server assembly with multiple opted-in components")
-      When("the post-assembly activation coordinator is introduced")
-      Then("callbacks run sequentially in admitted order once per assembly (P8-A activation-ordering/once-only acceptance)")
-      pending
+    "opt the BoK component into activation while remaining inert outside Server mode" in {
+      Given("a primary BoK component and a non-Server activation context containing invalid bootstrap configuration")
+      val component = new BokPrimaryComponent()
+      val context = ComponentActivationContext(
+        new Subsystem("bok-bootstrap-non-server", configuration = _invalid_bootstrap_configuration),
+        _invalid_bootstrap_configuration,
+        RunMode.Command,
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      )
+
+      When("the CNCF activation callback is invoked")
+      val result = component.activateC(context)
+
+      Then("the component is opted in and non-Server startup is effect-free")
+      component shouldBe a[ComponentActivation]
+      result should matchPattern { case Consequence.Success(_) => }
+      component.startupBootstrapDiagnostics shouldBe Vector.empty
     }
 
-    "publish configured profiles only when explicitly enabled" in {
-      Given("an absent configuration and an explicitly ordered configured profile list")
-      When("managed startup reaches the future bootstrap hook")
-      Then("absence remains default-off and configured profiles publish through the shared authority (P8-A configured-publication/default-off acceptance)")
-      pending
+    "reach the shared bootstrap boundary from the admitted Server callback without an ActionCall" in {
+      Given("an admitted primary component with an explicit but unregistered Server bootstrap profile")
+      val subsystem = RuntimeBindingAdmissionFixture.admit(
+        new Subsystem("bok-bootstrap-server-callback", configuration = _server_bootstrap_configuration)
+      )
+      val component = new org.simplemodeling.textus.bok.impl.ComponentFactory()
+        .create(ComponentCreate(subsystem, ComponentOrigin.Main))
+        .primary
+        .asInstanceOf[BokPrimaryComponent]
+      subsystem.add(Vector(component))
+      val context = ComponentActivationContext(
+        subsystem,
+        _server_bootstrap_configuration,
+        RunMode.Server,
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      )
+
+      When("the post-assembly Server callback obtains its component runtime context and starts bootstrap")
+      val result = component.activateC(context)
+
+      Then("the missing private binding is reported as one sanitized BoK diagnostic rather than an Action dispatch")
+      result should matchPattern { case Consequence.Failure(_) => }
+      component.startupBootstrapDiagnostics.map(_.profile) shouldBe Vector("official")
+      component.startupBootstrapDiagnostics.map(_.category) shouldBe Vector("publication-failed")
     }
 
-    "fail readiness for invalid degraded or failed startup publication" in {
-      Given("invalid configuration and complete, degraded, or failed publication outcomes")
-      When("the future bootstrap startup gate evaluates required results")
-      Then("invalid or non-complete required work prevents readiness with a structured failure (P8-A invalid/degraded/failed-startup acceptance)")
-      pending
+    "publish explicitly configured profiles in declaration order and remain default-off when absent" in {
+      Given("one coordinator with a deterministic injected publication and an absent component bootstrap configuration")
+      val component = new BokPrimaryComponent()
+      val context = _context
+      val configuration = ResolvedConfiguration(Configuration.empty, ConfigurationTrace.empty)
+      val calls = scala.collection.mutable.ArrayBuffer.empty[String]
+      val publication: (ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult] =
+        (_, _, key) => {
+          calls += key.render
+          Consequence.success(_result(key))
+        }
+      val coordinator = new BokStartupBootstrapCoordinator(
+        new BokKnowledgeSourceReplacementService(new BokKnowledgeCatalog()),
+        Some(publication)
+      )
+
+      When("the default-off callback and then an explicit ordered coordinator run")
+      val defaultoff = component.activateC(ComponentActivationContext(
+        new Subsystem("bok-bootstrap-default-off", configuration = configuration),
+        configuration,
+        RunMode.Server,
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      ))
+      val configured = coordinator.runC(
+        context,
+        component,
+        Vector(BokProfileKey.development, BokProfileKey.official),
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      )
+
+      Then("no implicit profile is selected and configured replacement stays sequential")
+      defaultoff should matchPattern { case Consequence.Success(_) => }
+      configured should matchPattern { case Consequence.Success(_) => }
+      calls.toVector shouldBe Vector("development", "official")
+      coordinator.diagnostics.map(_.profile) shouldBe Vector("development", "official")
     }
 
-    "share publication semantics with protected manual replacement" in {
-      Given("a configured bootstrap publication and the protected replaceKnowledgeSource operation")
-      When("both future paths publish a complete generation")
-      Then("one replacement authority preserves atomicity and manual mutation remains outside MCP (P8-A shared-publication acceptance)")
-      pending
+    "stop after the first failed or non-complete configured publication" in {
+      Given("one ordered coordinator whose first result is degraded")
+      val component = new BokPrimaryComponent()
+      val calls = scala.collection.mutable.ArrayBuffer.empty[String]
+      val publication: (ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult] =
+        (_, _, key) => {
+          calls += key.render
+          Consequence.success(_result(key, state = "degraded"))
+        }
+      val coordinator = new BokStartupBootstrapCoordinator(
+        new BokKnowledgeSourceReplacementService(new BokKnowledgeCatalog()),
+        Some(publication)
+      )
+      val rejectedpublication: (ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult] =
+        (_, _, key) => Consequence.success(_result(key, admitted = Some(false)))
+      val rejected = new BokStartupBootstrapCoordinator(
+        new BokKnowledgeSourceReplacementService(new BokKnowledgeCatalog()),
+        Some(rejectedpublication)
+      )
+
+      When("two required profiles are evaluated")
+      val result = coordinator.runC(
+        _context,
+        component,
+        Vector(BokProfileKey.official, BokProfileKey.development),
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      )
+      val rejectedresult = rejected.runC(
+        _context,
+        component,
+        Vector(BokProfileKey.official),
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      )
+
+      Then("the structured failure prevents the later profile from starting")
+      result should matchPattern { case Consequence.Failure(_) => }
+      rejectedresult should matchPattern { case Consequence.Failure(_) => }
+      calls.toVector shouldBe Vector("official")
+      coordinator.diagnostics.map(_.category) shouldBe Vector("publication-not-complete")
+      rejected.diagnostics.map(_.category) shouldBe Vector("admission-rejected")
     }
 
-    "replace an unchanged generation deterministically across restart" in {
-      Given("the same complete profile input presented to two managed server assemblies")
-      When("the future bootstrap runs after restart")
-      Then("the replacement is deterministic and creates no duplicate records (P8-A restart-replacement acceptance)")
-      pending
+    "reject missing registry bindings and deadline or cancellation before later publication" in {
+      Given("an unconfigured primary component plus terminal deadline and cancellation coordinators")
+      val component = new BokPrimaryComponent()
+      val service = new BokKnowledgeSourceReplacementService(new BokKnowledgeCatalog())
+      val cancellation = new ComponentActivationCancellation
+      cancellation.cancel()
+      val cancelledcalls = scala.collection.mutable.ArrayBuffer.empty[String]
+      val cancelledpublication: (ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult] =
+        (_, _, key) => {
+          cancelledcalls += key.render
+          Consequence.success(_result(key))
+        }
+      val expiredcalls = scala.collection.mutable.ArrayBuffer.empty[String]
+      val expiredpublication: (ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult] =
+        (_, _, key) => {
+          expiredcalls += key.render
+          Consequence.success(_result(key))
+        }
+      val postpublicationcancellation = new ComponentActivationCancellation
+      val postpublicationcalls = scala.collection.mutable.ArrayBuffer.empty[String]
+      val postpublicationfunction: (ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult] =
+        (_, _, key) => {
+          postpublicationcalls += key.render
+          postpublicationcancellation.cancel()
+          Consequence.success(_result(key))
+        }
+      val cancelledcoordinator = new BokStartupBootstrapCoordinator(
+        service,
+        Some(cancelledpublication)
+      )
+      val expiredcoordinator = new BokStartupBootstrapCoordinator(
+        service,
+        Some(expiredpublication)
+      )
+      val postpublicationcoordinator = new BokStartupBootstrapCoordinator(
+        service,
+        Some(postpublicationfunction)
+      )
+
+      When("startup attempts use an absent registry or terminal activation state")
+      val missing = service.replaceBootstrap(component, _context, BokProfileKey.official)
+      val cancelled = cancelledcoordinator.runC(
+        _context,
+        component,
+        Vector(BokProfileKey.official, BokProfileKey.development),
+        Instant.now.plusSeconds(5),
+        cancellation
+      )
+      val expired = expiredcoordinator.runC(
+        _context,
+        component,
+        Vector(BokProfileKey.official, BokProfileKey.development),
+        Instant.now.minusSeconds(1),
+        new ComponentActivationCancellation
+      )
+      val postpublication = postpublicationcoordinator.runC(
+        _context,
+        component,
+        Vector(BokProfileKey.official, BokProfileKey.development),
+        Instant.now.plusSeconds(5),
+        postpublicationcancellation
+      )
+
+      Then("each condition is a safe failure before a later profile can start")
+      missing should matchPattern { case Consequence.Failure(_) => }
+      cancelled should matchPattern { case Consequence.Failure(_) => }
+      expired should matchPattern { case Consequence.Failure(_) => }
+      postpublication should matchPattern { case Consequence.Failure(_) => }
+      cancelledcalls.toVector shouldBe Vector.empty
+      expiredcalls.toVector shouldBe Vector.empty
+      postpublicationcalls.toVector shouldBe Vector("official")
     }
 
-    "emit bounded safe startup diagnostics" in {
-      Given("a bootstrap result containing safe identity and count fields")
-      When("the future activation or publication path reports its outcome")
-      Then("diagnostics allow safe profile and generation attribution but redact locators credentials and raw exceptions (P8-A diagnostics acceptance)")
-      pending
+    "retain bounded safe diagnostics for deterministic repeated replacement" in {
+      Given("two identical complete publication outcomes backed by a private-looking source locator")
+      val component = new BokPrimaryComponent()
+      val calls = scala.collection.mutable.ArrayBuffer.empty[String]
+      val publication: (ExecutionContext, BokPrimaryComponent, BokProfileKey) => Consequence[BokKnowledgeSourceReplacementResult] =
+        (_, _, key) => {
+          calls += key.render
+          Consequence.success(_result(key))
+        }
+      val coordinator = new BokStartupBootstrapCoordinator(
+        new BokKnowledgeSourceReplacementService(new BokKnowledgeCatalog()),
+        Some(publication)
+      )
+
+      When("the same configured key is replaced twice")
+      val first = coordinator.runC(
+        _context,
+        component,
+        Vector(BokProfileKey.official),
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      )
+      val second = coordinator.runC(
+        _context,
+        component,
+        Vector(BokProfileKey.official),
+        Instant.now.plusSeconds(5),
+        new ComponentActivationCancellation
+      )
+
+      Then("both outcomes are complete and diagnostics contain identities and counts but not the locator")
+      first should matchPattern { case Consequence.Success(_) => }
+      second should matchPattern { case Consequence.Success(_) => }
+      calls.toVector shouldBe Vector("official", "official")
+      coordinator.diagnostics.foreach { diagnostic =>
+        diagnostic.status shouldBe "complete"
+        diagnostic.datasetId shouldBe Some("bootstrap-dataset")
+        diagnostic.sourceId shouldBe Some("bootstrap-source")
+        diagnostic.generation shouldBe Some("bootstrap-generation")
+        diagnostic.toString should not include "private-resource"
+        diagnostic.toString should not include "credential"
+      }
     }
 
-    "exclude mutation from the MCP projection" in {
-      Given("the protected replaceKnowledgeSource operation and the existing qualified MCP read tools")
-      When("the future bootstrap and MCP projections are assembled")
-      Then("bootstrap does not add an MCP mutation surface and replaceKnowledgeSource remains absent (P8-A MCP mutation-exclusion acceptance)")
-      pending
+    "exclude protected mutation from the MCP-ready operation set" in {
+      Given("the activated primary component")
+      val component = new BokPrimaryComponent()
+
+      When("its MCP operation inventory is projected")
+      val operations = component.mcpReadyOperations
+
+      Then("bootstrap has not added replaceKnowledgeSource to MCP")
+      operations should not contain "BokRetrieval.replaceKnowledgeSource"
+      operations should contain ("BokRetrieval.searchTerms")
     }
 
     "attribute managed readiness and MCP reads to the selected profile" in {
       Given("a managed server that becomes ready only after complete development publication")
       When("a future MCP read selects profile=development")
-      Then("readiness follows completion and the response carries selected profile attribution (P8-A readiness/MCP attribution acceptance)")
+      Then("readiness follows completion and the response carries selected profile attribution (P8-C managed acceptance)")
       pending
     }
+  }
+
+  private def _context: ExecutionContext = {
+    val provider = new InMemoryTextusUrnResourceProvider("bok", _resources)
+    val resources = ResourceAccessTestProfile(textusUrnProviders = Vector(provider)).resourceAccess
+    ExecutionContext.withResourceAccess(ExecutionContext.create(), resources)
+  }
+
+  private def _result(
+    key: BokProfileKey,
+    state: String = "complete",
+    admitted: Option[Boolean] = None
+  ): BokKnowledgeSourceReplacementResult = {
+    val normalized = BokSourceReader.read(_context, _source).TAKE
+    BokKnowledgeSourceReplacementResult(
+      Some(key),
+      normalized,
+      BokFederationPublication(state, Record.empty),
+      BokProfileAdmission(admitted = admitted.getOrElse(state == "complete"), attribution = None)
+    )
+  }
+
+  private def _source: BokKnowledgeSource =
+    BokKnowledgeSource(
+      BokSourceId("bootstrap-source"),
+      BokDatasetId("bootstrap-dataset"),
+      BokSourceGeneration("bootstrap-generation"),
+      BokResourceReference("urn:textus:bok:private-resource")
+    )
+
+  private val _resources = Map(
+    "private-resource/metadata/cncf/knowledge-source.json" ->
+      """{"schemaVersion":"cncf.knowledge-source.v1","resources":[{"kind":"glossary-terms","href":"metadata/glossary/terms.json"}]}""",
+    "private-resource/metadata/glossary/terms.json" ->
+      """{"terms":[{"id":"bootstrap:term","title":"Bootstrap","definition_text":"Bounded startup term.","term_type":"concept"}]}"""
+  )
+
+  private val _invalid_bootstrap_configuration: ResolvedConfiguration =
+    _configuration(ConfigurationValue.StringValue("not-an-object"))
+
+  private val _server_bootstrap_configuration: ResolvedConfiguration = {
+    val bootstrap = ConfigurationValue.ObjectValue(Map(
+      "profiles" -> ConfigurationValue.ListValue(List(ConfigurationValue.StringValue("official")))
+    ))
+    val bok = ConfigurationValue.ObjectValue(Map(
+      "bootstrap" -> bootstrap
+    ))
+    ResolvedConfiguration(
+      Configuration(Map("textus" -> ConfigurationValue.ObjectValue(Map("bok" -> bok)))),
+      ConfigurationTrace.empty
+    )
   }
 
   private def _configuration(value: ConfigurationValue): ResolvedConfiguration =
