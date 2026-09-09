@@ -7,7 +7,8 @@ parallel_to=[Phase 7.5 Checklist](phase-7.5-checklist.md)
 
 ## Stage Status
 
-- Current status: IN PROGRESS — P9-A/P9-B accepted; P9-C remains pending.
+- Current status: IN PROGRESS — P9-A/P9-B/P9-C managed acceptance accepted;
+  final regression, independent review, and Phase closure remain pending.
 - Owner: Textus BoK maintainers
 - Priority: NEXT EXECUTABLE PHASE
 - Update rule: Check an item only from the stated executable, managed-runtime,
@@ -34,11 +35,11 @@ parallel_to=[Phase 7.5 Checklist](phase-7.5-checklist.md)
 
 ## P9-C: Managed MCP Acceptance and Closure
 
-- [ ] Verify MCP discovery and generated schema expose exactly the accepted
+- [x] Verify MCP discovery and generated schema expose exactly the accepted
       ten read-only operations.
-- [ ] Verify positive, negative, profile-isolation, attribution, and bounded
+- [x] Verify positive, negative, profile-isolation, attribution, and bounded
       Knowledge Map reads with a real MCP client.
-- [ ] Verify the Control Center-managed Textus BoK instance on port 18014 can
+- [x] Verify the Control Center-managed Textus BoK instance on port 18014 can
       serve the accepted discovery and map-read sequence.
 - [ ] Run proportionate BoK and CNCF regression, normal CAR validation,
       documentation convergence, independent review, and the Phase release

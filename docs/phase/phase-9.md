@@ -9,8 +9,8 @@ checklist=[Phase 9 Checklist](phase-9-checklist.md)
 
 ## Stage Status
 
-- Current status: IN PROGRESS — P9-A/P9-B accepted; P9-C managed Control
-  Center proof and Phase closure remain pending.
+- Current status: IN PROGRESS — P9-A/P9-B/P9-C managed acceptance accepted;
+  final regression, independent review, and Phase closure remain pending.
 - Owner: Textus BoK maintainers
 - Priority: NEXT EXECUTABLE PHASE
 - Entry rule: Phases 6, 7.4, and 8 remain CLOSED. CNCF Phase 73, TKE Phase 2,
@@ -75,6 +75,29 @@ projection work required for parity with the existing public read.
 Verify discovery, bounded reads, profiles, attribution, structured failures,
 mutation exclusion, Control Center operation on port 18014, documentation,
 review, validation, and release closure.
+
+#### Managed Acceptance Record
+
+On 2026-09-09, the ordinary local Textus Control Center recognized
+`textus-bok` as the available `DEV:dev2026` source and started the managed
+instance. The selected instance became ready on loopback port `18014` with
+`/rest/v1/admin/system/status` reporting `UP`.
+
+The committed `scripts/test/probe-managed-bok.py` probe
+(`23a4286423d5954a05c03e7452d7fd2d2f287ff11b1e1b4644e0769f32b72342`)
+then passed against that actual managed runtime and current
+SimpleModeling.org source generation:
+
+```text
+MANAGED_BOK_PROBE_OK profile=development \
+generation=sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f \
+term_count=212 present=1 absent=0 maps=2 mutation_tools=0
+```
+
+The probe establishes exact ten-read discovery, profile attribution, one
+positive terminology read, one absent-term read, bounded matching and
+no-match Knowledge Map reads, and permanent mutation exclusion. It performs
+no replacement or other administration operation.
 
 ## Completion Conditions
 
