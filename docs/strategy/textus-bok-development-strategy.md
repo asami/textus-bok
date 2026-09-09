@@ -40,6 +40,7 @@ guidance belongs to Textus CBD Support.
 12. Phase 7.5: Component-Contributed Knowledge Acceptance
 13. Phase 8: Configured KnowledgeSource Startup Bootstrap
 14. Phase 9: Knowledge Map MCP Publication
+15. Phase 10: Resident Multi-BoK Catalog and MCP Publication
 
 ## Current Priority
 
@@ -94,14 +95,24 @@ and restoration behavior passed through the managed lifecycle. Phase 8 adds no
 watcher, supervisor control, inferred profile, MCP administration, or second
 publication implementation.
 
-Phase 9 is the next executable priority and is independent of CNCF Phase 73,
-TKE Phase 2, and BoK Phase 7.5. Textus BoK already has nine MCP-ready
+Phase 9 closed on 2026-09-09. Textus BoK already has nine MCP-ready
 terminology, component-reference, and semantic-knowledge reads. Phase 9 admits
 the existing bounded `getKnowledgeMap` public operation as the tenth read-only
 MCP operation, synchronizes discovery/schema/Help and stale four-read
 documentation, retains permanent MCP exclusion of `replaceKnowledgeSource`,
 and verifies a bounded map read through the Control Center-managed runtime on
 port 18014. It does not add provider ingestion or domain knowledge semantics.
+
+Phase 10 is the next executable priority and is independent of CNCF Phase 73,
+TKE Phase 2, and BoK Phase 7.5. It makes the SIE-independent in-memory runtime
+the practical first path, composes multiple independently selected complete
+generations into one attributable resident BoK catalog, and routes the existing
+BoK read/MCP operations through that catalog. Its representative closure target
+is the simultaneous admission of SimpleModeling.org and `bok-knowledgehub`,
+followed by one combined catalog read and MCP runtime check without an installed
+SIE component. Phase 10 does not require a new Cozy or CNCF feature Phase as a
+start gate; executable downstream evidence must identify any actual upstream
+gap before such a handoff is created.
 
 Phase 59.7 completion record: DOC-07 adds one additive, value-only semantic
 metadata projection for the five existing semantic reads. It preserves source
