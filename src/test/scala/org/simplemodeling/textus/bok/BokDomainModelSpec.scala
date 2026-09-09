@@ -7,7 +7,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 /*
  * @since   Jul. 21, 2026
- * @version Aug. 15, 2026
+ * @version Sep. 9, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -192,7 +192,7 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
     }
 
     "MCP readiness" which {
-      "keep Knowledge Map public but outside the MCP-ready reads" in {
+      "admit bounded Knowledge Map while keeping source replacement outside MCP" in {
       Given("the Phase 4 primary component")
       val component = new impl.BokPrimaryComponent()
       val operations = Vector(
@@ -207,14 +207,14 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
       When("the component MCP policy is evaluated")
       val readiness = operations.map(operation => operation -> component.isMcpReady("BokRetrieval", operation))
 
-      Then("the four existing MCP reads are ready while mutation and Knowledge Map remain private to MCP")
+      Then("the bounded public reads are ready while source replacement remains private to MCP")
       readiness.toMap shouldBe Map(
         "replaceKnowledgeSource" -> false,
         "searchTerms" -> true,
         "explainTerm" -> true,
         "searchComponentReferences" -> true,
         "getComponentReference" -> true,
-        "getKnowledgeMap" -> false
+        "getKnowledgeMap" -> true
       )
       }
     }

@@ -12,12 +12,12 @@ import org.simplemodeling.textus.bok.impl
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Aug. 27, 2026
+ * @version Sep. 9, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhenThen {
   "BoK read MCP projection" should {
-    "publish typed terminology and existence-only component-reference tools" in {
+    "publish typed terminology, bounded Knowledge Map, and existence-only component-reference tools" in {
       Given("an initialized BoK component with operation-level MCP readiness")
       val subsystem = DefaultSubsystemFactory.default(Some("server"))
       val component = new impl.ComponentFactory().create(
@@ -31,6 +31,7 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       val explainschema = tools.find(_.name.endsWith(".explainTerm")).map(_.inputSchema).get
       val componentsearchschema = tools.find(_.name.endsWith(".searchComponentReferences")).map(_.inputSchema).get
       val componentlookupschema = tools.find(_.name.endsWith(".getComponentReference")).map(_.inputSchema).get
+      val mapschema = tools.find(_.name.endsWith(".getKnowledgeMap")).map(_.inputSchema).get
       val semanticsearchschema = tools.find(_.name.endsWith(".searchSemanticKnowledge")).map(_.inputSchema).get
       val manifestchema = tools.find(_.name.endsWith(".getSemanticManifest")).map(_.inputSchema).get
       val resourceschema = tools.find(_.name.endsWith(".getSemanticResource")).map(_.inputSchema).get
@@ -38,12 +39,13 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       val discoverschema = tools.find(_.name.endsWith(".discoverSemanticKnowledge")).map(_.inputSchema).get
       val outputs = component.operationDefinitions.map(x => x.name -> x.outputType).toMap
 
-      Then("all four existing and exactly five new semantic reads are discoverable while source replacement is absent")
+      Then("exactly ten bounded read tools are discoverable while source replacement is absent")
       names shouldBe Set(
         "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms",
         "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
         "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
         "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap",
         "org.simplemodeling.textus.Bok.BokRetrieval.searchSemanticKnowledge",
         "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticManifest",
         "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticResource",
@@ -51,7 +53,7 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "org.simplemodeling.textus.Bok.BokRetrieval.discoverSemanticKnowledge"
       )
       names.exists(_.endsWith(".replaceKnowledgeSource")) shouldBe false
-      names.exists(_.endsWith(".getKnowledgeMap")) shouldBe false
+      names.exists(_.endsWith(".getKnowledgeMap")) shouldBe true
 
       And("the tool inputs and operation outputs retain their typed BoK contracts")
       searchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
@@ -85,6 +87,18 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "projectId"
       )
       componentlookupschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("name"))
+      mapschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
+        "datasetId",
+        "sourceId",
+        "category",
+        "termType",
+        "focus",
+        "nodeLimit",
+        "relationshipLimit",
+        "profile",
+        "projectId"
+      )
+      mapschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector.empty)
       semanticsearchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "query",
         "limit",
@@ -125,6 +139,7 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         explainschema,
         componentsearchschema,
         componentlookupschema,
+        mapschema,
         semanticsearchschema,
         manifestchema,
         resourceschema,
@@ -187,6 +202,7 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
         "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
         "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
+        "org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap",
         "org.simplemodeling.textus.Bok.BokRetrieval.searchSemanticKnowledge",
         "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticManifest",
         "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticResource",

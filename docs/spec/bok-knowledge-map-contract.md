@@ -99,8 +99,8 @@ collections; it does not synthesize a node or relationship.
 
 The operation reads only the selected `BokKnowledgeCatalog` generation. It
 does not invoke SIE candidate retrieval, and no candidate score, inferred
-association, or shared tag becomes a factual edge. It is not MCP-ready in
-Phase 6 unless a separate decision and projection specification authorize it.
+association, or shared tag becomes a factual edge. It was not MCP-ready during
+Phase 6; Phase 9 separately authorizes its bounded, read-only MCP projection.
 
 The Static Form Web surface uses that one result for filters, graph, detail,
 warnings, and the no-JavaScript list/table fallback. It presents component

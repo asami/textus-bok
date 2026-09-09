@@ -336,11 +336,12 @@ scripts/test/probe-managed-bok.py \
   --generation sha256:40f96e99b2308e0474584513ff7602928008d57de8e3f3bd2494a5aa83402cec
 ```
 
-The probe checks the local system status, the four BoK read tools, exact
+The probe checks the local system status, the exact ten BoK read tools, exact
 `development`/dataset/source/generation/evidence attribution, one present term,
-an empty absent-term result, the source term count, and the permanent absence
-of `replaceKnowledgeSource` from MCP. It never invokes replacement and accepts
-only an HTTP loopback base URL.
+an empty absent-term result, bounded matching and no-match Knowledge Map calls,
+the source term count, and the permanent absence of `replaceKnowledgeSource`
+from MCP. It never invokes replacement and accepts only an HTTP loopback base
+URL.
 
 For final restoration, use the current SimpleModeling.org `website.d` as a
 separate source root. Its accepted current values are

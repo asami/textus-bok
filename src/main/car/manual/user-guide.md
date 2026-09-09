@@ -401,14 +401,14 @@ Web map projections must agree. For incomplete and unknown project selectors,
 the two MCP calls retain their legacy error text and expose the exact
 `structuredContent.error.appStatus`; the two Static Form Web checks intentionally
 return HTTP 200 result pages with escaped `error.appStatus` and no fallback
-selection attribution. `tools/list` keeps Knowledge Map absent from MCP, and
-`replaceKnowledgeSource` remains protected and non-MCP; callers do not provide
+selection attribution. `tools/list` includes Knowledge Map as a bounded,
+read-only projection, and `replaceKnowledgeSource` remains protected and non-MCP; callers do not provide
 private resource roots.
 
 On a live release-gate run, the probe reports these stable markers:
 
 ```text
-BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2
+BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 mcp_maps=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_mcp_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2
 BOK_PROFILE_SELECTION_SAR_LIFECYCLE_OK profiles=4
 ```
 
@@ -426,12 +426,18 @@ separate gates until they complete.
 
 ## MCP Use
 
-The current component publishes four read tools:
+The current component publishes ten bounded, read-only MCP read tools:
 
 - `org.simplemodeling.textus.Bok.BokRetrieval.searchTerms`;
 - `org.simplemodeling.textus.Bok.BokRetrieval.explainTerm`;
 - `org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences`;
-- `org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference`.
+- `org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.searchSemanticKnowledge`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.getSemanticManifest`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.getSemanticResource`;
+- `org.simplemodeling.textus.Bok.BokRetrieval.getSemanticSection`; and
+- `org.simplemodeling.textus.Bok.BokRetrieval.discoverSemanticKnowledge`.
 
 Use the runtime's MCP `tools/list` result as the authoritative names and input
 schemas. `replaceKnowledgeSource` remains absent permanently. A CAR/SAR
@@ -486,6 +492,6 @@ expose private resource references or project registry contents in diagnostics:
 | `conflicting-selection` | Ensure `projectId` is used only with `project`, and any `datasetId`/`sourceId` assertions equal the resolved binding. |
 
 The Web form invokes the same public read operation and carries no source or
-mutation control. Knowledge Map remains outside MCP, and
+mutation control. Knowledge Map is MCP-ready as a bounded, read-only read, and
 `replaceKnowledgeSource` remains a protected administrative operation and is
 not MCP-ready.

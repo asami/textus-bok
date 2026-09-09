@@ -11,11 +11,18 @@ from pathlib import Path, PurePosixPath
 MCP_PROTOCOL_VERSION = "2025-11-25"
 SEARCH_TERMS = "org.simplemodeling.textus.Bok.BokRetrieval.searchTerms"
 EXPLAIN_TERM = "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm"
+KNOWLEDGE_MAP = "org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap"
 READ_TOOLS = {
     SEARCH_TERMS,
     EXPLAIN_TERM,
     "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
     "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
+    KNOWLEDGE_MAP,
+    "org.simplemodeling.textus.Bok.BokRetrieval.searchSemanticKnowledge",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticManifest",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticResource",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticSection",
+    "org.simplemodeling.textus.Bok.BokRetrieval.discoverSemanticKnowledge",
 }
 MUTATION_SUFFIXES = ("replaceKnowledgeSource", "replace-knowledge-source")
 
@@ -202,7 +209,8 @@ def run(arguments: argparse.Namespace) -> None:
         for item in listed.get("result", {}).get("tools", [])
         if isinstance(item, dict) and isinstance(item.get("name"), str)
     }
-    require(READ_TOOLS.issubset(names), f"Managed BoK read tools are incomplete: {sorted(names)}")
+    component_names = {name for name in names if name.startswith("org.simplemodeling.textus.Bok.BokRetrieval.")}
+    require(component_names == READ_TOOLS, f"Managed BoK read tools differ: {sorted(component_names)}")
     require(not any(any(name.endswith(suffix) for suffix in MUTATION_SUFFIXES) for name in names), f"A mutation operation is MCP-ready: {sorted(names)}")
 
     expected_selection = (
@@ -239,9 +247,33 @@ def run(arguments: argparse.Namespace) -> None:
     require("result" not in absent_body or absent_body["result"] is None, f"Unexpected absent-term result: {absent}")
     require(selection_tuple(absent) == expected_selection, f"Absent-term attribution mismatch: {absent}")
 
+    map_result = mcp_call(
+        base_url,
+        "managed-map",
+        KNOWLEDGE_MAP,
+        {"profile": "development", "nodeLimit": 32, "relationshipLimit": 64},
+        arguments.timeout,
+    )
+    map_body = body(map_result)
+    require(unwrap(field(map_body, "status")) == "matched", f"Managed Knowledge Map did not match: {map_result}")
+    require(selection_tuple(map_result) == expected_selection, f"Managed Knowledge Map attribution mismatch: {map_result}")
+    require(len(field(map_body, "nodes") or []) <= 32 and len(field(map_body, "relationships") or []) <= 64, f"Managed Knowledge Map ignored bounds: {map_result}")
+
+    no_match_map = mcp_call(
+        base_url,
+        "managed-map-no-match",
+        KNOWLEDGE_MAP,
+        {"focus": arguments.absent_term_id, "profile": "development", "nodeLimit": 32, "relationshipLimit": 64},
+        arguments.timeout,
+    )
+    no_match_body = body(no_match_map)
+    require(unwrap(field(no_match_body, "status")) == "no-match", f"Managed Knowledge Map unexpectedly matched: {no_match_map}")
+    require(selection_tuple(no_match_map) == expected_selection, f"Managed no-match Map attribution mismatch: {no_match_map}")
+    require(not (field(no_match_body, "nodes") or []) and not (field(no_match_body, "relationships") or []), f"Managed no-match Map leaked topology: {no_match_map}")
+
     print(
         f"MANAGED_BOK_PROBE_OK profile=development generation={arguments.generation} "
-        f"term_count={count} present=1 absent=0 mutation_tools=0"
+        f"term_count={count} present=1 absent=0 maps=2 mutation_tools=0"
     )
 
 

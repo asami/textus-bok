@@ -17,6 +17,12 @@ READ_TOOLS = {
     "org.simplemodeling.textus.Bok.BokRetrieval.explainTerm",
     "org.simplemodeling.textus.Bok.BokRetrieval.searchComponentReferences",
     "org.simplemodeling.textus.Bok.BokRetrieval.getComponentReference",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap",
+    "org.simplemodeling.textus.Bok.BokRetrieval.searchSemanticKnowledge",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticManifest",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticResource",
+    "org.simplemodeling.textus.Bok.BokRetrieval.getSemanticSection",
+    "org.simplemodeling.textus.Bok.BokRetrieval.discoverSemanticKnowledge",
 }
 FAILURE_CODES = {
     "invalid-selection",
@@ -669,7 +675,6 @@ def _run(base_url: str, fixture_root: Path, timeout: float) -> None:
     names = {tool.get("name") for tool in (_field(listed.get("result", {}), "tools") or [])}
     component_names = {name for name in names if isinstance(name, str) and name.startswith("org.simplemodeling.textus.Bok.BokRetrieval.")}
     _require(component_names == READ_TOOLS, f"Qualified BoK MCP read tools differ: {component_names}")
-    _require(not any(name.endswith(".getKnowledgeMap") for name in names if isinstance(name, str)), f"Knowledge Map leaked into MCP: {names}")
     _require(not any(name.endswith(".replaceKnowledgeSource") for name in names if isinstance(name, str)), f"Source replacement leaked into MCP: {names}")
 
     for index, profile in enumerate(PROFILES):
@@ -707,6 +712,19 @@ def _run(base_url: str, fixture_root: Path, timeout: float) -> None:
         _require(
             _selection_tuple(mcp_terms) == _selection_tuple(rest_terms),
             f"MCP and REST term attribution differs for {profile['marker']}",
+        )
+
+        mcp_map = _mcp_call(
+            base_url,
+            f"profile-map-{index}",
+            "org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap",
+            map_arguments,
+            timeout,
+        )
+        mcp_projection = _assert_map_response(mcp_map, profile, f"MCP {profile['marker']} map")
+        _require(
+            mcp_projection == rest_projection,
+            f"MCP and REST map data differ for {profile['marker']}: mcp={mcp_projection} rest={rest_projection}",
         )
 
         negative_arguments = {"query": foreign["isolation_query"], "limit": 10}
@@ -757,6 +775,24 @@ def _run(base_url: str, fixture_root: Path, timeout: float) -> None:
             profile,
             foreign,
             f"REST {profile['marker']} foreign map",
+        )
+
+        negative_mcp_map = _mcp_call(
+            base_url,
+            f"profile-negative-map-{index}",
+            "org.simplemodeling.textus.Bok.BokRetrieval.getKnowledgeMap",
+            negative_map_arguments,
+            timeout,
+        )
+        negative_mcp_projection = _assert_no_match_map_response(
+            negative_mcp_map,
+            profile,
+            foreign,
+            f"MCP {profile['marker']} foreign map",
+        )
+        _require(
+            negative_mcp_projection == negative_rest_projection,
+            f"MCP and REST foreign map data differ for {profile['marker']}: mcp={negative_mcp_projection} rest={negative_rest_projection}",
         )
 
         negative_web_parameters = {"focus": foreign["node_id"]}
@@ -824,9 +860,9 @@ def _run(base_url: str, fixture_root: Path, timeout: float) -> None:
     )
 
     print(
-        "BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 "
-        "web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 "
-        "negative_rest_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2"
+        "BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 mcp_maps=4 "
+        "negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_mcp_maps=4 negative_web_maps=4 "
+        "mcp_failures=2 web_failures=2"
     )
 
 

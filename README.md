@@ -37,14 +37,15 @@ BoK CAR.
 
 Typed matching remains inside Textus BoK. Exact knowledge is distinct from
 provider-backed candidates, and complete source generations remove stale
-records only after SIE confirms publication. MCP publishes the four typed BoK
-read operations, including existence-only component references. Source
-replacement is permanently excluded.
+records only after SIE confirms publication. MCP publishes ten bounded,
+read-only BoK operations, including existence-only component references and
+Knowledge Map. Source replacement is permanently excluded.
 
 The component also provides the public, read-only `getKnowledgeMap` operation
 and its Static Form view at `/web/bok/textus-bok/map`. Both project one bounded
 selected generation with source evidence and an existence-only CBD handoff;
-neither operation is MCP-ready and the browser never performs source mutation.
+Knowledge Map is MCP-ready as a bounded, read-only projection; the browser
+never performs source mutation.
 To verify a real Cozy source locally, build it with Cozy 0.3.0-SNAPSHOT and run
 `scripts/test/run-bok-knowledge-map-sar.sh start` with
 `TEXTUS_BOK_KNOWLEDGE_MAP_SOURCE_ROOT` set to its generated `website.d` root.

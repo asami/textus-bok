@@ -125,7 +125,7 @@ profile. There is no compatibility mode that silently restores union reads,
 infers a profile from a dataset, or falls back from an unavailable profile.
 
 Phase 7 defines this migration contract. Phase 7.2 owns its public CML, REST,
-SIE-candidate, and MCP-ready read integration, and Phase 7.3 owns the Web and
+SIE-candidate, and then-MCP-ready read integration, and Phase 7.3 owns the Web and
 operator presentation.
 
 ## Failure Boundary
@@ -169,10 +169,12 @@ another without requiring project names to become public API vocabulary.
 Focused executable specifications prove resolver and catalog behavior in
 process. The representative SAR fixture, lifecycle script, and probe provide
 prepared/static integration evidence across REST, the qualified MCP read tools,
-and the Static Form Knowledge Map; REST and Web map projections must agree, and
-the Knowledge Map and source replacement remain outside MCP. Only the Phase
-7.4 release gate's live lifecycle execution establishes runtime evidence. A
-prepared or focused result must not be described as a live SAR pass.
+and the Static Form Knowledge Map; REST and Web map projections must agree. At
+the Phase-7 scope, Knowledge Map and source replacement remained outside MCP;
+Phase 9 subsequently admits only the bounded, read-only Knowledge Map. Only
+the Phase 7.4 release gate's live lifecycle execution establishes runtime
+evidence. A prepared or focused result must not be described as a live SAR
+pass.
 
 ## Non-goals
 
@@ -181,4 +183,5 @@ prepared or focused result must not be described as a live SAR pass.
 - No profile discovery from current directory, Git state, environment,
   username, hostname, or request-supplied resource location.
 - No change to SIE provider ownership or CBD Support detail ownership.
-- No implicit MCP readiness for the Knowledge Map or administrative behavior.
+- No implicit MCP readiness: Phase 9 expressly admits the bounded Knowledge
+  Map, while administrative behavior remains excluded.

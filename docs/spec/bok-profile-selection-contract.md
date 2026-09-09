@@ -128,11 +128,12 @@ Omitted selection therefore reports `resolvedProfile = official`. Record-level
 evidence MUST remain present where the existing domain contract requires it;
 selection attribution does not replace source evidence.
 
-REST, the four existing MCP-ready terminology/component reads, and the Static
+REST, the Phase-7 four existing MCP-ready terminology/component reads, and the Static
 Form Knowledge Map MUST eventually project equivalent selection and
 attribution semantics on their respective operation surfaces. This contract
 does not make the Knowledge Map, source registration, or source replacement
-MCP-ready.
+MCP-ready at that Phase-7 scope. Phase 9 separately admits the bounded,
+read-only Knowledge Map projection.
 
 ## Structured Failure Outcomes
 
@@ -211,7 +212,7 @@ script and probe, and the resolved-profile executable specification.
 | Foreign term isolation | For every selected key, a cyclic probe for a term owned by another key MUST return no-match with empty results and the selected attribution. It MUST NOT union or fall back. |
 | Foreign topology isolation | For every selected key, a cyclic focus for a node owned by another key MUST return no-match with empty nodes and relationships and the selected attribution. It MUST NOT expose the foreign node or topology. |
 | Cross-surface reads | REST terminology and Knowledge Map reads MUST expose the resolved tuple; qualified MCP read tools MUST expose equivalent attribution for their respective reads; the Static Form Knowledge Map MUST agree with the REST map projection. Incomplete and unknown projects additionally prove MCP `structuredContent.error.appStatus` and the HTTP-200 Web `error.appStatus` page property without fallback attribution. |
-| Surface ownership | MCP tools/list MUST contain only the four qualified terminology/component read tools for this component. Knowledge Map and source replacement MUST remain absent from MCP; source replacement MUST remain protected. |
+| Surface ownership | Phase 7 MCP tools/list contained only the four qualified terminology/component read tools. Phase 9 MCP tools/list contains those reads plus bounded, read-only Knowledge Map; source replacement MUST remain absent and protected. |
 | Resource boundary | A caller MUST NOT select a private resource root. The representative replacement requests MUST demonstrate that a request-side resource cannot choose an alternate binding. |
 | Proof level | Focused executable/static evidence MUST be reported separately from live SAR evidence. Prepared artifacts MUST NOT be described as a live runtime pass; only the Phase 7.4 release gate MAY establish that result. |
 

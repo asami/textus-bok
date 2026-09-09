@@ -18,7 +18,7 @@ import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFede
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Sep. 8, 2026
+ * @version Sep. 9, 2026
  * @author  ASAMI, Tomoharu
  */
 
@@ -567,6 +567,7 @@ final class BokPrimaryComponent(
     "BokRetrieval.explainTerm",
     "BokRetrieval.searchComponentReferences",
     "BokRetrieval.getComponentReference",
+    "BokRetrieval.getKnowledgeMap",
     "BokRetrieval.searchSemanticKnowledge",
     "BokRetrieval.getSemanticManifest",
     "BokRetrieval.getSemanticResource",

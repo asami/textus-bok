@@ -188,7 +188,7 @@ GetKnowledgeMapResponse
 
 ##### DESCRIPTION
 
-Return a bounded factual topology from selected complete BoK generations. This public read is not MCP Ready.
+Return a bounded factual topology from selected complete BoK generations. This bounded, read-only public read is MCP Ready.
 
 #### searchSemanticKnowledge
 

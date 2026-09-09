@@ -55,8 +55,8 @@ or foreign result when a selection fails.
 
 The Web selectors invoke the same public Knowledge Map operation and remain
 read-only. Resource locations, source registration/replacement, provider
-credentials, and MCP readiness stay outside the Web surface. Knowledge Map
-and `replaceKnowledgeSource` remain outside the four MCP-ready reads.
+credentials, and MCP readiness stay outside the Web surface. Knowledge Map is
+a bounded, read-only MCP-ready read; `replaceKnowledgeSource` remains absent.
 
 ## Generated And Handwritten Code
 
@@ -123,8 +123,8 @@ term or component reference.
 ## MCP Policy
 
 MCP publication is default-deny. The component currently marks only
-the four BoK read operations ready at operation level: terminology search and
-explanation plus existence-only component-reference search and lookup.
+the ten BoK read operations ready at operation level, including the bounded,
+read-only Knowledge Map projection.
 `replaceKnowledgeSource` and future mutation or administration operations must
 remain non-ready at both service and operation policy levels. CAR/SAR
 configuration may only disable declared tools through `cncf.mcp.enabled`,
@@ -360,8 +360,8 @@ dataset, generation, registry-evidence, term, and graph-node identities.
 Positive REST terminology and Knowledge Map reads, qualified MCP terminology
 reads, Static Form map reads, and cyclic foreign-term/foreign-focus negative
 probes are checked for isolation, attribution, no union, and no fallback.
-Knowledge Map remains outside MCP and replaceKnowledgeSource remains protected
-and non-MCP.
+Knowledge Map is MCP-ready as a bounded, read-only projection, while
+replaceKnowledgeSource remains protected and non-MCP.
 
 The operator prerequisites are the three existing CAR files, a compatible CNCF
 runtime, Python 3.10 or newer, zip, curl, and lsof. The lifecycle refuses
@@ -387,7 +387,7 @@ unknown-project probes require MCP's exact
 Expected live markers are:
 
 ```text
-BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2
+BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 mcp_terms=4 mcp_maps=4 negative_rest_terms=4 negative_mcp_terms=4 negative_rest_maps=4 negative_mcp_maps=4 negative_web_maps=4 mcp_failures=2 web_failures=2
 BOK_PROFILE_SELECTION_SAR_LIFECYCLE_OK profiles=4
 ```
 

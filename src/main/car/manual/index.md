@@ -29,7 +29,7 @@ embedding provider, the host filesystem, or the network.
 | `explainTerm` | query | Resolve one exact term and reliability state | ready |
 | `searchComponentReferences` | query | Search existence-only CAR/SAR references | ready |
 | `getComponentReference` | query | Resolve one exact CAR/SAR identity | ready |
-| `getKnowledgeMap` | query | Read one bounded, attributable selected-generation topology | never ready |
+| `getKnowledgeMap` | query | Read one bounded, attributable selected-generation topology | ready, read-only |
 | `searchSemanticKnowledge` | query | Search bounded attributable semantic metadata | ready, read-only |
 | `getSemanticManifest` | query | Resolve one semantic manifest record | ready, read-only |
 | `getSemanticResource` | query | Resolve one semantic resource record | ready, read-only |
