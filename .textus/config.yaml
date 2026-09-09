@@ -1,0 +1,35 @@
+# textus-bok-managed-profile-config: v1
+# This private configuration binds explicitly accepted local website.d sources.
+# Do not replace it with the single-profile development writer: it would remove
+# the explicit KnowledgeHub project binding below.
+textus.bok.profile-registry:
+  profiles:
+    - profile: development
+      source:
+        sourceId: "simplemodeling-development"
+        datasetId: "simplemodeling-bok-development"
+        generation: "sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f"
+        resource: "file:///Users/asami/src/dev2025/simplemodeling-org/website.d/"
+      evidence:
+        uri: "https://www.simplemodeling.org/"
+        sourceId: "simplemodeling-development"
+      freshnessGeneration: "sha256:5cf33a2697035e3b53c6920446e9c9ce2c94a3c4192d56441a308d5f9b956b5f"
+    - profile: project
+      projectId: "knowledgehub"
+      source:
+        sourceId: "knowledgehub"
+        datasetId: "knowledgehub-bok"
+        generation: "sha256:ce991b30a90b6bb6c65f4b3593124e78d2e2ecd28d1cacbcd2258abb30e16608"
+        resource: "file:///Users/asami/src/Project2026/bok-knowledgehub/website.d/"
+      evidence:
+        uri: "https://www.asamioffice.com/kokubunji/knowledgehub/"
+        sourceId: "knowledgehub"
+      freshnessGeneration: "sha256:ce991b30a90b6bb6c65f4b3593124e78d2e2ecd28d1cacbcd2258abb30e16608"
+textus.bok.bootstrap:
+  profiles:
+    - development
+    - project:knowledgehub
+textus.sie:
+  rdf-db: in-memory
+  vector-db: in-memory
+textus.resource.url.file.roots: "/Users/asami/src/dev2025/simplemodeling-org/website.d,/Users/asami/src/Project2026/bok-knowledgehub/website.d"
