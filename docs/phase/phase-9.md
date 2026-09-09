@@ -1,6 +1,6 @@
 # Phase 9: Knowledge Map MCP Publication
 
-status=in_progress
+status=closed
 planned_at=2026-09-09
 predecessor=[Phase 8](phase-8.md)
 parallel_to=[Phase 7.5](phase-7.5.md)
@@ -9,10 +9,10 @@ checklist=[Phase 9 Checklist](phase-9-checklist.md)
 
 ## Stage Status
 
-- Current status: IN PROGRESS — P9-A/P9-B/P9-C managed acceptance accepted;
-  final regression, independent review, and Phase closure remain pending.
+- Current status: CLOSED
 - Owner: Textus BoK maintainers
-- Priority: NEXT EXECUTABLE PHASE
+- Next step: None. Phase 9 is closed; no successor Phase is started by this
+  closure.
 - Entry rule: Phases 6, 7.4, and 8 remain CLOSED. CNCF Phase 73, TKE Phase 2,
   and BoK Phase 7.5 are not dependencies.
 - Update rule: Update this Phase and its checklist only from accepted MCP
@@ -98,6 +98,50 @@ The probe establishes exact ten-read discovery, profile attribution, one
 positive terminology read, one absent-term read, bounded matching and
 no-match Knowledge Map reads, and permanent mutation exclusion. It performs
 no replacement or other administration operation.
+
+The separate four-profile representative SAR then completed on 2026-09-09
+against its isolated loopback runtime on port `19547`:
+
+```text
+BOK_PROFILE_SELECTION_SAR_OK profiles=4 rest_terms=4 rest_maps=4 web_maps=4 \
+mcp_terms=4 mcp_maps=4 negative_rest_terms=4 negative_mcp_terms=4 \
+negative_rest_maps=4 negative_mcp_maps=4 negative_web_maps=4 \
+mcp_failures=2 web_failures=2
+BOK_PROFILE_SELECTION_SAR_LIFECYCLE_OK profiles=4
+```
+
+This complementary acceptance proves REST/MCP bounded-map parity and
+foreign-profile topology non-leakage for `official`, `development`, and both
+project identities. The SAR owned and removed its temporary runtime; it did
+not replace a source or perform an administration operation. Together with
+the Control Center proof above, it supplies the complete P9-C profile and
+managed-runtime acceptance boundary.
+
+## Review and Release Closure
+
+The single Phase 9 full review covered the complete
+`90c279c7fdd7d994c700a22c805d9b0cb7a1a239..c899cbe7f2ec4a9b99678e23331f979633084643`
+accumulator. Its typed disposition is
+`a0a7e95f8e525512f5941a556fbfb59183cd318f07761d3f99388172f33cb168`.
+It identified only `CB-P9-001`: four-profile MCP isolation evidence had been
+executed but not yet recorded. The existing SAR was rerun successfully and the
+bounded documentation/evidence repair passed independent focused re-review in
+typed disposition
+`877b7a9b6ab13724bdcfb8c44f893c9b9fa0408696cc0342f8978efc48adbb24`.
+No Current Boundary Blocker remains.
+
+Final full-suite validation ran through the serialized SBT gate in invocation
+`42048-20260909T053222Z`: 14 suites and 79 tests succeeded, with 0 failed or
+aborted tests, SBT exit 0, wrapper exit 0, and the shared lock released. The
+normal CAR validation and closure-ledger checks are bound to this final
+documentation tree before the distinct local Phase release commit.
+
+The Phase 9 release binding persists the accepted Hygiene and Development
+Candidate records separately. They do not expand the bounded MCP publication
+scope: manual-link packaging and ABI-baseline work remain Hygiene, while CML
+schema modeling and the sbt-cozy lifecycle remain future development work.
+The concurrent Phase 7.5 planning, private `.textus/config.yaml`, and
+`.gitignore` remain outside the Phase 9 commit.
 
 ## Completion Conditions
 
