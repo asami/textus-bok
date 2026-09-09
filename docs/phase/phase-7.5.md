@@ -1,12 +1,13 @@
-# Phase 7.5: Information Profile Verification
+# Phase 7.5: Component-Contributed Knowledge Acceptance
 
 status=planned
-planned_at=2026-09-03
+planned_at=2026-09-09
 predecessor=[Phase 7.4](phase-7.4.md)
-parallel_to=[Phase 8](phase-8.md)
+depends_on=[CNCF Phase 73](../../../../dev2025/cloud-native-component-framework/docs/phase/phase-73.md), [Textus Knowledge Editor Phase 2](../../../textus-knowledge-editor/docs/phase/phase-2.md)
+parallel_to=[Phase 9](phase-9.md)
 strategy=[Textus BoK Development Strategy](../strategy/textus-bok-development-strategy.md)
 checklist=[Phase 7.5 Checklist](phase-7.5-checklist.md)
-consumes_handoff=qualified CNCF Phase 61.5.1 IC-07B closure
+consumes_handoff=released CNCF knowledge hub contract and released TKE textus.book contribution
 
 ## Stage Status
 
@@ -15,25 +16,34 @@ consumes_handoff=qualified CNCF Phase 61.5.1 IC-07B closure
 - Update rule: Update this Phase and its checklist only from accepted profile
   fixtures, executable specifications, review evidence, or an explicit scope
   decision.
-- Entry rule: Phase 7.4 remains closed. This Phase owns only the deferred
-  profile-verification residue and does not modify the Phase 8 bootstrap plan.
+- Entry rule: Phase 7.4 remains closed, and CNCF Phase 73 and Textus Knowledge
+  Editor Phase 2 must both be CLOSED with released handoffs. Phase 9 may
+  proceed independently and does not satisfy either dependency.
 
 ## Goal
 
-Verify the remaining representative Information profiles at the BoK CAR
-boundary: Book, Paper, WebResource, Person, Organization, and textual
-Work/Edition/Series/Volume relationships must preserve selected-profile
-attribution, isolation, and evidence semantics through BoK's public reads.
+Consume component-contributed knowledge through the released CNCF hub without
+direct provider wiring or BoK ownership of provider-domain semantics. Verify
+the first representative `textus.book` contribution from TKE preserves stable
+domain identity, selected-profile attribution, isolation, and evidence through
+BoK's established read surfaces.
 
 ## Scope
 
-- Freeze a compact representative fixture matrix for the declared profile
-  families and their textual-work relationships.
+- Freeze the generic BoK consumer boundary for producer-declared, attributable,
+  complete knowledge snapshots delivered through CNCF.
+- Consume `knowledgeDomainId=textus.book` independently of the current
+  `providerComponent=textus-knowledge-editor` identity.
+- Use TKE's accepted Book, Textual Work, Textual Edition, optional Textual
+  Volume, Series, and Book-context role fixture without redefining those
+  semantics in Textus BoK.
 - Verify profile selection, source/generation attribution, isolation, and
   failure behavior through the established BoK read contract.
-- Exercise the SIE dependency only through its declared component contract.
-- Record whole-profile acceptance evidence without changing profile semantics
-  or adding a new public operation merely for verification.
+- Verify a complete contribution replaces its prior accepted generation and a
+  partial, incompatible, unavailable, or foreign-domain contribution fails
+  deterministically without corrupting the accepted view.
+- Record end-to-end TKE -> CNCF -> Textus BoK acceptance without adding a new
+  public operation merely for verification.
 
 ## Non-Goals
 
@@ -41,23 +51,26 @@ attribution, isolation, and evidence semantics through BoK's public reads.
   Help/API acceptance; SIE Phase 7 owns that bounded runtime work.
 - Knowledge Editor list/detail/edit/lifecycle, Tag filtering, or local
   Knowledge materialization; Textus Knowledge Editor Phase 1 owns that work.
-- Phase 8 startup bootstrap implementation or its Cozy/CNCF supplier
-  dependencies.
-- A new profile model, selector, source reader, or public API.
+- CNCF hub mechanics or TKE provider implementation; the supplier Phases own
+  those contracts and their release evidence.
+- Paper, generic WebResource, or unrelated Person/Organization knowledge;
+  these wait for separately owned domain providers.
+- Knowledge Map MCP publication; Phase 9 owns that independent priority.
+- A Book editor or permanent Book-domain model owned by Textus BoK.
 
 ## Work Groups
 
 ### P7.5-A: Fixture and Contract Freeze
 
-Define the smallest profile matrix that represents each deferred family and
-its source/generation attribution. Reuse the Phase 7--7.4 profile contract;
-do not reinterpret its selection semantics.
+Freeze the generic consumer contract and the smallest accepted `textus.book`
+fixture from the released TKE handoff. Reuse the Phase 7--7.4 profile contract
+and do not reinterpret provider-owned Book semantics.
 
 ### P7.5-B: Representative Profile Acceptance
 
-Verify the declared profiles through BoK public reads and the relevant
-REST/Web/MCP projections. Confirm positive, negative, isolation, and evidence
-behavior without relying on a broad runtime composition.
+Verify the TKE -> CNCF -> Textus BoK path through BoK public reads and relevant
+REST/Web/MCP projections. Confirm positive, replacement, negative, isolation,
+provider-substitution, and evidence behavior without direct provider wiring.
 
 ### P7.5-C: Closure
 
@@ -68,13 +81,16 @@ the accepted Phase result.
 ## Completion Conditions
 
 Phase 7.5 closes only when every checklist item is checked and the accepted
-profile matrix demonstrates the declared read, attribution, isolation, and
-failure contracts without broadening the public component surface.
+`textus.book` contribution demonstrates generic consumer, stable-domain,
+read, attribution, replacement, isolation, and failure contracts without
+making Textus BoK the owner of Book semantics.
 
 ## Handoff Source
 
-- [CNCF Phase 61.5.1](../../../../dev2025/cloud-native-component-framework/docs/phase/phase-61.5.1.md),
-  `P61.5.1-DP-02`.
-- [SIE Phase 7](../../../textus-semantic-integration-engine/docs/phase/phase-7.md)
-  and [Textus Knowledge Editor Phase 1](../../../textus-knowledge-editor/docs/phase/phase-1.md)
-  are separate CAR-owned tracks.
+- [CNCF Phase 73](../../../../dev2025/cloud-native-component-framework/docs/phase/phase-73.md)
+  supplies the released domain-neutral hub contract.
+- [Textus Knowledge Editor Phase 2](../../../textus-knowledge-editor/docs/phase/phase-2.md)
+  supplies the released `textus.book` provider handoff.
+- [Textus Knowledge Editor Phase 1](../../../textus-knowledge-editor/docs/phase/phase-1.md)
+  and [SIE Phase 7](../../../textus-semantic-integration-engine/docs/phase/phase-7.md)
+  remain separate tracks.

@@ -37,8 +37,9 @@ guidance belongs to Textus CBD Support.
 9. Phase 7.2: Read Contract Integration
 10. Phase 7.3: Web and Operator Integration
 11. Phase 7.4: Representative Verification and Closure
-12. Phase 7.5: Information Profile Verification
+12. Phase 7.5: Component-Contributed Knowledge Acceptance
 13. Phase 8: Configured KnowledgeSource Startup Bootstrap
+14. Phase 9: Knowledge Map MCP Publication
 
 ## Current Priority
 
@@ -74,10 +75,12 @@ isolation, exact REST/Web/MCP attribution, structured MCP and HTTP-200 Web
 failure status, full framework and Textus test gates, CAR validation, and
 converged review. The approved Phase 7 split is now complete.
 
-Phase 7.5 is planned as a separate, bounded verification Phase for the
-remaining Information-profile coverage relocated from CNCF Phase 61.5.1. It
-does not reopen Phases 7--7.4, does not include the SIE-owned packaged-runtime
-composition, and does not delay Phase 8.
+Phase 7.5 is replanned as component-contributed knowledge acceptance. It waits
+for the released CNCF Phase 73 domain-neutral hub and the released Textus
+Knowledge Editor Phase 2 `textus.book` provider. It then verifies the generic
+consumer boundary and the TKE -> CNCF -> Textus BoK path without making Textus
+BoK the owner of Book semantics. Paper, generic WebResource, and other domain
+knowledge remain deferred until their owning providers are defined.
 
 Phase 8 closed on 2026-09-09. It consumes Cozy Phase 29 project-owned site
 metadata finalization and CNCF Phase 70 post-assembly component activation to
@@ -90,6 +93,15 @@ current-publication, complete-replacement, malformed-metadata, safe-diagnostic,
 and restoration behavior passed through the managed lifecycle. Phase 8 adds no
 watcher, supervisor control, inferred profile, MCP administration, or second
 publication implementation.
+
+Phase 9 is the next executable priority and is independent of CNCF Phase 73,
+TKE Phase 2, and BoK Phase 7.5. Textus BoK already has nine MCP-ready
+terminology, component-reference, and semantic-knowledge reads. Phase 9 admits
+the existing bounded `getKnowledgeMap` public operation as the tenth read-only
+MCP operation, synchronizes discovery/schema/Help and stale four-read
+documentation, retains permanent MCP exclusion of `replaceKnowledgeSource`,
+and verifies a bounded map read through the Control Center-managed runtime on
+port 18014. It does not add provider ingestion or domain knowledge semantics.
 
 Phase 59.7 completion record: DOC-07 adds one additive, value-only semantic
 metadata projection for the five existing semantic reads. It preserves source
