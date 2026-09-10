@@ -60,11 +60,12 @@ it never invents omitted relationships.
 
 ## Determinism and Atomicity
 
-Node identity is `(datasetId, sourceNodeId)`. Relationship identity is the
-dataset identity plus `(source, predicate, target)` and the deterministic
-source edge identity where supplied. Nodes and relationships are sorted by
-their stable identities. Exact duplicates may merge evidence deterministically;
-conflicting duplicates and dangling endpoints fail normalization.
+Node identity is `(sourceId, datasetId, sourceNodeId)`. Relationship identity is
+the source/dataset identity plus `(source, predicate, target)` and the
+deterministic source edge identity where supplied. Nodes and relationships are
+sorted by their source-qualified stable identities. Exact duplicates may merge
+evidence deterministically; conflicting duplicates and dangling endpoints fail
+normalization.
 
 Terms, component references, nodes, and relationships commit to the catalog as
 one selected generation. Failed or degraded publication retains the complete

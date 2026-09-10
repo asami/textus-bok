@@ -52,10 +52,12 @@ or malformed topology is rejected rather than inferred.
 ## Selected Generation Invariant
 
 `NormalizedBokSource` contains terms, component references, map nodes, and map
-relationships as one immutable source result. `BokKnowledgeCatalog` replaces
-all four only after complete SIE publication. A degraded publication retains
-the complete preceding generation, including its topology. Every query and Web
-result is derived from exactly one such catalog generation.
+relationships as one immutable source result. `BokKnowledgeCatalog` retains
+that value under a source-qualified `(sourceId, datasetId)` scope only after
+complete publication and admitted attribution. Replacement swaps exactly one
+scope; degraded or mismatched-attribution publication retains the complete
+preceding generation and every unrelated topology. Every query and Web result
+is derived from exactly one exact selected catalog generation.
 
 ## Safety and Presentation
 

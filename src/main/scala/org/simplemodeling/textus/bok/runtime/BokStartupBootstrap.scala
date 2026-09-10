@@ -208,7 +208,7 @@ private[bok] final class BokKnowledgeSourceReplacementService(
     publication: BokFederationPublication,
     normalized: NormalizedBokSource
   ): Boolean =
-    admission.admitted && catalog.commit(publication, normalized)
+    admission.admitted && catalog.commit(publication, normalized, admission.attribution)
 }
 
 private[bok] final case class BokKnowledgeSourceReplacementResult(

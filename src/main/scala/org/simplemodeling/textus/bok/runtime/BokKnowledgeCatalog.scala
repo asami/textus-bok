@@ -5,15 +5,18 @@ import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.value.*
 
 /*
- * BoK-owned matching state, replaced only after a complete SIE publication.
+ * BoK-owned source-qualified resident state, replaced only after a complete
+ * admitted publication.
  *
  * @since   Jul. 21, 2026
- * @version Aug. 27, 2026
+ * @version Sep. 10, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalog {
   private val _semantic_manifest_kinds = Set("component-manifest", "component-knowledge-consumer-contract", "semantic-index")
 
+  private final case class ResidentScope(sourceid: String, datasetid: String)
+  private final case class ResidentEntry(normalizedsource: NormalizedBokSource, profileattribution: Option[ResolvedBokProfile])
   private final case class TermEntry(datasetid: String, sourceid: String, term: BokTerm)
   private final case class ComponentEntry(datasetid: String, sourceid: String, reference: ComponentReference)
   private final case class MapSource(normalized: NormalizedBokSource)
@@ -21,14 +24,22 @@ final class BokKnowledgeCatalog {
   private final case class MapRelationship(source: MapSource, relationship: BokKnowledgeRelationship)
   private final case class MapLimit(value: Int, warning: Option[BokWarning])
 
-  private var _datasets = Map.empty[String, NormalizedBokSource]
+  private var _resident_scopes = Map.empty[ResidentScope, ResidentEntry]
 
   def commit(
     publication: BokFederationPublication,
     normalized: NormalizedBokSource
+  ): Boolean =
+    commit(publication, normalized, None)
+
+  private[bok] def commit(
+    publication: BokFederationPublication,
+    normalized: NormalizedBokSource,
+    attribution: Option[ResolvedBokProfile]
   ): Boolean = synchronized {
-    if (_normalize(publication.state) == "complete") {
-      _datasets = _datasets.updated(normalized.source.datasetId.value, normalized)
+    if (_normalize(publication.state) == "complete" && attribution.forall(value => _matches_attribution(value, normalized))) {
+      val scope = ResidentScope(normalized.source.sourceId.value, normalized.source.datasetId.value)
+      _resident_scopes = _resident_scopes.updated(scope, ResidentEntry(normalized, attribution))
       true
     } else {
       false
@@ -36,7 +47,26 @@ final class BokKnowledgeCatalog {
   }
 
   def selectedTopology(datasetId: String): Option[BokKnowledgeTopology] = synchronized {
-    _datasets.get(datasetId).map(_.topology)
+    _resident_scopes.toVector.collect {
+      case (scope, entry) if scope.datasetid == datasetId => entry.normalizedsource.topology
+    } match {
+      case Vector(topology) => Some(topology)
+      case _ => None
+    }
+  }
+
+  private[bok] def selectedTopology(sourceId: String, datasetId: String): Option[BokKnowledgeTopology] = synchronized {
+    _resident_scopes.get(ResidentScope(sourceId, datasetId)).map(_.normalizedsource.topology)
+  }
+
+  private[bok] def residentAttribution(sourceId: String, datasetId: String): Option[ResolvedBokProfile] = synchronized {
+    _resident_scopes.get(ResidentScope(sourceId, datasetId)).flatMap(_.profileattribution)
+  }
+
+  private[bok] def residentScopes: Vector[(String, String)] = synchronized {
+    _resident_scopes.keys.toVector
+      .sortBy(scope => (scope.sourceid, scope.datasetid))
+      .map(scope => scope.sourceid -> scope.datasetid)
   }
 
   def getKnowledgeMap(
@@ -125,8 +155,12 @@ final class BokKnowledgeCatalog {
         val matches = entries.flatMap { entry =>
           scores.get(_term_candidate_key(entry))
             .filter(_ >= BokKnowledgeCatalog.MINIMUM_CANDIDATE_SCORE)
-            .map(_term_match(entry.term, "candidate", _, query))
-        }.sortBy(x => (-x.score, x.term.title.value, x.term.termId.value))
+            .map(score => entry -> score)
+        }.sortBy { case (entry, score) =>
+          (-score, entry.sourceid, entry.datasetid, entry.term.title.value, entry.term.termId.value)
+        }.map { case (entry, score) =>
+          _term_match(entry.term, "candidate", score, query)
+        }
         val status =
           if (matches.isEmpty) "no-match"
           else if (matches.size > 1 && _same_score(matches(0).score, matches(1).score)) "ambiguous"
@@ -138,7 +172,7 @@ final class BokKnowledgeCatalog {
   def explainTerm(resolved: ResolvedBokProfile, query: String): ExplainTermResponse = {
     val exact = _terms(resolved).filter(x => _term_identities(x.term).contains(_normalize(query)))
     val status = if (_normalize(query).isEmpty || exact.isEmpty) "no-match" else _term_status(exact.map(_.term))
-    val result = exact.sortBy(x => (x.term.title.value, x.term.termId.value)).headOption.map(x => _term_match(x.term, "exact", 1.0, query))
+    val result = exact.sortBy(x => (x.sourceid, x.datasetid, x.term.title.value, x.term.termId.value)).headOption.map(x => _term_match(x.term, "exact", 1.0, query))
     ExplainTermResponse(
       BokQueryStatus(status),
       _selection(resolved),
@@ -165,7 +199,7 @@ final class BokKnowledgeCatalog {
         resolved,
         "matched",
         query,
-        exact.sortBy(x => BokComponentReferenceIdentity.orderKey(x.reference))
+        exact.sortBy(x => (x.sourceid, x.datasetid, BokComponentReferenceIdentity.orderKey(x.reference)))
           .map(x => _component_match(x.reference, "exact", 1.0, query)),
         limit
       ))
@@ -174,8 +208,12 @@ final class BokKnowledgeCatalog {
         val matches = entries.flatMap { entry =>
           scores.get(_component_candidate_key(entry))
             .filter(_ >= BokKnowledgeCatalog.MINIMUM_CANDIDATE_SCORE)
-            .map(_component_match(entry.reference, "candidate", _, query))
-        }.sortBy(x => (-x.score, BokComponentReferenceIdentity.orderKey(x.reference)))
+            .map(score => entry -> score)
+        }.sortBy { case (entry, score) =>
+          (-score, entry.sourceid, entry.datasetid, BokComponentReferenceIdentity.orderKey(entry.reference))
+        }.map { case (entry, score) =>
+          _component_match(entry.reference, "candidate", score, query)
+        }
         _component_response(resolved, if (matches.nonEmpty) "matched" else "no-match", query, matches, limit)
       }
   }
@@ -192,7 +230,7 @@ final class BokKnowledgeCatalog {
       .filter(x => version.forall(y => x.reference.version.exists(z => _normalize(z.value) == _normalize(y))))
       .filter(x => kind.forall(y => _normalize(x.reference.kind.value) == _normalize(y)))
       .filter(x => organization.forall(y => x.reference.organization.exists(z => _normalize(z.value) == _normalize(y))))
-      .sortBy(x => BokComponentReferenceIdentity.orderKey(x.reference))
+      .sortBy(x => (x.sourceid, x.datasetid, BokComponentReferenceIdentity.orderKey(x.reference)))
     val status = if (matches.isEmpty) "no-match" else if (matches.size == 1) "matched" else "ambiguous"
     val reference = matches match {
       case Vector(single) => Some(single.reference)
@@ -342,10 +380,19 @@ final class BokKnowledgeCatalog {
     }
   }
 
+  private def _matches_attribution(
+    attribution: ResolvedBokProfile,
+    normalized: NormalizedBokSource
+  ): Boolean =
+    attribution.sourceId == normalized.source.sourceId &&
+      attribution.datasetId == normalized.source.datasetId &&
+      attribution.generation == normalized.source.generation
+
   private def _selected_sources(resolved: ResolvedBokProfile): Vector[NormalizedBokSource] =
-    _datasets.values.toVector
-      .filter(_matches_resolved(_, resolved))
-      .sortBy(x => (x.source.datasetId.value, x.source.sourceId.value))
+    _resident_scopes.toVector
+      .filter { case (_, entry) => _matches_resolved(entry.normalizedsource, resolved) }
+      .sortBy { case (scope, _) => (scope.sourceid, scope.datasetid) }
+      .map { case (_, entry) => entry.normalizedsource }
 
   private def _matches_resolved(source: NormalizedBokSource, resolved: ResolvedBokProfile): Boolean =
     source.source.datasetId == resolved.datasetId &&
@@ -385,17 +432,18 @@ final class BokKnowledgeCatalog {
   private def _map_focus_values(node: MapNode): Set[String] =
     (node.node.id +: node.node.label +: node.node.terms).map(_normalize).filter(_.nonEmpty).toSet
 
-  private def _map_node_key(node: MapNode): (String, String) =
-    (node.source.normalized.source.datasetId.value, node.node.id)
+  private def _map_node_key(node: MapNode): (String, String, String) =
+    (node.source.normalized.source.sourceId.value, node.source.normalized.source.datasetId.value, node.node.id)
 
-  private def _map_subject_key(relationship: MapRelationship): (String, String) =
-    (relationship.source.normalized.source.datasetId.value, relationship.relationship.subjectId)
+  private def _map_subject_key(relationship: MapRelationship): (String, String, String) =
+    (relationship.source.normalized.source.sourceId.value, relationship.source.normalized.source.datasetId.value, relationship.relationship.subjectId)
 
-  private def _map_object_key(relationship: MapRelationship): (String, String) =
-    (relationship.source.normalized.source.datasetId.value, relationship.relationship.objectId)
+  private def _map_object_key(relationship: MapRelationship): (String, String, String) =
+    (relationship.source.normalized.source.sourceId.value, relationship.source.normalized.source.datasetId.value, relationship.relationship.objectId)
 
-  private def _map_relationship_key(relationship: MapRelationship): (String, String, String, String) =
+  private def _map_relationship_key(relationship: MapRelationship): (String, String, String, String, String) =
     (
+      relationship.source.normalized.source.sourceId.value,
       relationship.source.normalized.source.datasetId.value,
       relationship.relationship.subjectId,
       relationship.relationship.predicate,

@@ -10,7 +10,7 @@ import org.simplemodeling.textus.bok.value.*
 
 /*
  * @since   Jul. 21, 2026
- * @version Aug. 15, 2026
+ * @version Sep. 10, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -282,6 +282,81 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
       catalog.explainTerm(selection, "Stale Term").status.value shouldBe "no-match"
       catalog.explainTerm(selection, "Current Term").status.value shouldBe "matched"
       catalog.selectedTopology("dataset-a").map(_.nodes.map(_.id)) shouldBe Some(Vector("current-node"))
+      }
+    }
+
+    "resident source-qualified scopes" which {
+      "retain independent attributed generations and replace only one scope" in {
+        Given("two complete generations with one shared dataset and equal local labels")
+        val catalog = new BokKnowledgeCatalog()
+        val firstnormalized = _normalized(
+          "source-a",
+          "dataset-shared",
+          "g1",
+          Vector(_term("shared:a", "Shared", "Definition A.", "source-a", "dataset-shared")),
+          Vector.empty,
+          _topology("shared-node")
+        )
+        val secondnormalized = _normalized(
+          "source-b",
+          "dataset-shared",
+          "g1",
+          Vector(_term("shared:b", "Shared", "Definition B.", "source-b", "dataset-shared")),
+          Vector.empty,
+          _topology("shared-node")
+        )
+        val firstselection = _resolved("official", None, "dataset-shared", "source-a", "g1")
+        val secondselection = _resolved("project", Some("beta"), "dataset-shared", "source-b", "g1")
+
+        When("both attributed generations are committed and the first scope is replaced")
+        catalog.commit(
+          BokFederationPublication("complete", org.goldenport.record.Record.empty),
+          firstnormalized,
+          Some(firstselection)
+        ) shouldBe true
+        catalog.commit(
+          BokFederationPublication("complete", org.goldenport.record.Record.empty),
+          secondnormalized,
+          Some(secondselection)
+        ) shouldBe true
+        val firstreplacementselection = firstselection.copy(generation = BokSourceGeneration("g2"))
+        catalog.commit(
+          BokFederationPublication("complete", org.goldenport.record.Record.empty),
+          _normalized(
+            "source-a",
+            "dataset-shared",
+            "g2",
+            Vector(_term("shared:a2", "Shared", "Definition A2.", "source-a", "dataset-shared")),
+            Vector.empty,
+            _topology("shared-node-new")
+          ),
+          Some(firstreplacementselection)
+        ) shouldBe true
+
+        And("incomplete and mismatched-attribution attempts are made")
+        val mismatch = firstreplacementselection.copy(sourceId = BokSourceId("source-other"))
+        catalog.commit(
+          BokFederationPublication("complete", org.goldenport.record.Record.empty),
+          _normalized("source-a", "dataset-shared", "g3", Vector.empty, Vector.empty, _topology("mismatch")),
+          Some(mismatch)
+        ) shouldBe false
+        catalog.commit(
+          BokFederationPublication("degraded", org.goldenport.record.Record.empty),
+          _normalized("source-b", "dataset-shared", "g2", Vector.empty, Vector.empty, _topology("degraded")),
+          Some(secondselection)
+        ) shouldBe false
+
+        Then("scope order, attribution, exact selection, isolated replacement, and failed-attempt state preservation remain deterministic")
+        catalog.residentScopes shouldBe Vector(
+          "source-a" -> "dataset-shared",
+          "source-b" -> "dataset-shared"
+        )
+        catalog.residentAttribution("source-a", "dataset-shared") shouldBe Some(firstreplacementselection)
+        catalog.residentAttribution("source-b", "dataset-shared") shouldBe Some(secondselection)
+        catalog.explainTerm(firstreplacementselection, "Shared").result.map(_.term.definition.value) shouldBe Some("Definition A2.")
+        catalog.explainTerm(secondselection, "Shared").result.map(_.term.definition.value) shouldBe Some("Definition B.")
+        catalog.selectedTopology("source-a", "dataset-shared").map(_.nodes.map(_.id)) shouldBe Some(Vector("shared-node-new"))
+        catalog.selectedTopology("source-b", "dataset-shared").map(_.nodes.map(_.id)) shouldBe Some(Vector("shared-node"))
       }
     }
   }

@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
-import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeBackend, BokKnowledgeBackendConfiguration, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader}
+import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeBackend, BokKnowledgeBackendConfiguration, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader, ResolvedBokProfile}
 import org.simplemodeling.textus.bok.value.{BokEvidence, BokKnowledgeSource}
 import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.KnowledgeFederationService
 import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetQueryRequest, FederationDatasetQueryResult}
@@ -112,26 +112,45 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
         val secondcontext = _context(_second_resources)
         val secondnormalized = BokSourceReader.read(secondcontext, _source("generation-2")).TAKE
         val catalog = new BokKnowledgeCatalog()
-        val seedcommit = catalog.commit(BokFederationPublication("complete", Record.empty), firstnormalized)
-        val prior = catalog.selectedTopology(firstnormalized.source.datasetId.value)
         val service = new BokKnowledgeSourceReplacementService(catalog)
+        val firstattribution = ResolvedBokProfile(
+          "official",
+          None,
+          firstnormalized.source.datasetId,
+          firstnormalized.source.sourceId,
+          firstnormalized.source.generation,
+          BokEvidence(
+            BokEvidenceUri("urn:textus:bok:selection:first"),
+            firstnormalized.source.sourceId,
+            None,
+            None,
+            None
+          )
+        )
+        val seedcommit = service.commitIfAdmitted(
+          BokProfileAdmission(admitted = true, attribution = Some(firstattribution)),
+          BokFederationPublication("complete", Record.empty),
+          firstnormalized
+        )
+        val prior = catalog.selectedTopology(firstnormalized.source.sourceId.value, firstnormalized.source.datasetId.value)
 
         When("the shared commit gate receives an admitted degraded publication and a rejected complete publication")
         val degraded = service.commitIfAdmitted(
-          BokProfileAdmission(admitted = true, attribution = None),
+          BokProfileAdmission(admitted = true, attribution = Some(firstattribution)),
           BokFederationPublication("degraded", Record.empty),
           secondnormalized
         )
-        val afterdegraded = catalog.selectedTopology(firstnormalized.source.datasetId.value)
+        val afterdegraded = catalog.selectedTopology(firstnormalized.source.sourceId.value, firstnormalized.source.datasetId.value)
         val rejected = service.commitIfAdmitted(
           BokProfileAdmission(admitted = false, attribution = None),
           BokFederationPublication("complete", Record.empty),
           secondnormalized
         )
-        val afterrejected = catalog.selectedTopology(firstnormalized.source.datasetId.value)
+        val afterrejected = catalog.selectedTopology(firstnormalized.source.sourceId.value, firstnormalized.source.datasetId.value)
 
         Then("both gate calls return false and the prior topology remains selected")
         seedcommit shouldBe true
+        catalog.residentAttribution(firstnormalized.source.sourceId.value, firstnormalized.source.datasetId.value) shouldBe Some(firstattribution)
         degraded shouldBe false
         afterdegraded shouldBe prior
         rejected shouldBe false

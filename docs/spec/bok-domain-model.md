@@ -96,10 +96,12 @@ exact development JVM coordinate and the CAR ABI range.
 
 ## Matching And Replacement
 
-`BokKnowledgeCatalog` owns typed BoK generations. A generation becomes visible
-only after SIE reports complete provider-neutral publication; degraded
-publication retains the previous complete generation. Complete replacement
-removes stale terms and component references from the BoK view.
+`BokKnowledgeCatalog` owns typed BoK generations under source-qualified
+`(sourceId, datasetId)` scopes. A generation becomes visible only after
+complete provider-neutral publication and admitted profile attribution;
+degraded or mismatched-attribution publication retains the previous complete
+generation. Complete replacement removes stale terms and component references
+only from the replaced scope and preserves unrelated scopes.
 
 Exact matches are determined from BoK-owned identities and titles. Semantic
 candidates are accepted only from generic SIE query document IDs and scores,

@@ -1,17 +1,16 @@
 # BoK Knowledge Backend Contract
 
-Status: Phase 10 P10-01 authoritative private specification
+Status: Phase 10 P10-01/P10-02 authoritative private specification
 
 ## Scope and authority
 
 This private contract defines the BoK-owned backend boundary used after
 Phase 7 profile resolution and before the existing admission/catalog-commit
 sequence. It makes the in-memory backend the default path for Textus BoK and
-retains the existing optional SIE provider boundary. The P10-01 private
-backend completes the normalized selected source and then uses that unchanged
-sequence; it does not define multi-source resident storage. Source/dataset-
-qualified catalog composition is normative P10-02 work. This contract does
-not change the Phase 7 public profile selection contract, public operation
+retains the existing optional SIE provider boundary. P10-02 completes the
+private resident storage and source/dataset-scoped replacement described in the
+[Resident Catalog Contract](bok-resident-catalog-contract.md). This contract
+does not change the Phase 7 public profile selection contract, public operation
 signatures, or MCP readiness.
 
 The profile registry remains the authority for selecting a logical profile and
@@ -84,28 +83,15 @@ Admission is independent for each resolved profile. Phase 7's exact
 single-profile selection and no-fallback isolation remain in force: a failed
 selection or admission never probes, imports, or substitutes another profile.
 
-## Source/dataset-scoped replacement (P10-02 catalog composition)
+## Source/dataset-scoped replacement (P10-02)
 
-P10-01 does not deliver source/dataset-scoped replacement or multi-source
-resident catalog behavior. The following requirements are normative P10-02
-catalog-composition work, not P10-01 delivered behavior.
-
-An admitted generation is replaced by the pair `(sourceId, datasetId)`. A
-successful complete replacement for that pair atomically removes the previous
-generation for the same pair and installs the new generation as one unit. It
-MUST preserve the new generation's complete records and attribution together.
-
-Replacement MUST NOT remove, rebuild, reorder, or otherwise mutate generations
-whose source or dataset identity is outside the replacement pair. A candidate
-with a conflicting source/dataset identity is not an append or implicit merge;
-it is a structured conflict or unavailable result according to the calling
-boundary. Repeating an unchanged generation is deterministic and MUST NOT
-duplicate terms, component references, assertions, or vector documents.
-
-The resident backend MAY retain several independently resolved generations at
+An admitted generation is replaced by the pair `(sourceId, datasetId)`. The
+complete attributed storage and exact identity-validation rules are defined by
+the [Resident Catalog Contract](bok-resident-catalog-contract.md). The
+resident backend may retain several independently resolved generations at
 once. Equal local labels from different source/dataset scopes remain distinct
-records. Source-local identity and deterministic ordering are part of the
-backend result, not a semantic merge or precedence rule.
+records; source-local identity and deterministic ordering are not semantic
+merge or precedence rules.
 
 ## Attribution
 

@@ -1,6 +1,6 @@
 # BoK Knowledge Backend Design
 
-Status: Phase 10 P10-01 stable private design
+Status: Phase 10 P10-01/P10-02 stable private design
 
 ## Intent
 
@@ -59,10 +59,12 @@ deterministic failure; the completion layer must not replace it with memory.
 ## Resident catalog storage
 
 Resident storage keeps independently admitted generations addressable by their
-source/dataset scope. A successful replacement swaps one complete generation
-for the same `(sourceId, datasetId)` pair and leaves unrelated scopes intact.
-The stored value retains profile, optional project, source, dataset, generation,
-evidence, and source-local record identity.
+source/dataset scope. The detailed storage and replacement design is defined in
+the [Resident Catalog Design](bok-resident-catalog.md). A successful
+replacement swaps one complete generation for the same `(sourceId, datasetId)`
+pair and leaves unrelated scopes intact. The stored value retains profile,
+optional project, source, dataset, generation, evidence, and source-local
+record identity.
 
 The catalog preserves duplicate labels from different sources as distinct
 records and applies deterministic source-qualified identity and ordering. It
