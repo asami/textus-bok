@@ -1,31 +1,112 @@
-# Phase 10: Resident Multi-BoK Catalog and MCP Publication
+# Phase 10: Resident Multi-BoK In-Memory Catalog
 
 Stage Status:
-- Current status: PLANNED
-- Current step: P10-01 In-Memory Knowledge Backend
+- Current status: CLOSED
+- Current step: None. Phase 10 is closed; Phase 10.1 remains planned and is
+  not started by this closure.
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-10-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
 
+P10-02 was accepted on 2026-09-10 in local Step commit
+`d891c74e3c08390aff3f34606934d41e18824c51` after focused
+`BokFederationPublicationSpec` and `BokKnowledgeCatalogSpec` validation (28
+passing tests) and independent lightweight review. Its sole authoring-gate
+blocker was repaired within the frozen P10-02 boundary and the final M0
+inspection accepted that correction. P10-02 establishes private resident
+multi-BoK catalog composition; it does not claim any Phase 10.1 public read,
+MCP, or two-source runtime surface.
+
+P10-01 was accepted on 2026-09-10 in local Step commit
+`96bc3bf060bcdd96add143d98fee324e5015385d` after focused
+`BokFederationPublicationSpec` validation (18 passing tests) and an
+independent lightweight review/re-review. It establishes the default
+SIE-independent completion path and retained explicit SIE failure boundary;
+it does not claim P10-02 catalog composition or any Phase 10.1 public surface.
+
+## Release Closure
+
+Phase 10 closed on 2026-09-10 after the accepted P10-01 and P10-02 Step
+commits, the Phase full review, the bounded documentation repair for
+`CPB-P10-FULL-001`, and a clean independent focused re-review. The final
+closure binds the serialized full `sbt --batch test` receipt, normal CAR lint
+receipt, complete review-disposition ledger, and this Phase/checklist state to
+one distinct local release commit. The release continues to preserve Phase 7
+profile isolation, source attribution, deterministic ordering, source-scoped
+replacement, and the explicit SIE provider boundary.
+
+`HYG-P10-001` records the already-corrected split-ownership wording as
+nonblocking documentation hygiene in the canonical Phase 10 hygiene ledger.
+The successor Phase 10.1 plan, checklist, README entry, and strategy
+projection are adopted as a complete planned/not-started management set; no
+Phase 10.1 public read, MCP, or two-source acceptance work is included here.
+
+## Approved Split
+
+On 2026-09-10, the user explicitly approved splitting the original open
+Resident Multi-BoK Catalog and MCP Publication Phase into two delivery units:
+
+1. Phase 10 (this Phase): P10-01 SIE-Independent In-Memory Knowledge Backend
+   and P10-02 Resident Multi-BoK Catalog; and
+2. Phase 10.1: P10-03 Catalog-Backed BoK Reads and MCP Publication and P10-04
+   SimpleModeling.org + `bok-knowledgehub` End-to-End Acceptance.
+
+The dependency order is Phase 10, then Phase 10.1. The original Phase was
+PLANNED with every P10-01 through P10-04 checklist item unchecked, so no
+completed Step, Slice, commit, validation result, approval, or historical date
+was moved. P10-03 and P10-04 moved exactly once to Phase 10.1.
+
+Approval evidence is the user's explicit `$cncf-split-phase Phase 10`
+invocation on 2026-09-10 after confirming the decimal-suffixed child identity.
+The split adds one Phase document, checklist, release review, validation, and
+commit. That overhead is justified because the original calibrated expected
+duration was 10.5h, above the 8h planning ceiling; this is not a
+reasoning-cost-isolation split.
+
+## Phase Plan Gate
+
+Phase Plan Gate: PROCEED
+- target: calibrated expected duration centered on 6h; allowed ceiling 8h
+- estimate_calibration: no comparable completed Phase duration record; use the
+  original four-group evidence-based estimate without a global multiplier
+- planning_demand: bounded-settled
+- recommended_parent_profile: Terra / high
+- profile_cost_role: lower-cost execution; no cost-isolation split is claimed
+- expensive_reasoning_kernel: none
+- frozen_profile_transition_handoff: none
+- parent_reasoning_mode_policy: standard
+- estimated_at_recommended_profile: 5.5h expected, 5-7h uncertainty; 30
+  minutes below the 6h target and within the 8h ceiling
+- incoming_semantic_handoffs: []
+- merge_attempts_for_every_sub_4h_child: none; this Phase is not below 4h
+- rebalance_attempts_for_every_sub_5h_child: none; this Phase is not below 5h
+- adjacent_merge_structural_rejection_evidence: merging P10-01/P10-02 with
+  Phase 10.1 recreates the 10.5h original Phase, above the 8h ceiling
+- profile_cost_only_rejection_forbidden: true
+- short_child_basis: none
+- overhead_tradeoff: one additional Phase closure adds planning and release
+  overhead but restores independently closable work below the ceiling
+- agent_reasoning_mode_policy: default standard; consider pro only at an
+  eligible agent launch when the active interface supports it and frozen
+  quality-first evidence justifies it
+- runtime_suitability: re-evaluate in the Phase execution task
+- source: approved split from the original Phase 10
+
+## Pre-split Gate Evidence
+
+On 2026-09-10, the original four-group Phase 10 received
+`Phase Plan Gate: SPLIT_REQUIRED` with `split_reasons: [time-bound]`. Its
+calibrated expected duration was 10.5h, with a 15h conservative upper bound,
+against a 6h target and 8h ceiling. This is dated pre-split evidence, not the
+current Phase Plan Gate.
+
 ## Objective
 
-Make Textus BoK usable as a resident knowledge hub that can load multiple
-selected BoK generations at the same time, keep their attributable terminology
-in memory without requiring SIE, expose one combined read catalog, and publish
-that catalog through the existing BoK MCP read operations.
-
-The first representative target is:
-
-```text
-SimpleModeling.org glossary -----------\
-                                        +-> Textus BoK resident catalog -> MCP
-bok-knowledgehub glossary -------------/
-```
-
-Phase 10 intentionally optimizes for practical use before large-scale semantic
-federation. The default Phase 10 runtime is in-memory. SIE remains a supported
-future/optional backend for larger knowledge volumes; this Phase must not remove
-or invalidate the existing SIE integration contract.
+Make Textus BoK able to retain more than one independently selected complete
+BoK generation in a BoK-owned in-memory resident catalog without requiring SIE.
+The catalog preserves attribution, deterministic identity and ordering, and
+source-scoped complete-generation replacement. Public catalog-backed read/MCP
+semantics and the real two-source runtime acceptance belong to Phase 10.1.
 
 ## Starting Point
 
@@ -34,258 +115,107 @@ Phases 7 through 7.4 established explicit `official`, `development`, and
 source/dataset/generation, exact attribution, REST/Web/MCP parity, and strict
 cross-profile isolation.
 
-That contract deliberately forbids cross-profile union. It proves that each
-selected generation is trustworthy and attributable, but it does not yet create
-one resident catalog from multiple independently selected generations.
+That contract deliberately forbids cross-profile union during profile
+resolution. Phase 10 composes only independently resolved and accepted selected
+generations after that resolution; it does not weaken Phase 7 isolation.
 
-Current source publication also assumes SIE for complete-generation federation.
-For practical local use, this creates an unnecessary runtime dependency even
-when the total knowledge volume can be kept in process memory.
-
-Phase 10 adds a resident-catalog layer *after* existing profile/generation
-resolution. It does not weaken Phase 7 isolation rules for resolution itself.
-Each source is still resolved independently; only accepted selected generations
-are admitted to the combined resident catalog.
+The current source-publication path assumes SIE for complete-generation
+federation. This Phase establishes the BoK-owned in-memory path for practical
+local operation while retaining the existing SIE component boundary.
 
 ## External Baseline and Dependencies
 
-Phase 10 depends on existing, already-delivered framework capabilities. It does
-not require a new Cozy or CNCF feature Phase as a start gate.
-
-### CNCF baseline
-
-Use the existing CNCF capabilities for:
-
-- Component / Service / Operation execution;
-- resource DSL based logical source reads;
-- runtime assembly and CAR integration; and
-- MCP projection of MCP-ready Component Operations.
-
-If Phase 10 discovers a missing *generic runtime* capability, that issue may be
-handed back to CNCF as a separate follow-up. Phase 10 must not pre-emptively add
-BoK-specific behavior to CNCF.
-
-### Cozy baseline
-
-Use the existing Cozy BoK build/finalization contract for glossary,
-KnowledgeSource, RDF/graph metadata, and generated BoK resources. Cozy Phase 38
-already used `bok-knowledgehub` as the driver for the generated-knowledge
-boundary.
-
-Phase 10 owns downstream Textus BoK consumer acceptance. A Cozy change is needed
-only if real Phase 10 consumption proves that the generated contract lacks
-required source information or violates its documented boundary.
+Phase 10 uses the existing CNCF Component/Service/Operation runtime, resource
+DSL source reads, CAR integration, and existing Cozy BoK
+generation/finalization contract. It does not require a new Cozy or CNCF
+feature Phase as a start gate. A proven generic upstream defect remains a
+separate handoff rather than a local substitute.
 
 ## Selected Architecture
 
 ```text
-profile/source A
-  -> existing profile resolution
-  -> selected complete generation A --\
-                                      \
-                                       -> ResidentBoKCatalog -> BoK reads -> MCP
-                                      /
-profile/source B
-  -> existing profile resolution
-  -> selected complete generation B --/
+profile/source A -> existing profile resolution -> selected generation A --\
+                                                                          \
+                                                                           -> ResidentBoKCatalog
+                                                                          /
+profile/source B -> existing profile resolution -> selected generation B --/
 ```
 
-The resident catalog preserves source identity. Equal terms from two sources do
-not overwrite each other merely because their display names match.
-
-A representative logical identity is therefore source-qualified, for example:
-
-```text
-simplemodeling:domain-model
-knowledgehub:domain-model
-```
-
-Search may return both entries. Semantic equivalence such as `sameAs`, RDF
-unification, embedding-based ranking, or automatic conflict reconciliation is
-not required for Phase 10.
-
-## Backend Direction
-
-Introduce or formalize one BoK-owned storage boundary so application reads do
-not depend directly on SIE:
-
-```text
-BoKKnowledgeStore / BoKCatalogStore
-  |- InMemory  <- Phase 10 default
-  `- SIE       <- retained optional/future backend
-```
-
-The exact type names are implementation decisions for P10-01, but the ownership
-rule is fixed: BoK read semantics remain inside Textus BoK, while SIE is a
-provider/backend and cannot be the only place where Textus BoK's catalog
-semantics exist.
-
-The in-memory backend must support complete-generation replacement semantics so
-reloading one source removes stale entries from that source without deleting
-entries owned by another source.
+Equal terms from two sources remain separate source-qualified records. A
+catalog identity includes attributable source-local identity, for example
+`simplemodeling:domain-model` and `knowledgehub:domain-model`. Semantic
+equivalence, `sameAs`, RDF reconciliation, embeddings, precedence, and overlay
+rules remain out of scope.
 
 ## Work Stack
 
 ### P10-01: SIE-Independent In-Memory Knowledge Backend
 
-Goal: allow Textus BoK to start, admit, retain, replace, and read a complete BoK
-generation without an installed SIE component.
-
-Required outcomes:
-
-- define the BoK-owned backend/store boundary used by catalog reads;
-- provide an in-memory implementation as the Phase 10 default/development
-  backend;
-- preserve source/dataset/generation/evidence attribution;
-- preserve complete-generation replacement and stale-record removal per source;
-- keep the existing SIE path available behind the same BoK-owned boundary or a
-  compatible provider boundary;
-- prove that SIE absence no longer blocks the in-memory runtime path;
-- do not silently fall back from an explicitly requested SIE backend to memory.
+Define a BoK-owned backend/store boundary used by catalog reads and provide its
+in-memory implementation as the default/development path. It must admit,
+retain, replace, and read one complete generation without SIE; preserve
+source/dataset/generation/evidence attribution; retain the SIE path behind its
+existing compatible provider/component boundary; and fail deterministically
+when explicitly selected SIE is unavailable rather than silently falling back
+to memory.
 
 ### P10-02: Resident Multi-BoK Catalog
 
-Goal: combine multiple independently selected complete generations into one
-resident read catalog without destroying source identity.
-
-Required outcomes:
-
-- admit more than one selected generation simultaneously;
-- reuse existing profile resolution before catalog admission;
-- keep each admitted entry attributable to its profile/source/dataset/
-  generation/evidence;
-- define deterministic catalog identity and ordering;
-- permit equal term names from different sources without accidental overwrite;
-- support source-scoped replacement/reload without rebuilding unrelated source
-  generations;
-- keep Phase 7 profile resolution isolation intact: catalog union happens only
-  after each selected generation has been independently resolved and admitted.
-
-### P10-03: Catalog-Backed BoK Reads and MCP Publication
-
-Goal: make the existing public BoK terminology/component read semantics operate
-against the resident catalog and publish the same semantics through existing
-CNCF MCP projection.
-
-Required outcomes:
-
-- route the existing BoK-owned read operations through the resident catalog;
-- return multi-source results where the operation semantics permit candidates
-  or search results;
-- preserve exact/ambiguous/conflict/insufficient-evidence/no-match semantics
-  where those semantics remain applicable;
-- preserve source attribution in MCP results;
-- keep source mutation, registration, reload administration, and
-  `replaceKnowledgeSource` non-MCP-ready;
-- do not introduce a second BoK-specific MCP server implementation when the
-  existing CNCF operation projection is sufficient.
-
-### P10-04: SimpleModeling.org + bok-knowledgehub End-to-End Acceptance
-
-Goal: prove practical use with two real BoK sources.
-
-Representative acceptance flow:
-
-```text
-SimpleModeling.org / simplemodeling-org glossary
-            -> Cozy-generated/admitted BoK source
-            -> Textus BoK in-memory resident catalog
-
-bok-knowledgehub glossary
-            -> Cozy-generated/admitted BoK source
-            -> Textus BoK in-memory resident catalog
-
-both sources
-            -> one catalog query
-            -> existing BoK operation
-            -> MCP tools/call result
-```
-
-Required evidence:
-
-- both sources are present in the same running Textus BoK process;
-- a known term from SimpleModeling.org is retrievable;
-- a known term from bok-knowledgehub is retrievable;
-- a query that can match both sources returns both with distinct attribution;
-- replacing/reloading one source does not remove the other source's entries;
-- the same representative read succeeds through the MCP surface;
-- SIE is not installed or required for this acceptance path.
+Admit multiple independently resolved selected generations to one resident
+catalog. Keep profile/source/dataset/generation/evidence attribution,
+deterministic catalog identity and ordering, duplicate-name coexistence, and
+source-scoped replacement/reload without rebuilding unrelated generations.
 
 ## Scope
 
 1. BoK-owned in-memory storage for complete selected generations.
-2. Multi-source resident catalog construction from independently resolved
-   generations.
-3. Catalog-backed terminology/component reads.
-4. MCP publication through existing MCP-ready operations.
-5. Real downstream consumption of SimpleModeling.org and `bok-knowledgehub`
-   BoK content.
-6. Deterministic identity, attribution, replacement, and failure semantics for
-   the resident path.
+2. Multi-source resident catalog construction after independent profile
+   resolution and admission.
+3. Deterministic source-qualified identity, attribution, replacement, and
+   failure semantics for that internal resident path.
 
 ## Non-Goals
 
-- No requirement to use SIE in the representative Phase 10 runtime.
-- No removal of SIE support or redesign of generic SIE federation.
-- No embedding/vector search requirement.
-- No semantic automatic merge of equal terms across sources.
-- No `sameAs` inference or RDF graph reconciliation requirement.
-- No precedence/overlay rule that allows one BoK silently to replace another.
-- No write-back from Textus BoK to SimpleModeling.org, `bok-knowledgehub`, or
-  another source.
-- No arbitrary URL/filesystem path supplied through public read or MCP calls.
-- No MCP exposure of source registration, source replacement, or reload
-  administration.
-- No new Flutter, Logical UI, or Progressive Static Web work as a Phase 10
-  dependency.
-- No pre-emptive Cozy or CNCF feature development. Downstream findings are
-  handed off only when executable Phase 10 evidence proves a missing upstream
-  capability.
+- Catalog-backed public terminology/component reads and MCP projection; these
+  belong to Phase 10.1.
+- The SimpleModeling.org plus `bok-knowledgehub` running two-source/MCP E2E;
+  this belongs to Phase 10.1.
+- Removal or redesign of SIE, semantic federation, embeddings, `sameAs`, RDF
+  reconciliation, precedence/overlay, write-back, source registration, reload
+  administration, or a new MCP transport.
+- Pre-emptive Cozy or CNCF feature development.
 
 ## Compatibility Rules
 
 1. Existing Phase 7 profile selection remains valid for single-profile reads.
-2. Profile resolution and catalog composition are separate concerns.
-3. A catalog member is always an explicitly admitted selected generation; the
-   current working directory or other ambient state cannot add a member.
+2. Profile resolution and catalog composition remain separate concerns.
+3. A catalog member is always an explicitly admitted selected generation;
+   ambient working-directory or process state cannot add one.
 4. Existing source/dataset/generation/evidence identities remain authoritative
    provenance.
-5. The in-memory backend must not change public BoK domain semantics merely
-   because SIE is absent.
-6. SIE-backed operation, when selected, must continue to cross the existing
-   public component boundary rather than introducing a private coupling.
+5. SIE-backed operation, when selected, continues to use its existing public
+   component boundary.
 
 ## Validation Boundary
 
-Each Step should have focused executable specifications. The final Phase gate
-must include:
-
-- focused store/catalog executable specifications;
-- existing BoK read and MCP regression specifications;
-- `sbt --batch test cozyBuildCAR`;
-- normal CAR validation/lint used by the repository;
-- one representative two-source runtime scenario using SimpleModeling.org and
-  `bok-knowledgehub` content;
-- one MCP runtime check over the resident two-source catalog; and
-- independent final review confirming that no Phase 7 profile-isolation,
-  attribution, source-mutation, or component-boundary guarantee was weakened.
-
-If a real upstream Cozy or CNCF defect blocks representative acceptance, record
-that finding as an explicit blocked dependency with executable evidence rather
-than expanding Phase 10 silently across repository boundaries.
+Each Step uses focused executable specifications for backend startup,
+admission, replacement, source attribution, duplicate-name coexistence,
+isolation, and deterministic ordering. The Phase release includes appropriate
+full Textus BoK validation, `sbt --batch test cozyBuildCAR`, normal CAR
+validation/lint, and independent review that Phase 7 isolation, attribution,
+and the SIE component boundary remain intact. No real-source MCP runtime
+acceptance is required here; Phase 10.1 owns it.
 
 ## Completion Conditions
 
 Phase 10 closes only when every item in `phase-10-checklist.md` is checked and:
 
-1. Textus BoK runs with the in-memory backend and no SIE dependency;
-2. at least two selected BoK generations coexist in one resident catalog;
-3. source attribution survives combined reads;
-4. existing BoK MCP reads expose the catalog successfully;
-5. SimpleModeling.org and `bok-knowledgehub` complete the representative E2E
-   path; and
-6. full validation and independent review find no actionable Phase 10 issue.
+1. Textus BoK runs with the in-memory backend and no required SIE dependency;
+2. at least two independently selected generations coexist in one resident
+   catalog;
+3. attribution, identity, ordering, and source-scoped replacement remain
+   deterministic; and
+4. full validation and independent review find no actionable Phase 10 issue.
 
-Phase 10 must stop after closure. SIE scalability, semantic federation,
-embedding search, automatic equivalence, and richer knowledge reconciliation
-belong to later explicitly approved work.
+Phase 10 stops after closure. Phase 10.1 is a separately invoked successor;
+it is not started by this Phase.

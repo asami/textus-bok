@@ -81,18 +81,22 @@ normalizer.
 
 ## Federation Publication
 
-`replaceKnowledgeSource` maps each normalized term and component reference to
-one provider-neutral SIE document and assertion. Evidence resources are
-deduplicated by stable attributable identity, and deterministic SHA-256 IDs
-connect every document and assertion to its evidence. BoK meaning remains in
-opaque structured metadata interpreted by `textus-bok`; it does not enter the
-SIE CML domain.
+For explicit SIE backend selection, `replaceKnowledgeSource` maps each
+normalized term and component reference to one provider-neutral SIE document
+and assertion. Evidence resources are deduplicated by stable attributable
+identity, and deterministic SHA-256 IDs connect every document and assertion
+to its evidence. For default or explicit memory selection, the normalized
+generation is admitted directly to the BoK-owned resident catalog without SIE
+documents or assertions. BoK meaning remains in opaque structured metadata
+interpreted by `textus-bok`; it does not enter the SIE CML domain.
 
-Publication resolves the `SemanticIntegrationEngine` component in the current
-subsystem and invokes the generated `KnowledgeFederation.replaceDataset`
-operation. Absence of that component is a structured service failure. There is
-no direct provider or SIE runtime fallback. `project.yaml` declares both the
-exact development JVM coordinate and the CAR ABI range.
+`replaceKnowledgeSource` completes the normalized generation through the
+selected backend. With no explicit backend selection, or with explicit memory,
+the BoK-owned resident path completes the generation without SIE. An explicit
+SIE selection delegates through the retained provider boundary; if unavailable,
+replacement fails as a structured `unavailable` outcome and MUST NOT fall back
+to memory or another provider. `project.yaml` declares both the exact
+development JVM coordinate and the CAR ABI range.
 
 ## Matching And Replacement
 

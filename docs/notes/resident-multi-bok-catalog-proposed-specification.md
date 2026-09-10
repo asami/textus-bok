@@ -1,13 +1,26 @@
 # Resident Multi-BoK Catalog Proposed Specification
 
 Status: proposal
-Phase: Phase 10
+Phase: Phases 10 and 10.1
 
 ## Purpose
 
-Define the implementation direction for Phase 10 before promoting stable behavior into `docs/design` or `docs/spec`.
+Define the implementation direction for the Phase 10/10.1 sequence before
+promoting stable behavior into `docs/design` or `docs/spec`.
 
-Phase 10 makes Textus BoK usable as a resident knowledge service that can load multiple attributable BoK generations, keep them in memory without requiring SIE, and expose the resulting catalog through the existing BoK read operations and CNCF MCP projection.
+Phase 10 makes Textus BoK usable as a resident knowledge service that can load
+multiple attributable BoK generations and keep them in memory without requiring
+SIE. Phase 10.1 exposes the accepted catalog through existing BoK read
+operations and CNCF MCP projection.
+
+## Split Ownership
+
+The original open Phase 10 was split with explicit user approval on 2026-09-10.
+Phase 10 owns P10-01/P10-02: the SIE-independent backend and resident catalog.
+Phase 10.1 owns P10-03/P10-04: catalog-backed public reads/MCP semantics and
+the SimpleModeling.org plus `bok-knowledgehub` representative acceptance. The
+split is time-bound, not a change to Phase 7 profile isolation or a
+reasoning-cost-isolation claim.
 
 ## Architectural Direction
 
@@ -32,7 +45,10 @@ BoK Read Semantics
         +-- existing MCP-ready BoK operations
 ```
 
-Phase 10 does not replace Phase 7 profile selection. Phase 7 selects an attributable generation for a profile. Phase 10 adds a catalog layer after that selection and allows multiple independently selected generations to participate in one resident read space.
+Phase 10 does not replace Phase 7 profile selection. Phase 7 selects an
+attributable generation for a profile. Phase 10 adds a catalog layer after that
+selection and allows multiple independently selected generations to participate
+in one resident read space.
 
 ## P10-01: Knowledge Backend Boundary
 
@@ -100,7 +116,7 @@ Selection remains deterministic and attributable before catalog composition occu
 
 A caller must not be able to use the catalog to bypass profile admission, authorization, project identity, or complete-generation checks.
 
-## P10-03: Read and MCP Boundary
+## Phase 10.1 / P10-03: Read and MCP Boundary
 
 Reuse existing Textus BoK domain read semantics and MCP-ready operations wherever their response models can represent catalog results correctly.
 
@@ -117,7 +133,7 @@ Do not create a separate BoK-specific MCP transport or tool registry when the CN
 
 Administrative source registration, generation replacement, backend selection, reload, and mutation remain non-MCP-ready unless a later Phase explicitly changes that policy.
 
-## P10-04: Representative Driver
+## Phase 10.1 / P10-04: Representative Driver
 
 The Phase 10 representative acceptance uses two real knowledge sources:
 
@@ -139,13 +155,19 @@ Acceptance must prove at least:
 
 Cozy already owns generation/finalization of BoK source artifacts, including glossary and KnowledgeSource-related outputs. Phase 10 consumes those existing outputs.
 
-Do not add a Cozy prerequisite Phase merely to start Phase 10. If representative consumption proves that an existing Cozy output lacks required stable information, record the exact consumer evidence and hand the smallest generic correction back to Cozy.
+Do not add a Cozy prerequisite Phase merely to start Phase 10. If Phase 10.1
+representative consumption proves that an existing Cozy output lacks required
+stable information, record the exact consumer evidence and hand the smallest
+generic correction back to Cozy.
 
 ## CNCF Boundary
 
 CNCF already owns Component/Service/Operation runtime and MCP projection. Phase 10 uses that existing surface.
 
-Do not add a CNCF prerequisite Phase merely to start Phase 10. If the E2E path exposes a generic runtime or MCP limitation, record reproducible evidence and create a bounded CNCF handoff rather than implementing framework behavior privately in Textus BoK.
+Do not add a CNCF prerequisite Phase merely to start Phase 10. If the Phase
+10.1 E2E path exposes a generic runtime or MCP limitation, record reproducible
+evidence and create a bounded CNCF handoff rather than implementing framework
+behavior privately in Textus BoK.
 
 ## Backend Evolution
 
@@ -163,7 +185,8 @@ Backend choice must not change BoK domain identity, source attribution, or publi
 
 ## Deferred Work
 
-The following are explicitly deferred unless Phase 10 implementation evidence makes one unavoidable:
+The following are explicitly deferred unless Phase 10 or 10.1 implementation
+evidence makes one unavoidable:
 
 - embedding search;
 - RDF reasoning;
@@ -182,4 +205,7 @@ The following are explicitly deferred unless Phase 10 implementation evidence ma
 
 This document is a proposal, not normative authority.
 
-After P10-01/P10-02 implementation proves the backend and catalog boundaries, stable semantics should be promoted selectively into `docs/design` and/or `docs/spec`. Implementation discoveries and changed assumptions must be recorded in the Phase 10 journal before promotion.
+After P10-01/P10-02 implementation proves the backend and catalog boundaries,
+stable semantics should be promoted selectively into `docs/design` and/or
+`docs/spec`. Implementation discoveries and changed assumptions must be
+recorded in the Phase 10 or Phase 10.1 journal context before promotion.

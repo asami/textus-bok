@@ -40,7 +40,8 @@ guidance belongs to Textus CBD Support.
 12. Phase 7.5: Component-Contributed Knowledge Acceptance
 13. Phase 8: Configured KnowledgeSource Startup Bootstrap
 14. Phase 9: Knowledge Map MCP Publication
-15. Phase 10: Resident Multi-BoK Catalog and MCP Publication
+15. Phase 10: Resident Multi-BoK In-Memory Catalog
+16. Phase 10.1: Catalog-Backed BoK Reads and MCP Two-Source Acceptance
 
 ## Current Priority
 
@@ -103,16 +104,17 @@ documentation, retains permanent MCP exclusion of `replaceKnowledgeSource`,
 and verifies a bounded map read through the Control Center-managed runtime on
 port 18014. It does not add provider ingestion or domain knowledge semantics.
 
-Phase 10 is the next executable priority and is independent of CNCF Phase 73,
-TKE Phase 2, and BoK Phase 7.5. It makes the SIE-independent in-memory runtime
-the practical first path, composes multiple independently selected complete
-generations into one attributable resident BoK catalog, and routes the existing
-BoK read/MCP operations through that catalog. Its representative closure target
-is the simultaneous admission of SimpleModeling.org and `bok-knowledgehub`,
-followed by one combined catalog read and MCP runtime check without an installed
-SIE component. Phase 10 does not require a new Cozy or CNCF feature Phase as a
-start gate; executable downstream evidence must identify any actual upstream
-gap before such a handoff is created.
+The original open Phase 10 was split with explicit user approval on 2026-09-10
+into sequential Phase 10 and Phase 10.1 delivery units. Phase 10 is closed: it
+establishes the SIE-independent in-memory runtime as the practical first path
+and composes independently selected complete generations into one attributable
+resident BoK catalog. Phase 10.1 is the next planned, not-started delivery
+unit. It will route existing BoK reads/MCP operations through that catalog and
+prove simultaneous SimpleModeling.org plus `bok-knowledgehub` admission, one
+combined catalog read, and MCP runtime behavior without SIE. Neither Phase
+requires CNCF Phase 73, TKE Phase 2, or BoK Phase 7.5 as a start gate.
+Executable downstream evidence must identify any actual Cozy or CNCF gap before
+a separate handoff is created.
 
 Phase 59.7 completion record: DOC-07 adds one additive, value-only semantic
 metadata projection for the five existing semantic reads. It preserves source

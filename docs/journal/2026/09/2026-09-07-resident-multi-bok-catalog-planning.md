@@ -168,3 +168,14 @@ Once P10-01/P10-02 implementation demonstrates stable boundaries, only the prove
 Phase 10 is practically successful when one running Textus BoK instance can hold both SimpleModeling.org glossary knowledge and `bok-knowledgehub` knowledge in memory and make attributable results from that combined resident catalog available through MCP without SIE.
 
 That milestone is the first priority. Embeddings, RDF reasoning, richer semantic reconciliation, persistent storage, and UI expansion follow only after this path is useful in normal work.
+
+## 2026-09-10 Split Correction
+
+This dated journal records the original pre-split Phase 10 planning shape. The
+user explicitly split that open Phase on 2026-09-10 because its calibrated
+10.5h expected duration exceeded the 8h planning ceiling. The current delivery
+ownership is Phase 10 for P10-01/P10-02 (SIE-independent backend and resident
+catalog), then Phase 10.1 for P10-03/P10-04 (catalog-backed public reads/MCP
+and SimpleModeling.org plus `bok-knowledgehub` E2E acceptance). No completed
+work moved, and the original discussion above remains historical pre-split
+context.

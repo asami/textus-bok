@@ -51,11 +51,13 @@ environment, host, user, or provider context.
 For a configured component, the existing non-MCP administrative replacement
 operation MUST match the requested dataset/source/generation identity to one
 installed binding and MUST load only that binding's resource. It MUST NOT read
-the request-side resource field. A complete SIE publication MUST be admitted
-to the exact matched profile key; a non-complete publication MUST leave both
-the admitted profile and the readable catalog unchanged. The legacy
-administrative replacement path MAY remain when no profile registry is
-configured. This compatibility path MUST NOT become a public read selector.
+the request-side resource field. A complete publication from the selected
+backend MUST be admitted to the exact matched profile key; a non-complete
+publication MUST leave both the admitted profile and the readable catalog
+unchanged. An unavailable explicit SIE selection MUST fail as `unavailable`
+and MUST NOT fall back to the BoK-owned memory backend or another provider.
+The legacy administrative replacement path MAY remain when no profile registry
+is configured. This compatibility path MUST NOT become a public read selector.
 
 ## Complete-Generation Admission
 
