@@ -11,14 +11,14 @@ import org.goldenport.cncf.unitofwork.ExecUowM
 import org.goldenport.protocol.operation.OperationResponse
 import org.goldenport.record.Record
 import org.simplemodeling.textus.bok.datatype.*
-import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationRetriever, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSemanticAccess, BokSourceReader, BokStartupBootstrapConfiguration, BokStartupBootstrapCoordinator, BokStartupBootstrapDiagnostic, NormalizedBokSource, ResolvedBokProfile}
+import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationRetriever, BokKnowledgeBackend, BokKnowledgeBackendConfiguration, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSemanticAccess, BokSourceReader, BokStartupBootstrapConfiguration, BokStartupBootstrapCoordinator, BokStartupBootstrapDiagnostic, NormalizedBokSource, ResolvedBokProfile}
 import org.simplemodeling.textus.bok.value.*
 import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Sep. 9, 2026
+ * @version Sep. 10, 2026
  * @author  ASAMI, Tomoharu
  */
 
@@ -43,10 +43,16 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
         bok.subsystem match {
           case Some(subsystem) =>
             // Bootstrap wiring must inspect the resolved subsystem configuration before ActionCalls exist.
-            BokProfileRegistryConfiguration.fromConfiguration(
+            BokKnowledgeBackendConfiguration.fromConfiguration(
               subsystem.configuration // cncf-car-lint: ignore -- component initialization boundary
-            ).flatMap { configuration =>
-              bok.configureProfileRegistry(configuration).map(_ => bok)
+            ).flatMap { backend =>
+              bok.configureKnowledgeBackend(backend).flatMap { _ =>
+                BokProfileRegistryConfiguration.fromConfiguration(
+                  subsystem.configuration // cncf-car-lint: ignore -- component initialization boundary
+                ).flatMap { configuration =>
+                  bok.configureProfileRegistry(configuration).map(_ => bok)
+                }
+              }
             }
           case None => Consequence.stateInvalid("The BoK component subsystem is unavailable during initialization")
         }
@@ -406,6 +412,7 @@ final class BokPrimaryComponent(
   private val _catalog: BokKnowledgeCatalog = new BokKnowledgeCatalog(),
   injectedReplacementService: Option[BokKnowledgeSourceReplacementService] = None
 ) extends BokComponent with ComponentActivation {
+  private var _knowledge_backend: BokKnowledgeBackend = BokKnowledgeBackend.InMemory
   private var _profile_registry: Option[BokProfileRegistry] = None
   private val _replacement_service = injectedReplacementService.getOrElse(
     new BokKnowledgeSourceReplacementService(_catalog)
@@ -414,6 +421,18 @@ final class BokPrimaryComponent(
 
   private[bok] def replacementService: BokKnowledgeSourceReplacementService =
     _replacement_service
+
+  private[bok] def configureKnowledgeBackend(
+    backend: BokKnowledgeBackend
+  ): Consequence[Unit] = {
+    _knowledge_backend = backend
+    Consequence.unit
+  }
+
+  private[bok] def completeReplacement(
+    normalized: NormalizedBokSource
+  )(using context: ExecutionContext): Consequence[BokFederationPublication] =
+    _knowledge_backend.complete(this, normalized)
 
   private[bok] def hasSelectedTopology(datasetId: String): Boolean =
     _catalog.selectedTopology(datasetId).nonEmpty

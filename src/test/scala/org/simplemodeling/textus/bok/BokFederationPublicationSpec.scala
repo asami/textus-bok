@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.impl.BokPrimaryComponent
-import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader}
+import org.simplemodeling.textus.bok.runtime.{BokCandidateKey, BokFederationPublication, BokFederationPublisher, BokFederationRetriever, BokKnowledgeBackend, BokKnowledgeBackendConfiguration, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileResolutionFailure, BokProfileSelection, BokSourceReader}
 import org.simplemodeling.textus.bok.value.{BokEvidence, BokKnowledgeSource}
 import org.simplemodeling.textus.semanticintegration.SemanticIntegrationEngineComponent.KnowledgeFederationService
 import org.simplemodeling.textus.semanticintegration.value.{FederationDatasetQueryRequest, FederationDatasetQueryResult}
@@ -26,7 +26,7 @@ import org.simplemodeling.textus.scraper.api.TextusScraperApi
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Sep. 8, 2026
+ * @version Sep. 10, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -51,7 +51,10 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
 
       "replace one complete generation idempotently without duplicate records" in {
         Given("BoK and generated-contract SIE components with one metadata-only generation")
-        val assembly = _assembly(includesie = true)
+        val assembly = _assembly(
+          includesie = true,
+          configuration = _backend_configuration("sie")
+        )
         val context = _context(_first_resources)
         val source = _source("generation-1")
 
@@ -145,7 +148,10 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
             |{"kind":"sar","artifactId":"textus-runtime","catalog":"sar/textus-runtime.yaml","status":"active","latestSnapshot":"1.0.0-SNAPSHOT"}
             |]}""".stripMargin
         )
-        val assembly = _assembly(includesie = true)
+        val assembly = _assembly(
+          includesie = true,
+          configuration = _backend_configuration("sie")
+        )
         val context = _context(resources)
         val source = _source("generation-qualified")
         val normalized = BokSourceReader.read(context, source).TAKE
@@ -171,7 +177,10 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
 
       "remove stale records when a later complete generation replaces the first" in {
         Given("a first complete generation already published through the BoK action")
-        val assembly = _assembly(includesie = true)
+        val assembly = _assembly(
+          includesie = true,
+          configuration = _backend_configuration("sie")
+        )
         val firstcontext = _context(_first_resources)
         _replace(assembly.bok, firstcontext, _source("generation-1"))
         val secondcontext = _context(_second_resources)
@@ -440,10 +449,95 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
       }
     }
 
+    "decode private backend configuration" which {
+      "select InMemory when backend configuration is absent" in {
+        Given("a resolved configuration without a private knowledge-backend root")
+        val configuration = ResolvedConfiguration(Configuration.empty, ConfigurationTrace.empty)
+
+        When("the private backend configuration is decoded")
+        val result = BokKnowledgeBackendConfiguration.fromConfiguration(configuration)
+
+        Then("the decoder selects the BoK-owned in-memory backend")
+        result should matchPattern {
+          case Consequence.Success(BokKnowledgeBackend.InMemory) =>
+        }
+      }
+
+      "reject an unknown backend as invalid private configuration" in {
+        Given("a private knowledge-backend configuration with an unknown backend value")
+        val configuration = _backend_configuration("unknown")
+
+        When("the private backend configuration is decoded")
+        val result = BokKnowledgeBackendConfiguration.fromConfiguration(configuration)
+
+        Then("the decoder returns the stable invalid-selection classification")
+        _failure_code(result) shouldBe Some(BokProfileResolutionFailure.InvalidSelection)
+      }
+
+      "reject direct and nested duplicate backend configuration as invalid private configuration" in {
+        Given("the same private knowledge-backend configuration in direct and nested forms")
+        val configuration = _backend_direct_and_nested_configuration("memory")
+
+        When("the private backend configuration is decoded")
+        val result = BokKnowledgeBackendConfiguration.fromConfiguration(configuration)
+
+        Then("the decoder returns the stable invalid-selection classification")
+        _failure_code(result) shouldBe Some(BokProfileResolutionFailure.InvalidSelection)
+      }
+
+      "reject every remaining malformed backend configuration shape as invalid private configuration" in {
+        Given("private backend configurations with a non-object root, missing backend, non-string backend, and extra member")
+        val malformedconfigurations = Vector(
+          _backend_configuration_value(ConfigurationValue.StringValue("memory")),
+          _backend_configuration_value(ConfigurationValue.ObjectValue(Map.empty[String, ConfigurationValue])),
+          _backend_configuration_value(ConfigurationValue.ObjectValue(Map(
+            "backend" -> ConfigurationValue.BooleanValue(true)
+          ))),
+          _backend_configuration_value(ConfigurationValue.ObjectValue(Map(
+            "backend" -> ConfigurationValue.StringValue("memory"),
+            "unexpected" -> ConfigurationValue.StringValue("value")
+          )))
+        )
+
+        When("the malformed private backend configurations are decoded")
+        val classifications = malformedconfigurations.map { configuration =>
+          _failure_code(BokKnowledgeBackendConfiguration.fromConfiguration(configuration))
+        }
+
+        Then("every malformed shape returns the stable invalid-selection classification")
+        classifications shouldBe Vector.fill(
+          malformedconfigurations.size
+        )(Some(BokProfileResolutionFailure.InvalidSelection))
+      }
+    }
+
     "enforce component and private-binding boundaries" which {
-      "fail without bypassing the component boundary when SIE is absent" in {
-        Given("a BoK component whose subsystem has no SemanticIntegrationEngine component")
+      "complete through the default in-memory backend without SIE" in {
+        Given("an unconfigured BoK component with no SemanticIntegrationEngine component")
         val assembly = _assembly(includesie = false)
+        val component = assembly.bok.asInstanceOf[BokPrimaryComponent]
+        val source = _source(
+          "generation-memory",
+          sourceid = "memory-source",
+          datasetid = "memory-dataset"
+        )
+
+        When("knowledge-source replacement is requested")
+        val response = _replace(assembly.bok, _context(_first_resources), source)
+
+        Then("the complete generation is admitted and committed without SIE")
+        response.getString("status") shouldBe Some("complete")
+        response.getString("generation") shouldBe Some("generation-memory")
+        component.hasSelectedTopology(source.datasetId.value) shouldBe true
+        assembly.sie shouldBe None
+      }
+
+      "fail closed when explicitly selected SIE is absent" in {
+        Given("a BoK component whose subsystem has no SemanticIntegrationEngine component")
+        val assembly = _assembly(
+          includesie = false,
+          configuration = _backend_configuration("sie")
+        )
         val component = assembly.bok.asInstanceOf[BokPrimaryComponent]
         val source = _source(
           "generation-1",
@@ -454,8 +548,8 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
         When("knowledge-source replacement is requested")
         val result = _replace_c(assembly.bok, _context(_first_resources), source)
 
-        Then("the operation returns a structured service failure instead of using a provider directly")
-        result should matchPattern { case Consequence.Failure(_) => }
+        Then("the operation returns one structured unavailable failure without falling back to memory")
+        _failure_code(result) shouldBe Some(BokProfileResolutionFailure.Unavailable)
         component.hasSelectedTopology(source.datasetId.value) shouldBe false
       }
 
@@ -768,6 +862,51 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
   private def _profile_configuration(source: BokKnowledgeSource): ResolvedConfiguration =
     _profile_configuration(Vector(("official", None, source)))
 
+  private def _backend_configuration(backend: String): ResolvedConfiguration = {
+    val backendvalue = ConfigurationValue.ObjectValue(Map(
+      "backend" -> ConfigurationValue.StringValue(backend)
+    ))
+    val nested = ConfigurationValue.ObjectValue(Map(
+      "bok" -> ConfigurationValue.ObjectValue(Map(
+        "knowledge-backend" -> backendvalue
+      ))
+    ))
+    ResolvedConfiguration(
+      Configuration(Map("textus" -> nested)),
+      ConfigurationTrace.empty
+    )
+  }
+
+  private def _backend_configuration_value(value: ConfigurationValue): ResolvedConfiguration = {
+    val nested = ConfigurationValue.ObjectValue(Map(
+      "bok" -> ConfigurationValue.ObjectValue(Map(
+        "knowledge-backend" -> value
+      ))
+    ))
+    ResolvedConfiguration(
+      Configuration(Map("textus" -> nested)),
+      ConfigurationTrace.empty
+    )
+  }
+
+  private def _backend_direct_and_nested_configuration(backend: String): ResolvedConfiguration = {
+    val backendvalue = ConfigurationValue.ObjectValue(Map(
+      "backend" -> ConfigurationValue.StringValue(backend)
+    ))
+    val nested = ConfigurationValue.ObjectValue(Map(
+      "bok" -> ConfigurationValue.ObjectValue(Map(
+        "knowledge-backend" -> backendvalue
+      ))
+    ))
+    ResolvedConfiguration(
+      Configuration(Map(
+        "textus.bok.knowledge-backend" -> backendvalue,
+        "textus" -> nested
+      )),
+      ConfigurationTrace.empty
+    )
+  }
+
   private def _profile_configuration(
     bindings: Vector[(String, Option[String], BokKnowledgeSource)]
   ): ResolvedConfiguration = {
@@ -802,6 +941,9 @@ final class BokFederationPublicationSpec extends AnyWordSpec with Matchers with 
     ))
     val nested = ConfigurationValue.ObjectValue(Map(
       "bok" -> ConfigurationValue.ObjectValue(Map(
+        "knowledge-backend" -> ConfigurationValue.ObjectValue(Map(
+          "backend" -> ConfigurationValue.StringValue("sie")
+        )),
         "profile-registry" -> registry
       ))
     ))

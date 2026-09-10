@@ -17,7 +17,7 @@ import org.simplemodeling.textus.bok.value.BokKnowledgeSource
  * hook; those responsibilities belong to later Phase 8 slices.
  *
  * @since   Sep. 8, 2026
- * @version Sep. 8, 2026
+ * @version Sep. 10, 2026
  * @author  ASAMI, Tomoharu
  */
 private[bok] final case class BokStartupBootstrapConfiguration(
@@ -198,7 +198,7 @@ private[bok] final class BokKnowledgeSourceReplacementService(
     normalized: NormalizedBokSource
   ): Consequence[BokKnowledgeSourceReplacementResult] =
     for {
-      publication <- BokFederationPublisher.replace(component, normalized)(using context)
+      publication <- component.completeReplacement(normalized)(using context)
       admission <- component.admitReplacementWithAttribution(key, publication, normalized)
       _ = commitIfAdmitted(admission, publication, normalized)
     } yield BokKnowledgeSourceReplacementResult(key, normalized, publication, admission)

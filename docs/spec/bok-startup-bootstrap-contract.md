@@ -10,6 +10,12 @@ bounded P8-C operator procedure for accepting a generated SimpleModeling.org
 `website.d` source. The procedure observes the normal managed lifecycle and
 MCP reads; it does not add a lifecycle API or another publication path.
 
+The Phase 10 BoK knowledge backend contract is the authority for completion,
+admission, backend selection, and source/dataset-scoped replacement. The
+default backend is BoK-owned in-memory storage. Public catalog-backed reads,
+REST/Web/MCP projection, and real two-source runtime acceptance remain Phase
+10.1 work and are not established by this bootstrap contract.
+
 The contract is subordinate to the existing private
 `BokProfileSelection`/`BokProfileRegistry` boundary and the structured
 `BokProfileResolutionFailure` taxonomy. The authoritative supplier inputs are:
@@ -92,19 +98,21 @@ The CNCF Phase 70 R9 handoff invokes the callback only after:
 6. `StartupImport`.
 
 Activation then completes before managed readiness or bound-URL publication.
-Textus BoK owns profile resolution, configured-source loading, complete
-generation publication, and consumer-facing diagnostics. CNCF owns activation
-ordering, once-only outcome retention, readiness gating, and cleanup; BoK adds
-no global or per-process once-state.
+Textus BoK owns profile resolution, configured-source loading, backend
+completion, complete-generation admission, source/dataset-scoped replacement,
+and consumer-facing diagnostics. CNCF owns activation ordering, once-only
+outcome retention, readiness gating, and cleanup; BoK adds no global or
+per-process once-state.
 
 Both configured startup and protected `replaceKnowledgeSource` enter one
 package-private replacement service. The manual caller first resolves its
 request to the private configured key as before; bootstrap receives the
 already normalized configured key and loads it directly from that registry.
-Both then use the same source reader, `BokFederationPublisher` SIE dataset
-replacement, registry admission, and catalog replacement. The catalog commits
-only after admission succeeds. The publisher's ActionCall overload remains a
-compatibility path, while activation uses its component/context overload and
+Both then use the same source reader, selected backend completion, registry
+admission, and source/dataset-scoped catalog replacement. The catalog commits
+only after admission succeeds. The retained SIE provider boundary remains
+available only when SIE is explicitly selected; its ActionCall overload remains
+a compatibility path, while activation uses its component/context overload and
 never manufactures an artificial Action.
 
 ## Readiness and failure semantics
@@ -113,8 +121,9 @@ Bootstrap is default-off, Server-mode-only, and sequential in declaration
 order. It resolves only already registered profiles. The BoK coordinator checks
 deadline and cancellation before and after each synchronous replacement and
 stops at the first terminal result. Every required result must be normalized
-`complete` and admitted; a configuration error, missing registry binding or
-SIE, unavailable source, non-complete publication, admission rejection,
+`complete` and admitted; a configuration error, missing registry binding,
+explicitly selected unavailable SIE, unavailable source, non-complete
+publication, admission rejection,
 deadline, cancellation, or unexpected callback failure returns one sanitized
 structured BoK startup failure. CNCF then keeps the server unavailable and
 enters ordinary cleanup. Later profiles do not begin, and late work cannot turn
@@ -127,7 +136,9 @@ from `mcpReadyOperations`; bootstrap adds no MCP mutation surface.
 An unchanged input presented on restart must eventually replace the same
 logical generation deterministically without duplicate terms, component
 references, assertions, or vector documents. Persistent providers must receive
-the same replacement semantics as in-memory SIE.
+the same source/dataset-scoped replacement semantics as the default in-memory
+backend. An explicitly selected unavailable SIE provider is a deterministic
+structured `unavailable` failure and MUST NOT silently select memory.
 
 ## Diagnostic boundary
 
@@ -315,9 +326,10 @@ The writer validates the `cncf.knowledge-source.v1` manifest and every
 declared resource, derives a `sha256:` generation from their content, and
 atomically writes the marked project-local `.textus/config.yaml`. The private
 configuration contains exactly one `development` registry binding, the
-explicit `development` bootstrap selector, in-memory RDF/Vector SIE policy,
-and the exact read-only file-root policy. An existing unmarked config is
-never overwritten. Tests may pass `--output PATH` to write another explicit
+explicit `development` bootstrap selector, the default in-memory backend
+policy with no explicit SIE selection, and the exact read-only file-root
+policy. An existing unmarked config is never overwritten. Tests may pass
+`--output PATH` to write another explicit
 destination; the normal operator destination remains project-local.
 
 After the build and configuration steps, restart the registered Textus BoK

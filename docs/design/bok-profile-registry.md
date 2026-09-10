@@ -7,8 +7,13 @@ Status: stable Phase 7.1 design
 The private BoK profile registry binds the closed selector contract from Phase
 7 to concrete logical knowledge resources without making those bindings part
 of a public read request. It is the administrative bridge between CNCF-delivered
-component or SAR configuration, CNCF resource access, atomic BoK generation
-admission, and later public read integration.
+component or SAR configuration, CNCF resource access, backend completion,
+atomic BoK generation admission, and later resident catalog integration.
+
+The registry resolves a profile; it does not own backend choice or resident
+storage. Those responsibilities belong to the private BoK knowledge backend
+contract. Public catalog-backed reads, REST/Web/MCP projection, and real
+two-source runtime acceptance remain Phase 10.1 work.
 
 This registry is not a source-discovery mechanism. Its inputs are explicit
 configuration and an explicit authorization set; it has no reason to inspect a
@@ -46,9 +51,16 @@ The registry follows one explicit lifecycle:
 1. bootstrap, validate, and install private bindings from the resolved CNCF
    subsystem configuration;
 2. load the selected configured logical source through CNCF resource access;
-3. publish the normalized candidate through the existing SIE boundary;
-4. admit the candidate only when publication reports `complete`; and
+3. complete the normalized candidate through the selected BoK backend, using
+   in-memory storage by default and the retained SIE provider boundary only
+   when SIE is explicitly selected;
+4. admit the candidate only when backend completion reports `complete`; and
 5. resolve an authorized normalized key to its admitted tuple.
+
+When an explicitly selected SIE provider is unavailable or cannot be
+initialized, completion returns one deterministic structured `unavailable`
+outcome. It MUST NOT silently select the in-memory backend, another provider,
+or a foreign profile. The default and explicit memory paths do not require SIE.
 
 The existing administrative replacement operation is not MCP-ready. When the
 component has a registry, that operation may identify only a configured
@@ -79,8 +91,9 @@ different key after failure.
 
 `ResolvedBokProfile` contains only profile/project attribution, dataset,
 source, generation, and evidence. It deliberately has no resource-reference
-field. Phase 7.2 can use this tuple to constrain catalog and SIE retrieval
-without exposing administrative configuration.
+field. Phase 7.2 can use this tuple to constrain backend completion and the
+retained optional SIE provider path without exposing administrative
+configuration.
 
 ## Failure Representation
 
