@@ -1,8 +1,8 @@
 # Phase 10.1: Catalog-Backed BoK Reads and MCP Two-Source Acceptance
 
 Stage Status:
-- Current status: PLANNED
-- Current step: P10-03 Catalog-Backed BoK Reads and MCP Publication
+- Current status: CLOSED (effected by this distinct Phase release commit)
+- Current step: Complete
 - Owner: Textus BoK development
 - Update rule: Update this block and `phase-10.1-checklist.md` only when a
   checklist outcome has reproducible review or executable evidence.
@@ -51,7 +51,10 @@ Make existing public BoK terminology/component reads and their existing CNCF
 MCP projection operate against the accepted resident catalog, preserving
 distinct source attribution and deterministic read semantics. Then prove the
 practical two-source path with SimpleModeling.org and `bok-knowledgehub` in one
-in-memory Textus BoK process without SIE.
+in-memory Textus BoK process where BoK selects `memory` and does not select or
+require an SIE knowledge backend. The acceptance SAR includes SIE, BoK, and
+Scraper as sibling CARs: SIE is non-MCP, and Scraper closes SIE's required
+dependency.
 
 ## Required Inputs and Dependencies
 
@@ -83,8 +86,10 @@ Admit SimpleModeling.org / `simplemodeling-org` glossary knowledge and
 `bok-knowledgehub` generated knowledge into the same in-memory catalog. Prove
 that known terms from both sources are retrievable with distinct attribution,
 a query can return both, replacement of one leaves the other intact, and the
-representative read succeeds through MCP `tools/call` without an installed or
-required SIE component.
+representative read succeeds through MCP `tools/call` while BoK selects
+`memory` and neither selects nor requires an SIE knowledge backend. The
+acceptance SAR contains SIE, BoK, and Scraper as sibling CARs, with SIE
+non-MCP and Scraper closing SIE's required dependency.
 
 ## Scope
 
@@ -123,7 +128,25 @@ and:
 2. existing MCP-ready operations expose exactly those read semantics without a
    duplicate transport or administrative mutation surface;
 3. SimpleModeling.org and `bok-knowledgehub` complete the representative
-   two-source in-memory/MCP path without SIE; and
+   two-source in-memory/MCP path with BoK selecting `memory` and not selecting
+   or requiring an SIE knowledge backend; the acceptance SAR includes SIE, BoK,
+   and Scraper as sibling CARs, with SIE non-MCP and Scraper closing SIE's
+   required dependency; and
 4. full validation and independent review find no actionable Phase 10.1 issue.
 
 Phase 10.1 stops after closure. It does not start a later Phase automatically.
+
+## Closure Evidence
+
+- P10-03/P10-04 implementation and two-source acceptance are committed in
+  `71d76a25013a8cf9325dd24858fd8622deeb5f05`.
+- The serial Phase validation `sbt --batch test cozyBuildCAR` passed 91 tests
+  and CAR construction.  Its immutable receipt is
+  `1358a8b956004c2d5e4c7df23e9a78a68156b72a1e448230ccb8af94dabed813`.
+- The two-source sibling-CAR SAR passed with `components=3`, `sources=2`, and
+  `backend=memory`; it verified the exact ten BoK MCP reads, two catalog
+  members, protected REST-only replacement, and owned runtime cleanup.
+- Normal CAR lint has no `FAIL`.  Its residual ABI/SNAPSHOT/CML/manual-link
+  warnings are retained as the separate Phase 10.1 Hygiene records.
+- The independent focused re-review `P10.1-FOCUSED-REREVIEW-003` closed the
+  final direct-versus-catalog manual-attribution finding with no new blocker.

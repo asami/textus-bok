@@ -108,13 +108,15 @@ The original open Phase 10 was split with explicit user approval on 2026-09-10
 into sequential Phase 10 and Phase 10.1 delivery units. Phase 10 is closed: it
 establishes the SIE-independent in-memory runtime as the practical first path
 and composes independently selected complete generations into one attributable
-resident BoK catalog. Phase 10.1 is the next planned, not-started delivery
-unit. It will route existing BoK reads/MCP operations through that catalog and
-prove simultaneous SimpleModeling.org plus `bok-knowledgehub` admission, one
-combined catalog read, and MCP runtime behavior without SIE. Neither Phase
-requires CNCF Phase 73, TKE Phase 2, or BoK Phase 7.5 as a start gate.
-Executable downstream evidence must identify any actual Cozy or CNCF gap before
-a separate handoff is created.
+resident BoK catalog. Phase 10.1 closed on 2026-09-11: existing BoK reads and
+their ten-read MCP projection operate against that catalog, and a two-source
+SimpleModeling.org plus `bok-knowledgehub` SAR proves source-qualified catalog
+reads, protected REST-only replacement, and MCP behavior. BoK selects `memory`
+and does not select or require an SIE knowledge backend. The SAR correctly
+packages SIE, BoK, and Scraper as sibling CARs; SIE is non-MCP and Scraper
+closes SIE's required dependency. Neither Phase required CNCF Phase 73, TKE
+Phase 2, or BoK Phase 7.5 as a start gate. Any later Cozy or CNCF gap requires
+a separate handoff.
 
 Phase 59.7 completion record: DOC-07 adds one additive, value-only semantic
 metadata projection for the five existing semantic reads. It preserves source

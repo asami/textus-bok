@@ -103,12 +103,19 @@ generation. Select `development` explicitly for a development binding; select
 No selector accepts a resource location, credential, provider setting, current
 directory, Git checkout, or other ambient project information.
 
-Each successful read returns one `selection` attribution with its resolved
-profile, optional project identity, dataset, source, generation, and
-generation evidence. Existing term, component, node, and relationship evidence
-remains attached to the returned records. An unavailable, invalid, unauthorized,
-or conflicting selection is a structured failure; BoK never falls back to a
-different profile or returns an empty successful response from another one.
+The sole aggregate selection is `profile=catalog` with one usable `catalogId`.
+A catalog selector rejects `projectId`, `datasetId`, and `sourceId` as
+`conflicting-selection`; it never falls back to a direct profile or fabricates
+a direct source tuple. A direct success contains one `selection` attribution
+with its resolved profile, optional project identity, dataset, source,
+generation, and generation evidence. A catalog success contains
+`selection.resolvedProfile = catalog`, its requested `catalogId`, and every
+deterministic source-qualified `selection.members` attribution; it has no
+top-level dataset, source, generation, or evidence tuple. Existing term,
+component, node, and relationship evidence remains attached to the returned
+records. An unavailable, invalid, unauthorized, or conflicting selection is a
+structured failure; BoK never returns an empty successful response from another
+profile.
 
 Exact identity and title matches are classified by Textus BoK. Semantic
 candidates use generic SIE document IDs and scores scoped by dataset and source
@@ -123,14 +130,18 @@ applies an exact organization filter only when supplied. Omitting it spans
 organizations and returns `ambiguous` with no reference when more than one
 identity matches. Result limiting occurs after reliability classification.
 
-`getKnowledgeMap` reads only the resolved complete generation. Its optional
-`datasetId` and `sourceId` values only confirm or narrow that exact resolved
-tuple; a different value fails as `conflicting-selection` and cannot select a
-different profile. It supports bounded category, term type, and focus filtering;
-returns explicit `matched`, `no-match`, and truncation states; and preserves
-source, node, and relationship evidence. A declared Cozy `componentRef` is
-shown only as an exact existence handoff to CBD Support, never as usage or
-compatibility detail.
+`getKnowledgeMap` reads the complete generation or generations resolved by the
+selection. For a direct selection, its optional `datasetId` and `sourceId`
+values only confirm or narrow that exact resolved tuple; a different value
+fails as `conflicting-selection` and cannot select a different profile. For a
+catalog selection, `catalogId` identifies the aggregate and `projectId`,
+`datasetId`, and `sourceId` are rejected as `conflicting-selection`; the map
+covers all selected member sources and retains their deterministic,
+source-qualified attributions rather than inventing a top-level direct tuple.
+It supports bounded category, term type, and focus filtering; returns explicit
+`matched`, `no-match`, and truncation states; and preserves source, node, and
+relationship evidence. A declared Cozy `componentRef` is shown only as an
+exact existence handoff to CBD Support, never as usage or compatibility detail.
 
 ## Representative Verification
 

@@ -378,7 +378,7 @@ cncf command org.simplemodeling.textus.Bok.BokRetrieval.explainTerm \
 
 ## Observe Profile Freshness
 
-For every successful read, record the `selection.resolvedProfile`, optional
+For a successful direct read, record the `selection.resolvedProfile`, optional
 `selection.projectId`, `selection.datasetId`, `selection.sourceId`,
 `selection.generation`, and `selection.evidence` fields:
 
@@ -400,7 +400,11 @@ mismatch is `stale`. Confirm that the separate replacement result was
 `status: complete`; degraded or failed replacement retains the prior complete
 generation but does not make a stale binding readable. The Knowledge Map
 source-generation table, including its complete no-JavaScript output, provides
-the same observation point for browser reads.
+the same direct observation point for browser reads. For a successful catalog
+read, record `selection.resolvedProfile = catalog`, the requested
+`selection.catalogId`, and every deterministic source-qualified attribution in
+`selection.members`; do not invent a top-level dataset, source, generation, or
+evidence tuple. Compare freshness separately for each selected direct member.
 
 Use `searchComponentReferences` to discover that a CAR or SAR exists and
 `getComponentReference` to resolve an exact name, optional version, kind, and
@@ -440,9 +444,9 @@ The map uses the same public operation for all profile kinds:
 | project | `--profile project --projectId example-project` | the exact project binding |
 | catalog | `--profile catalog --catalogId documentation` | the configured complete multi-source catalog |
 
-`datasetId` and `sourceId` are compatibility assertions after profile
-resolution, not profile selectors. Omit them to use the complete resolved
-generation, or supply the exact resolved values to confirm it. For example,
+For a direct selection, `datasetId` and `sourceId` are compatibility assertions
+after profile resolution, not profile selectors. Omit them to use the complete
+resolved generation, or supply the exact resolved values to confirm it. For example,
 `--profile development --datasetId simplemodeling-bok-development
 --sourceId simplemodeling-development` asserts the resolved development
 identity; it does not select development. A value from a development or
@@ -455,8 +459,11 @@ single-source tuple to assert.
 For an operator-facing browser projection, open
 `/web/bok/textus-bok/map` on the same runtime. Its filters select the same
 public operation; the page keeps complete tables available without JavaScript
-and renders the selected profile, source, generation, and evidence in its
-source-generation table/no-JavaScript output. Omit the profile for official;
+and renders direct selection profile, source, generation, and evidence in its
+source-generation table/no-JavaScript output. For a catalog selection, it
+renders the catalog identity and every selected member's deterministic,
+source-qualified attribution; it does not render a synthetic direct tuple.
+Omit the profile for official;
 choose development explicitly, or choose project with its exact `projectId`.
 Choose catalog with its exact `catalogId`; do not combine it with a project or
 source assertion. The form has no resource, registration, replacement, or
