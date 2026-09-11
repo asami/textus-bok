@@ -145,14 +145,16 @@ final class BokDomainModelSpec extends AnyWordSpec with Matchers with GivenWhenT
         val selectionmethods = selection.getMethods.map(method => method.getName -> method.getReturnType).toMap
         val accessors = readresponses.map(_.getMethods.find(_.getName == "selection").map(_.getReturnType))
 
-        Then("the selection retains profile, exact generation, and evidence for every read")
+        Then("the selection retains profile and conditional direct-or-catalog attribution for every read")
         selection.getSimpleName shouldBe "BokResolvedSelection"
         selectionmethods("resolvedProfile") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokProfile]
         selectionmethods("projectId") shouldBe classOf[Option[?]]
-        selectionmethods("datasetId") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokDatasetId]
-        selectionmethods("sourceId") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokSourceId]
-        selectionmethods("generation") shouldBe classOf[org.simplemodeling.textus.bok.datatype.BokSourceGeneration]
-        selectionmethods("evidence") shouldBe classOf[org.simplemodeling.textus.bok.value.BokEvidence]
+        selectionmethods("catalogId") shouldBe classOf[Option[?]]
+        selectionmethods("datasetId") shouldBe classOf[Option[?]]
+        selectionmethods("sourceId") shouldBe classOf[Option[?]]
+        selectionmethods("generation") shouldBe classOf[Option[?]]
+        selectionmethods("evidence") shouldBe classOf[Option[?]]
+        selectionmethods("members") shouldBe classOf[Vector[?]]
         accessors shouldBe Vector.fill(readresponses.size)(Some(selection))
       }
     }

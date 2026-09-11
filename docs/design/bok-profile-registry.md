@@ -1,6 +1,6 @@
 # BoK Profile Registry Design
 
-Status: stable Phase 7.1 design
+Status: stable Phase 7.1 direct-profile design; Phase 10.1 catalog extension
 
 ## Purpose
 
@@ -12,8 +12,8 @@ atomic BoK generation admission, and later resident catalog integration.
 
 The registry resolves a profile; it does not own backend choice or resident
 storage. Those responsibilities belong to the private BoK knowledge backend
-contract. Public catalog-backed reads, REST/Web/MCP projection, and real
-two-source runtime acceptance remain Phase 10.1 work.
+contract. P10-03C realizes public catalog-backed reads and their existing
+REST/Web/MCP projection; real two-source runtime acceptance remains P10-04 work.
 
 This registry is not a source-discovery mechanism. Its inputs are explicit
 configuration and an explicit authorization set; it has no reason to inspect a
@@ -33,12 +33,20 @@ and validates this object before an action call exists. Each binding declares:
 - one generation-level `BokEvidence`; and
 - an optional `freshnessGeneration` requirement.
 
+The private object may also carry a `catalogs` collection. A catalog is one
+logical `catalogId` with nonempty, unique existing direct profile keys as
+members. It has no public representation, enumeration, member override,
+resource field, or priority. Members are inclusion-only and cannot name a
+catalog, so the configuration cannot create nested or recursive composition.
+
 The raw `BokKnowledgeSource.resource` reference exists only inside this private
 binding. A public request never constructs or overrides it. The registry passes
 that configured descriptor to `BokSourceReader`, so CNCF `ResourceAccess`
 remains the only source-reading boundary.
 
-Duplicate normalized keys are rejected before configuration mutation. A
+Duplicate normalized keys, empty catalogs, duplicate catalog identities,
+duplicate catalog members, and unknown member keys are rejected before
+configuration mutation. A
 dataset identity may belong to only one profile key, which prevents a
 development or project binding from claiming the configured official dataset.
 Changing a binding is atomic: an invalid replacement configuration leaves the
@@ -67,8 +75,8 @@ component has a registry, that operation may identify only a configured
 dataset/source/generation tuple: its request-side resource field is ignored,
 and the installed binding is the sole resource supplier. When no registry is
 configured, the pre-Phase-7 administrative replacement behavior remains
-available for compatibility. Public read selection is still deferred to Phase
-7.2.
+available for compatibility. P10-03C public read selection uses the configured
+direct-or-catalog resolver.
 
 An incomplete or degraded publication does not replace admitted state. When a
 configuration update retains the same dataset and source identities, the prior
@@ -78,7 +86,7 @@ as stale.
 
 ## Resolution Boundary
 
-Resolution accepts only:
+Direct resolution accepts only:
 
 - a logical `BokProfileSelection`;
 - optional dataset/source compatibility filters; and
@@ -89,11 +97,26 @@ binding, locates the exact key, requires one admitted complete generation,
 checks freshness, and finally checks compatibility filters. It never probes a
 different key after failure.
 
+Catalog resolution accepts only the closed `profile = catalog` request and a
+logical `catalogId`; direct `projectId`, `datasetId`, and `sourceId` conflict
+with it. The registry authorizes the catalog and independently resolves every
+private member through the direct sequence. Each member retains its own
+authorization, registration, complete-generation admission, and freshness
+gate. Any one failure fails the catalog with its existing structured outcome;
+the registry cannot return a partial catalog, choose an alternate member, or
+fall back to another profile.
+
 `ResolvedBokProfile` contains only profile/project attribution, dataset,
 source, generation, and evidence. It deliberately has no resource-reference
 field. Phase 7.2 can use this tuple to constrain backend completion and the
 retained optional SIE provider path without exposing administrative
 configuration.
+
+Catalog selection attribution has `resolvedProfile = catalog`, its requested
+`catalogId`, and deterministic complete direct member attributions ordered by
+source-qualified `(sourceId, datasetId, generation)`. It deliberately has no
+top-level source/dataset/generation/evidence tuple and does not establish a
+primary member or precedence. P10-03C realizes the CML and runtime selector.
 
 ## Failure Representation
 
@@ -114,5 +137,7 @@ and renders that code only as the escaped `error.appStatus` property. Neither
 surface recovers a code from the Reason or message, and neither may attribute a
 failure to a fallback profile.
 
-The private resource reference and identities of unrelated project bindings
-are not included in those failures.
+The private resource reference, catalog membership, and identities of
+unrelated project bindings are not included in those failures. Existing CNCF
+MCP `tools/call` remains the sole read transport; registry/replacement/catalog
+administration remains non-MCP-ready and no second BoK server is introduced.

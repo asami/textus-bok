@@ -21,7 +21,8 @@ import org.simplemodeling.textus.bok.runtime.{
   BokSourceReader,
   BokKnowledgeTopology,
   NormalizedBokSource,
-  ResolvedBokProfile
+  ResolvedBokProfile,
+  ResolvedBokSelection
 }
 import org.simplemodeling.textus.bok.value.*
 
@@ -316,9 +317,9 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
       lexical.results.map(_.identity) should contain("smartdox:framework:guide:intro")
       lexical.limit shouldBe 2
       lexical.truncated shouldBe false
-      lexical.selection.sourceId.value shouldBe "source-a"
-      lexical.selection.datasetId.value shouldBe "dataset-a"
-      lexical.selection.generation.value shouldBe "g1"
+      lexical.selection.sourceId.map(_.value) shouldBe Some("source-a")
+      lexical.selection.datasetId.map(_.value) shouldBe Some("dataset-a")
+      lexical.selection.generation.map(_.value) shouldBe Some("g1")
       discovered.status.value shouldBe "matched"
       discovered.results.map(_.identity) shouldBe Vector(
         "component:org.example:account:1.0.0",
@@ -342,6 +343,128 @@ final class BokSemanticRetrievalSpec extends AnyWordSpec with Matchers with Give
       section.status.value shouldBe "matched"
       section.result.flatMap(_.sectionId) shouldBe Some("intro")
       section.result.map(_.evidence.sourceId.value) shouldBe Some("source-a")
+    }
+
+    "read every source-qualified semantic member through a resolved catalog selection" in {
+      Given("two complete direct generations with public manifest, resource, and section records")
+      val catalog = new BokKnowledgeCatalog()
+      val projectsource = BokKnowledgeSource(
+        BokSourceId("a-project-source"),
+        BokDatasetId("project-dataset"),
+        BokSourceGeneration("project-g1"),
+        BokResourceReference("urn:textus:bok:semantic-project")
+      )
+      val developmentsource = BokKnowledgeSource(
+        BokSourceId("z-development-source"),
+        BokDatasetId("development-dataset"),
+        BokSourceGeneration("development-g1"),
+        BokResourceReference("urn:textus:bok:semantic-development")
+      )
+      val projectselection = ResolvedBokProfile(
+        "project",
+        Some("knowledgehub"),
+        projectsource.datasetId,
+        projectsource.sourceId,
+        projectsource.generation,
+        BokEvidence(BokEvidenceUri("urn:textus:bok:semantic-project:selection"), projectsource.sourceId, None, None, None)
+      )
+      val developmentselection = ResolvedBokProfile(
+        "development",
+        None,
+        developmentsource.datasetId,
+        developmentsource.sourceId,
+        developmentsource.generation,
+        BokEvidence(BokEvidenceUri("urn:textus:bok:semantic-development:selection"), developmentsource.sourceId, None, None, None)
+      )
+      val projectmanifest = _semantic_record(
+        "component-manifest",
+        "catalog:project:manifest",
+        "Catalog Project Manifest",
+        "Catalog project manifest metadata",
+        "catalog-project",
+        None,
+        "https://example.test/catalog/project/manifest",
+        "public",
+        "project"
+      ).copy(
+        sourceId = projectsource.sourceId.value,
+        datasetId = projectsource.datasetId.value,
+        generation = projectsource.generation.value
+      )
+      val projectsection = _semantic_record(
+        "smartdox-section",
+        "catalog:project:section",
+        "Catalog Project Section",
+        "Catalog project section metadata",
+        "catalog-project",
+        Some("overview"),
+        "https://example.test/catalog/project#overview",
+        "public",
+        "project"
+      ).copy(
+        sourceId = projectsource.sourceId.value,
+        datasetId = projectsource.datasetId.value,
+        generation = projectsource.generation.value
+      )
+      val developmentresource = _semantic_record(
+        "rdf-jsonld",
+        "catalog:development:resource",
+        "Catalog Development Resource",
+        "Catalog development resource metadata",
+        "catalog-development",
+        None,
+        "https://example.test/catalog/development/resource",
+        "public",
+        "development"
+      ).copy(
+        sourceId = developmentsource.sourceId.value,
+        datasetId = developmentsource.datasetId.value,
+        generation = developmentsource.generation.value
+      )
+      catalog.commit(BokFederationPublication("complete", Record.empty), NormalizedBokSource(
+        projectsource,
+        Vector.empty,
+        Vector.empty,
+        Vector.empty,
+        BokKnowledgeTopology.empty,
+        Vector(projectmanifest, projectsection)
+      )) shouldBe true
+      catalog.commit(BokFederationPublication("complete", Record.empty), NormalizedBokSource(
+        developmentsource,
+        Vector.empty,
+        Vector.empty,
+        Vector.empty,
+        BokKnowledgeTopology.empty,
+        Vector(developmentresource)
+      )) shouldBe true
+      val access = BokSemanticAccess(
+        ResolvedBokSelection.Catalog(
+          BokCatalogId("documentation"),
+          Vector(projectselection, developmentselection)
+        ),
+        BokSemanticAccess.CallerPrivilege.Public
+      )
+
+      When("all five existing semantic reads consume the catalog selection")
+      val search = catalog.searchSemanticKnowledge(access, "Catalog", 10)(_ => Consequence.success(Map.empty)).TAKE
+      val discovery = catalog.discoverSemanticKnowledge(access, "Catalog", 10)
+      val manifest = catalog.getSemanticManifest(access, "catalog:project:manifest")
+      val resource = catalog.getSemanticResource(access, "catalog:development:resource")
+      val section = catalog.getSemanticSection(access, "catalog-project", "overview")
+
+      Then("semantic records preserve caller privilege and selection attribution without a synthetic primary source")
+      search.results.map(_.sourceId) shouldBe Vector("a-project-source", "z-development-source", "a-project-source")
+      discovery.results.map(_.sourceId) shouldBe Vector("a-project-source", "a-project-source", "z-development-source")
+      manifest.result.map(_.sourceId) shouldBe Some("a-project-source")
+      resource.result.map(_.sourceId) shouldBe Some("z-development-source")
+      section.result.map(_.sourceId) shouldBe Some("a-project-source")
+      search.selection.resolvedProfile.value shouldBe "catalog"
+      search.selection.catalogId.map(_.value) shouldBe Some("documentation")
+      search.selection.datasetId shouldBe empty
+      search.selection.sourceId shouldBe empty
+      search.selection.generation shouldBe empty
+      search.selection.evidence shouldBe empty
+      search.selection.members.map(_.sourceId.value) shouldBe Vector("a-project-source", "z-development-source")
     }
 
     "withhold duplicate exact SmartDox sections as ambiguous" in {

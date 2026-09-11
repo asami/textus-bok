@@ -1,6 +1,6 @@
 # BoK Profile Selection Contract
 
-Status: Phase 7 authoritative specification
+Status: Phase 7 direct-profile compatibility specification; Phase 10.1 catalog extension authoritative
 
 ## Scope
 
@@ -17,21 +17,26 @@ The terms `MUST`, `MUST NOT`, `SHOULD`, and `MAY` describe normative behavior.
 
 - `official`;
 - `development`; and
-- `project`.
+- `project`; and
+- `catalog`.
 
 Omitting `profile` MUST normalize to `official`. An unknown value MUST fail as
 `invalid-selection`; it MUST NOT become an operator-defined profile or an
 `unregistered` instance of a known kind.
 
-`projectId` is an optional logical identifier with this validity matrix:
+`projectId` and `catalogId` are optional logical identifiers with this
+validity matrix:
 
-| Normalized profile | `projectId` | Outcome |
+| Normalized profile | Logical identity and direct filters | Outcome |
 | --- | --- | --- |
 | `official` | omitted | valid |
 | `development` | omitted | valid |
 | `project` | present and valid | valid |
 | `project` | omitted or empty | `project-identity-required` |
 | `official` or `development` | present | `conflicting-selection` |
+| `catalog` | valid `catalogId`; `projectId`, `datasetId`, and `sourceId` omitted | valid; catalog behavior is defined by [the catalog selection contract](bok-catalog-selection-contract.md) |
+| `catalog` | `catalogId` omitted or empty | `invalid-selection` |
+| `catalog` | `projectId`, `datasetId`, or `sourceId` present | `conflicting-selection` |
 
 A valid `projectId` MUST be supplied explicitly by the caller and matched as a
 logical registry key. It MUST NOT be interpreted as a URL, filesystem path,
@@ -39,8 +44,15 @@ resource root, credential, provider configuration, current directory, Git
 checkout, hostname, or username. Public reads MUST NOT accept those values as
 profile-binding input.
 
-The normalized selection key is `(official)`, `(development)`, or
-`(project, projectId)`. One request MUST contain exactly one selection key.
+A valid `catalogId` is likewise an opaque logical registry key. It MUST NOT be
+interpreted as a URL, filesystem path, resource root, repository, credential,
+provider configuration, current directory, Git checkout, hostname, username,
+or caller-provided member list.
+
+The normalized direct selection key is `(official)`, `(development)`, or
+`(project, projectId)`. The additive aggregate key is `(catalog, catalogId)`.
+One request MUST contain exactly one selection key. Omitting `profile` still
+normalizes only to direct `official`; it MUST NOT imply `catalog` or a union.
 
 ## Profile Meaning
 
@@ -64,6 +76,15 @@ generation.
 `projectId`. Resolution and retrieval MUST remain isolated by that identity.
 No record from another project binding MAY enter the result.
 
+### Catalog
+
+`catalog` denotes one private, configured collection of existing direct
+profile keys. It is the only aggregate selector and is additive to, never a
+change in meaning of, the three direct kinds. Its membership, independent
+member resolution, selection attribution, failure behavior, and no-merge
+semantics are authoritative in
+[the catalog selection contract](bok-catalog-selection-contract.md).
+
 ## Private Binding and Resolution
 
 Bindings MUST be supplied through private component or SAR configuration and
@@ -71,8 +92,8 @@ MUST reference admitted logical resources read through CNCF resource access.
 Registration and source replacement MUST remain administrative and
 non-MCP-ready.
 
-For one authorized normalized selection key, the resolver MUST produce exactly
-one tuple:
+For one authorized direct normalized selection key, the resolver MUST produce
+exactly one tuple:
 
 ```text
 resolvedProfile
@@ -92,16 +113,21 @@ If an explicit binding freshness policy rejects the otherwise complete
 generation, resolution MUST fail as `stale`; retaining that generation for
 atomic rollback safety does not make it readable through the stale binding.
 
-Resolution MUST NOT probe a different profile or project after any failure.
+Resolution MUST NOT probe a different direct profile or project after any
+failure. Catalog resolution applies that same rule independently to every
+private member and fails as a whole if any member fails; it has no partial
+success or fallback.
 It MUST NOT use SIE to choose a profile. Provider-backed candidates MAY be
 queried only after resolution and MUST be constrained to the resolved dataset
 and source before classification, overfetch completion, or result limiting.
 
 ## Dataset and Source Compatibility Filters
 
-Existing optional `datasetId` and `sourceId` inputs MUST be evaluated only
-after profile resolution. They are assertions or narrowing filters within the
-resolved tuple; they are not profile selectors.
+For direct selection, existing optional `datasetId` and `sourceId` inputs MUST
+be evaluated only after profile resolution. They are assertions or narrowing
+filters within the resolved tuple; they are not profile selectors. A catalog
+request rejects either field, as well as `projectId`, as
+`conflicting-selection`; it cannot use a direct filter to select a member.
 
 | Filter state | Required outcome |
 | --- | --- |
@@ -115,7 +141,7 @@ be constrained to the resolved tuple before match classification and limits.
 
 ## Successful Attribution
 
-Every successful read response MUST identify:
+Every successful direct read response MUST identify:
 
 - `resolvedProfile`;
 - `projectId` when the resolved profile is `project`;
@@ -127,6 +153,12 @@ Every successful read response MUST identify:
 Omitted selection therefore reports `resolvedProfile = official`. Record-level
 evidence MUST remain present where the existing domain contract requires it;
 selection attribution does not replace source evidence.
+
+A successful catalog read retains the response field name `selection` but has
+`resolvedProfile = catalog`, the requested `catalogId`, and deterministic
+complete member attributions. It has no fabricated top-level dataset, source,
+generation, or evidence tuple. Future CML must make those single-source fields
+conditional; this specification does not change CML or claim runtime support.
 
 REST, the Phase-7 four existing MCP-ready terminology/component reads, and the Static
 Form Knowledge Map MUST eventually project equivalent selection and
@@ -148,14 +180,14 @@ framework-wide, or substitute a fallback or foreign result.
 
 | Failure | Meaning |
 | --- | --- |
-| `invalid-selection` | `profile` is not one of the three closed kinds or the selector shape is malformed. |
+| `invalid-selection` | `profile` is not one of the four closed kinds, a required logical identity is absent, or the selector shape is malformed. |
 | `project-identity-required` | `project` was selected without a usable explicit `projectId`. |
 | `unregistered` | No private binding exists for the authorized normalized key. |
 | `unavailable` | A binding exists but no admitted complete generation is readable. |
 | `stale` | The binding's explicit freshness policy rejects its complete generation. |
 | `ambiguous` | More than one binding or eligible complete generation claims the same normalized key. |
 | `unauthorized` | The caller is not permitted to select the normalized key. |
-| `conflicting-selection` | `projectId`, `datasetId`, or `sourceId` contradicts the normalized/resolved profile. |
+| `conflicting-selection` | `projectId`, `datasetId`, or `sourceId` contradicts the normalized/resolved direct profile, or a catalog request supplies a forbidden direct selector/filter. |
 
 Authorization MUST be evaluated without revealing private binding locations or
 the identities of other projects. A transport MAY conceal finer diagnostic
@@ -191,6 +223,10 @@ can read all selected complete generations. After integration:
   fail as `conflicting-selection`; and
 - no compatibility flag or fallback MAY restore implicit all-profile union.
 
+Catalog is an additional explicit request and does not alter this migration:
+omitted profile remains official, while direct development and project requests
+retain their existing shapes and successful `BokResolvedSelection` form.
+
 This is an intentional compatibility migration. Public schemas and operator
 guidance delivered by later Phases MUST make the new default and explicit
 non-official selection visible.
@@ -208,7 +244,7 @@ script and probe, and the resolved-profile executable specification.
 
 | Conformance concern | Required representative behavior |
 | --- | --- |
-| Positive selection | Omitted selection MUST read only official; explicit development and each project key MUST read only that key's generation and retain its exact selection and record evidence. |
+| Positive direct selection | Omitted selection MUST read only official; explicit development and each project key MUST read only that key's generation and retain its exact selection and record evidence. |
 | Foreign term isolation | For every selected key, a cyclic probe for a term owned by another key MUST return no-match with empty results and the selected attribution. It MUST NOT union or fall back. |
 | Foreign topology isolation | For every selected key, a cyclic focus for a node owned by another key MUST return no-match with empty nodes and relationships and the selected attribution. It MUST NOT expose the foreign node or topology. |
 | Cross-surface reads | REST terminology and Knowledge Map reads MUST expose the resolved tuple; qualified MCP read tools MUST expose equivalent attribution for their respective reads; the Static Form Knowledge Map MUST agree with the REST map projection. Incomplete and unknown projects additionally prove MCP `structuredContent.error.appStatus` and the HTTP-200 Web `error.appStatus` page property without fallback attribution. |
@@ -224,10 +260,11 @@ failure under the outcomes above.
 
 ## Isolation and Non-goals
 
-- A response MUST contain records from one resolved profile and, for
-  `project`, one exact project identity only.
+- A direct response MUST contain records from one resolved profile and, for
+  `project`, one exact project identity only. The explicit catalog response is
+  governed by the catalog selection contract and is never an implicit union.
 - Cross-profile union, overlay, precedence, deduplication, and conflict merge
-  are outside this contract.
+  remain outside direct selection and are forbidden for catalog reads.
 - Profile selection is read-only and MUST NOT mutate a source or registry.
 - Direct filesystem/network discovery and caller-supplied resource locations
   are forbidden.

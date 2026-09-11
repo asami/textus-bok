@@ -1,18 +1,28 @@
 package org.simplemodeling.textus.bok
 
+import io.circe.Json
+import io.circe.parser.parse
+import org.goldenport.cncf.action.ActionCall
 import org.goldenport.cncf.component.{Component, ComponentCreate, ComponentOrigin}
+import org.goldenport.cncf.context.ExecutionContext
 import org.goldenport.cncf.mcp.{McpJsonRpcAdapter, McpProtocolRevision, McpToolCatalog}
-import org.goldenport.cncf.subsystem.DefaultSubsystemFactory
-import org.goldenport.configuration.{Configuration, ConfigurationValue}
+import org.goldenport.cncf.resource.{InMemoryTextusUrnResourceProvider, ResourceAccessTestProfile}
+import org.goldenport.cncf.subsystem.{DefaultSubsystemFactory, Subsystem}
+import org.goldenport.cncf.testutil.RuntimeBindingAdmissionFixture
+import org.goldenport.configuration.{Configuration, ConfigurationTrace, ConfigurationValue, ResolvedConfiguration}
+import org.goldenport.protocol.operation.OperationResponse
+import org.goldenport.record.Record
 import org.scalatest.GivenWhenThen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.simplemodeling.textus.bok.datatype.*
 import org.simplemodeling.textus.bok.impl
+import org.simplemodeling.textus.bok.value.BokKnowledgeSource
 
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Sep. 9, 2026
+ * @version Sep. 11, 2026
  * @author  ASAMI, Tomoharu
  */
 final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhenThen {
@@ -61,13 +71,15 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "category",
         "limit",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       searchschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
       explainschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "term",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       explainschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("term"))
       componentsearchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
@@ -75,7 +87,8 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "kind",
         "limit",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       componentsearchschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
       componentlookupschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
@@ -84,7 +97,8 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "kind",
         "organization",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       componentlookupschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("name"))
       mapschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
@@ -96,40 +110,46 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         "nodeLimit",
         "relationshipLimit",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       mapschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector.empty)
       semanticsearchschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "query",
         "limit",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       semanticsearchschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
       manifestchema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "identity",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       manifestchema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("identity"))
       resourceschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "identity",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       resourceschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("identity"))
       sectionschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "documentId",
         "sectionId",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       sectionschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("documentId", "sectionId"))
       discoverschema.hcursor.downField("properties").keys.get.toSet shouldBe Set(
         "query",
         "limit",
         "profile",
-        "projectId"
+        "projectId",
+        "catalogId"
       )
       discoverschema.hcursor.get[Vector[String]]("required") shouldBe Right(Vector("query"))
 
@@ -148,6 +168,7 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       ).foreach { schema =>
         schema.hcursor.downField("properties").downField("profile").get[String]("type") shouldBe Right("string")
         schema.hcursor.downField("properties").downField("projectId").get[String]("type") shouldBe Right("string")
+        schema.hcursor.downField("properties").downField("catalogId").get[String]("type") shouldBe Right("string")
       }
       outputs.get("searchTerms") shouldBe Some("SearchTermsResponse")
       outputs.get("explainTerm") shouldBe Some("ExplainTermResponse")
@@ -159,6 +180,73 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       outputs.get("getSemanticResource") shouldBe Some("SemanticResourceResponse")
       outputs.get("getSemanticSection") shouldBe Some("SemanticSectionResponse")
       outputs.get("discoverSemanticKnowledge") shouldBe Some("SemanticKnowledgeDiscoveryResponse")
+    }
+
+    "read a selected resident catalog through MCP" which {
+      "return the same official terminology and attribution as the ordinary searchTerms operation" in {
+        Given("one configured official source, an in-memory resource access, and a server subsystem containing only BoK")
+        val source = _official_source
+        val subsystem = RuntimeBindingAdmissionFixture.admit(
+          new Subsystem(
+            name = "textus-bok-mcp-resident-catalog-spec",
+            configuration = _official_profile_configuration(source)
+          )
+        )
+        val bundle = new impl.ComponentFactory().create(
+          ComponentCreate(subsystem, ComponentOrigin.Repository("bok-mcp-resident-catalog-spec"))
+        )
+        val component = bundle.primary
+        val context = _official_context
+        subsystem.add(bundle)
+
+        When("the existing non-MCP replacement boundary admits the complete official generation and both read boundaries search it")
+        val replacement = _replace(component, context, source)
+        val ordinary = _search_terms(component, context, "P10 MCP Marker")
+        val mcpresponse = _mcp_search_terms(new McpJsonRpcAdapter(subsystem), "P10 MCP Marker")
+
+        Then("the resident catalog has one complete official selection without a SemanticIntegrationEngine component")
+        replacement.getString("status") shouldBe Some("complete")
+        replacement.getString("sourceId") shouldBe Some(source.sourceId.value)
+        replacement.getString("datasetId") shouldBe Some(source.datasetId.value)
+        replacement.getString("generation") shouldBe Some(source.generation.value)
+        subsystem.components.toVector shouldBe Vector(component)
+
+        And("ordinary searchTerms and MCP tools/call resolve the same full selection and source evidence")
+        mcpresponse.hcursor.downField("error").focus shouldBe None
+        mcpresponse.hcursor.downField("result").downField("isError").focus shouldBe None
+        val mcptext = mcpresponse.hcursor.downField("result").downField("content").downN(0).get[String]("text")
+          .getOrElse(fail("MCP search outcome has no JSON text content"))
+        val mcp = parse(mcptext).fold(error => fail(s"MCP search outcome has malformed JSON: ${error.getMessage}"), identity)
+        val ordinaryselection = ordinary.getRecord("selection").getOrElse(fail("Ordinary search selection is missing"))
+        val ordinaryevidence = ordinaryselection.getRecord("evidence").getOrElse(fail("Ordinary selection evidence is missing"))
+        val ordinarymatches = ordinary.getVector("results").getOrElse(Vector.empty).collect { case value: Record => value }
+        ordinarymatches should have size 1
+        val ordinarymatch = ordinarymatches.head
+        val ordinaryterm = ordinarymatch.getRecord("term").getOrElse(fail("Ordinary terminology match is missing"))
+        val ordinarytermevidence = ordinaryterm.getRecord("evidence").getOrElse(fail("Ordinary terminology evidence is missing"))
+        val mcpdata = mcp.hcursor
+        val mcpselection = mcpdata.downField("selection")
+        val mcpmatch = mcpdata.downField("results").downN(0)
+        val mcpterm = mcpmatch.downField("term")
+
+        ordinary.getString("status") shouldBe Some("matched")
+        mcpdata.get[String]("status") shouldBe Right(ordinary.getString("status").get)
+        mcpselection.get[String]("resolved_profile") shouldBe Right(ordinaryselection.getString("resolvedProfile").get)
+        mcpselection.get[Option[String]]("project_id") shouldBe Right(ordinaryselection.getString("projectId"))
+        mcpselection.get[String]("dataset_id") shouldBe Right(ordinaryselection.getString("datasetId").get)
+        mcpselection.get[String]("source_id") shouldBe Right(ordinaryselection.getString("sourceId").get)
+        mcpselection.get[String]("generation") shouldBe Right(ordinaryselection.getString("generation").get)
+        mcpselection.downField("evidence").get[String]("uri") shouldBe Right(ordinaryevidence.getString("uri").get)
+        mcpselection.downField("evidence").get[String]("source_id") shouldBe Right(ordinaryevidence.getString("sourceId").get)
+        mcpmatch.get[String]("match_kind") shouldBe Right(ordinarymatch.getString("matchKind").get)
+        mcpmatch.get[Double]("score") shouldBe Right(ordinarymatch.getDouble("score").get)
+        mcpterm.get[String]("term_id") shouldBe Right(ordinaryterm.getString("termId").get)
+        mcpterm.get[String]("title") shouldBe Right(ordinaryterm.getString("title").get)
+        mcpterm.get[String]("definition") shouldBe Right(ordinaryterm.getString("definition").get)
+        mcpterm.get[String]("dataset_id") shouldBe Right(ordinaryterm.getString("datasetId").get)
+        mcpterm.downField("evidence").get[String]("uri") shouldBe Right(ordinarytermevidence.getString("uri").get)
+        mcpterm.downField("evidence").get[String]("source_id") shouldBe Right(ordinarytermevidence.getString("sourceId").get)
+      }
     }
 
     "allow deployment policy to narrow reads without publishing source mutation" in {
@@ -226,4 +314,97 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       globallydisabled shouldBe empty
     }
   }
+
+  private def _official_source: BokKnowledgeSource =
+    BokKnowledgeSource(
+      BokSourceId("p10-mcp-source"),
+      BokDatasetId("p10-mcp-dataset"),
+      BokSourceGeneration("p10-mcp-generation"),
+      BokResourceReference("urn:textus:bok:p10-mcp")
+    )
+
+  private def _official_context: ExecutionContext = {
+    val provider = new InMemoryTextusUrnResourceProvider("bok", Map(
+      "p10-mcp/metadata/cncf/knowledge-source.json" ->
+        """{
+          |  "schemaVersion": "cncf.knowledge-source.v1",
+          |  "resources": [
+          |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"}
+          |  ]
+          |}""".stripMargin,
+      "p10-mcp/metadata/glossary/terms.json" ->
+        """{
+          |  "terms": [
+          |    {
+          |      "id": "phase-10:mcp-marker",
+          |      "title": "P10 MCP Marker",
+          |      "definition_text": "A selected in-memory official terminology fixture.",
+          |      "term_type": "concept"
+          |    }
+          |  ]
+          |}""".stripMargin
+    ))
+    val resources = ResourceAccessTestProfile(textusUrnProviders = Vector(provider)).resourceAccess
+    ExecutionContext.withResourceAccess(ExecutionContext.create(), resources)
+  }
+
+  private def _official_profile_configuration(source: BokKnowledgeSource): ResolvedConfiguration = {
+    val binding = ConfigurationValue.ObjectValue(Map(
+      "profile" -> ConfigurationValue.StringValue("official"),
+      "source" -> ConfigurationValue.ObjectValue(Map(
+        "sourceId" -> ConfigurationValue.StringValue(source.sourceId.value),
+        "datasetId" -> ConfigurationValue.StringValue(source.datasetId.value),
+        "generation" -> ConfigurationValue.StringValue(source.generation.value),
+        "resource" -> ConfigurationValue.StringValue(source.resource.value)
+      )),
+      "evidence" -> ConfigurationValue.ObjectValue(Map(
+        "uri" -> ConfigurationValue.StringValue("https://evidence.example/p10-mcp-source"),
+        "sourceId" -> ConfigurationValue.StringValue(source.sourceId.value)
+      ))
+    ))
+    val registry = ConfigurationValue.ObjectValue(Map(
+      "profiles" -> ConfigurationValue.ListValue(List(binding))
+    ))
+    val textus = ConfigurationValue.ObjectValue(Map(
+      "bok" -> ConfigurationValue.ObjectValue(Map("profile-registry" -> registry))
+    ))
+    ResolvedConfiguration(Configuration(Map("textus" -> textus)), ConfigurationTrace.empty)
+  }
+
+  private def _replace(
+    component: Component,
+    context: ExecutionContext,
+    source: BokKnowledgeSource
+  ): Record = {
+    val action = BokComponent.BokRetrievalService.ReplaceKnowledgeSourceRequest.unsafeForTest(
+      null,
+      Record.dataAuto("source" -> source.toRecord())
+    )
+    _record(action.createCall(ActionCall.Core(action, context, Some(component), None)).execute().TAKE)
+  }
+
+  private def _search_terms(
+    component: Component,
+    context: ExecutionContext,
+    query: String
+  ): Record = {
+    val action = BokComponent.BokRetrievalService.SearchTermsRequest.unsafeForTest(
+      null,
+      Record.dataAuto("query" -> query, "limit" -> 1)
+    )
+    _record(action.createCall(ActionCall.Core(action, context, Some(component), None)).execute().TAKE)
+  }
+
+  private def _mcp_search_terms(adapter: McpJsonRpcAdapter, query: String): Json = {
+    adapter.handle(
+      s"""{"jsonrpc":"2.0","id":"resident-catalog-search","method":"tools/call","params":{"name":"org.simplemodeling.textus.Bok.BokRetrieval.searchTerms","arguments":{"query":"$query","limit":1}}}""",
+      Some(McpProtocolRevision.PREFERRED.print)
+    ).responseBody.getOrElse(fail("MCP search outcome has no JSON response body"))
+  }
+
+  private def _record(response: OperationResponse): Record =
+    response match {
+      case OperationResponse.RecordResponse(record) => record
+      case other => fail(s"Expected RecordResponse but got ${other.getClass.getName}")
+    }
 }

@@ -11,14 +11,14 @@ import org.goldenport.cncf.unitofwork.ExecUowM
 import org.goldenport.protocol.operation.OperationResponse
 import org.goldenport.record.Record
 import org.simplemodeling.textus.bok.datatype.*
-import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationRetriever, BokKnowledgeBackend, BokKnowledgeBackendConfiguration, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSemanticAccess, BokSourceReader, BokStartupBootstrapConfiguration, BokStartupBootstrapCoordinator, BokStartupBootstrapDiagnostic, NormalizedBokSource, ResolvedBokProfile}
+import org.simplemodeling.textus.bok.runtime.{BokFederationPublication, BokFederationRetriever, BokKnowledgeBackend, BokKnowledgeBackendConfiguration, BokKnowledgeCatalog, BokKnowledgeSourceReplacementService, BokProfileAdmission, BokProfileAuthorization, BokProfileCompatibilityFilter, BokProfileKey, BokProfileRegistry, BokProfileRegistryConfiguration, BokProfileResolutionFailure, BokProfileSelection, BokSemanticAccess, BokSourceReader, BokStartupBootstrapConfiguration, BokStartupBootstrapCoordinator, BokStartupBootstrapDiagnostic, NormalizedBokSource, ResolvedBokProfile, ResolvedBokSelection}
 import org.simplemodeling.textus.bok.value.*
 import org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 
 /*
  * @since   Jul. 21, 2026
  *  version Jul. 23, 2026
- * @version Sep. 10, 2026
+ * @version Sep. 11, 2026
  * @author  ASAMI, Tomoharu
  */
 
@@ -148,7 +148,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     protected def build_Program: ExecUowM[OperationResponse] = exec_from {
       for {
         query <- _required_string(action.record, "query")
-        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+        resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
         response <- catalog.searchSemanticKnowledge(
           BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public),
           query,
@@ -165,7 +165,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     protected def build_Program: ExecUowM[OperationResponse] = exec_from {
       for {
         identity <- _required_string(action.record, "identity")
-        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+        resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
       } yield OperationResponse(catalog.getSemanticManifest(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
     }
   }
@@ -177,7 +177,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     protected def build_Program: ExecUowM[OperationResponse] = exec_from {
       for {
         identity <- _required_string(action.record, "identity")
-        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+        resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
       } yield OperationResponse(catalog.getSemanticResource(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), identity).toRecord())
     }
   }
@@ -190,7 +190,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       for {
         documentid <- _required_string(action.record, "documentId")
         sectionid <- _required_string(action.record, "sectionId")
-        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+        resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
       } yield OperationResponse(catalog.getSemanticSection(BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public), documentid, sectionid).toRecord())
     }
   }
@@ -202,7 +202,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     protected def build_Program: ExecUowM[OperationResponse] = exec_from {
       for {
         query <- _required_string(action.record, "query")
-        resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+        resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
       } yield OperationResponse(catalog.discoverSemanticKnowledge(
         BokSemanticAccess(resolved, BokSemanticAccess.CallerPrivilege.Public),
         query,
@@ -245,7 +245,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
           query <- _required_string(action.record, "query")
           category = _optional_string(action.record, "category")
           limit = action.record.getInt("limit").getOrElse(10)
-          resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+          resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
           response <- catalog.searchTerms(resolved, query, category, limit) { accepted =>
             BokFederationRetriever.candidateScores(core, query, accepted, limit)
           }
@@ -261,7 +261,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       exec_from {
         for {
           query <- _required_string(action.record, "term")
-          resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+          resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
         } yield OperationResponse(catalog.explainTerm(resolved, query).toRecord())
       }
   }
@@ -276,7 +276,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
           query <- _required_string(action.record, "query")
           kind = _optional_string(action.record, "kind")
           limit = action.record.getInt("limit").getOrElse(10)
-          resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+          resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
           response <- catalog.searchComponentReferences(resolved, query, kind, limit) { accepted =>
             BokFederationRetriever.candidateScores(core, query, accepted, limit)
           }
@@ -292,7 +292,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       exec_from {
         for {
           name <- _required_string(action.record, "name")
-          resolved <- _resolve_profile(core, action.record, BokProfileCompatibilityFilter())
+          resolved <- _resolve_selection(core, action.record, BokProfileCompatibilityFilter())
         } yield OperationResponse(catalog.getComponentReference(
             resolved,
             name,
@@ -310,7 +310,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     protected def build_Program: ExecUowM[OperationResponse] =
       exec_from {
         for {
-          resolved <- _resolve_profile(
+          resolved <- _resolve_selection(
             core,
             action.record,
             BokProfileCompatibilityFilter(
@@ -372,19 +372,19 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       case _ => None
     }
 
-  private def _resolve_profile(
+  private def _resolve_selection(
     core: ActionCall.Core,
     record: Record,
     filter: BokProfileCompatibilityFilter
-  ): Consequence[ResolvedBokProfile] =
+  ): Consequence[ResolvedBokSelection] =
     for {
       selection <- _profile_selection(record)
-      key <- selection.normalize
+      authorization <- _selection_authorization(selection)
       component <- _component(core)
-      resolved <- component.resolveProfile(
+      resolved <- component.resolveSelection(
         selection,
         filter,
-        BokProfileAuthorization.allow(key)
+        authorization
       )
     } yield resolved
 
@@ -392,7 +392,16 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
     for {
       profile <- _selection_value(record, "profile")
       projectid <- _selection_value(record, "projectId")
-    } yield BokProfileSelection(profile, projectid)
+      catalogid <- _selection_value(record, "catalogId")
+    } yield BokProfileSelection(profile, projectid, catalogid)
+
+  private def _selection_authorization(
+    selection: BokProfileSelection
+  ): Consequence[BokProfileAuthorization] =
+    if (selection.isCatalog)
+      selection.catalogIdC.map(BokProfileAuthorization.allowCatalog)
+    else
+      selection.normalize.map(key => BokProfileAuthorization.allow(key))
 
   private def _selection_value(record: Record, name: String): Consequence[Option[String]] =
     record.getAny(name) match {
@@ -400,6 +409,7 @@ abstract class BokParticipantFactoryBase extends BokComponent.Factory {
       case Some(value: String) => Consequence.success(Some(value))
       case Some(value: BokProfile) => Consequence.success(Some(value.value))
       case Some(value: BokProjectId) => Consequence.success(Some(value.value))
+      case Some(value: BokCatalogId) => Consequence.success(Some(value.value))
       case Some(_) => BokProfileResolutionFailure.failure(
         BokProfileResolutionFailure.InvalidSelection,
         None,
@@ -511,6 +521,18 @@ final class BokPrimaryComponent(
       case Some(registry) => registry.resolve(selection, filter, authorization)
       case None => BokProfileRegistry.create(BokProfileRegistryConfiguration(Vector.empty)).flatMap(
         _.resolve(selection, filter, authorization)
+      )
+    }
+
+  private[bok] def resolveSelection(
+    selection: BokProfileSelection,
+    filter: BokProfileCompatibilityFilter,
+    authorization: BokProfileAuthorization
+  ): Consequence[ResolvedBokSelection] =
+    _profile_registry match {
+      case Some(registry) => registry.resolveSelection(selection, filter, authorization)
+      case None => BokProfileRegistry.create(BokProfileRegistryConfiguration(Vector.empty)).flatMap(
+        _.resolveSelection(selection, filter, authorization)
       )
     }
 

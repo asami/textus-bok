@@ -1,6 +1,6 @@
 # BoK Profile Registry Contract
 
-Status: Phase 7.1 authoritative specification
+Status: Phase 7.1 direct-profile specification; Phase 10.1 catalog extension authoritative
 
 ## Scope
 
@@ -24,6 +24,20 @@ collection whose entries have this internal shape:
 | `source` | One complete `BokKnowledgeSource` descriptor supplied by private component/SAR configuration. |
 | `evidence` | Generation-level `BokEvidence` whose `sourceId` equals the configured source identity. |
 | `freshnessGeneration` | Optional exact generation required for readable resolution. |
+
+The same private object MAY contain a `catalogs` collection. Each catalog has
+one opaque logical `catalogId` and a nonempty collection of unique existing
+direct profile keys. A member key can name only a configured `official`,
+`development`, or exact `project` key; it cannot name a catalog. Catalog
+membership is inclusion-only: it supplies no priority, result precedence,
+resource location, or public enumeration capability.
+
+The registry MUST reject an empty catalog, duplicate member, unknown member,
+or duplicate catalog identity before installing configuration. It MUST validate
+catalog changes atomically with profile changes: a failed catalog validation
+preserves the prior installed profiles, catalogs, and admissions. Neither a
+public request nor a configured member may provide a resource reference, URL,
+filesystem path, repository, credential, or caller-selected member list.
 
 The registry MUST reject duplicate normalized keys as `ambiguous` before
 installing the configuration. It MUST reject use of one dataset identity by
@@ -76,7 +90,7 @@ freshness.
 
 ## Deterministic Resolution
 
-For one request the resolver MUST perform these checks in order:
+For one direct request the resolver MUST perform these checks in order:
 
 1. normalize and validate the closed selection shape;
 2. authorize the exact normalized key;
@@ -92,6 +106,16 @@ from unregistered private project keys.
 The resolver MUST NOT try another profile or project after any failure. An
 omitted profile MUST resolve only `official`; it MUST NOT fall back to an
 available development or project binding.
+
+For `profile = catalog`, the resolver validates the required logical
+`catalogId`, rejects `projectId`, `datasetId`, and `sourceId` as
+`conflicting-selection`, authorizes the requested catalog without revealing
+its configuration, and resolves every configured member through the complete
+direct sequence above. Authorization, registration, complete-generation
+admission, and freshness are independently required for every member. A
+single member failure fails the catalog with the existing structured outcome;
+the resolver MUST NOT return a partial catalog, fallback profile, or foreign
+generation.
 
 ## Successful Result
 
@@ -110,19 +134,30 @@ The result MUST NOT contain the configured resource reference. Project results
 MUST contain the exact explicit project identity, and non-project results MUST
 not contain a project identity.
 
+A catalog result retains the response field `selection` with
+`resolvedProfile = catalog`, its requested `catalogId`, and deterministic
+complete direct member attributions. It has no top-level dataset, source,
+generation, or evidence tuple. Member attributions are source-qualified and
+ordered by `(sourceId, datasetId, generation)`; this is not a precedence rule.
+The future CML model must make single-source fields conditional rather than
+fabricating a primary member. This specification does not change CML or claim
+that the runtime selector exists.
+
 ## Structured Failures
 
 Every failure MUST be a structured `Consequence.Failure`. Its Observation MUST
 carry an appropriate taxonomy and a `Reason` facet containing one stable code:
 
-- `invalid-selection`;
+- `invalid-selection` (including an absent or malformed required `catalogId`);
 - `project-identity-required`;
 - `unregistered`;
 - `unavailable`;
 - `stale`;
 - `ambiguous`;
 - `unauthorized`; or
-- `conflicting-selection`.
+- `conflicting-selection` (including a catalog request that supplies
+  `projectId`, `datasetId`, or `sourceId`).
 
-A failure MUST return no result from another profile and MUST NOT expose the
-configured resource reference or unrelated project bindings.
+A failure MUST return no result from another profile or a partial catalog and
+MUST NOT expose the configured resource reference, catalog membership, or
+unrelated project bindings.

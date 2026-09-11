@@ -25,6 +25,11 @@ textus.bok.profile-registry:
         uri: "https://www.asamioffice.com/kokubunji/knowledgehub/"
         sourceId: "knowledgehub"
       freshnessGeneration: "sha256:ce991b30a90b6bb6c65f4b3593124e78d2e2ecd28d1cacbcd2258abb30e16608"
+  catalogs:
+    - catalogId: documentation
+      members:
+        - development
+        - project:knowledgehub
 textus.bok.bootstrap:
   profiles:
     - development

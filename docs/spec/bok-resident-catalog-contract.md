@@ -1,6 +1,6 @@
 # BoK Resident Catalog Contract
 
-Status: Phase 10 P10-02 authoritative private specification
+Status: Phase 10 P10-02 private specification; Phase 10.1 catalog-read boundary extension authoritative
 
 ## Scope and authority
 
@@ -8,7 +8,11 @@ This private contract defines the resident in-memory catalog after one or more
 independently resolved and admitted BoK generations. It completes the private
 backend contract for source-qualified storage and scoped replacement. Profile
 resolution, authorization, complete-generation admission, and public read or
-MCP contracts remain owned by their existing specifications.
+MCP contracts remain owned by their existing specifications. The explicit
+catalog selector defined in
+[the catalog selection contract](bok-catalog-selection-contract.md) is a later
+public reader concern; this private storage contract does not claim its runtime
+implementation.
 
 The catalog is an administrative storage boundary. It is not a source
 registration, reload, mutation, public enumeration, REST/Web, or MCP API.
@@ -49,12 +53,22 @@ or generation. Terms, components, topology nodes, and topology relationships
 retain source-qualified ordering and identity so equal local labels and IDs
 remain distinct. Ordering uses `(sourceId, datasetId, localIdentity...)`.
 
+For a future explicitly selected catalog, the public reader may receive the
+independently resolved resident values for every configured member only after
+all members pass their existing checks. This does not change resident storage
+or replacement: each value remains scoped, complete, atomic, and separately
+attributable. No member is a primary resident source.
+
 No semantic merge, precedence, overlay, `sameAs`, cross-profile fallback,
-reconciliation, or union read is defined by this contract.
+reconciliation, deduplication, or implicit union read is defined by this
+contract. A catalog read is not resident enumeration and cannot expose or
+mutate source registration, replacement, or private membership.
 
 ## Deferred boundaries
 
 Public catalog-backed reads, public enumeration, REST/Web/MCP projection,
 source registration, a two-source external runtime, and any generated or CML
-surface remain Phase 10.1 or later work. This contract changes only private
-resident storage and its private replacement seam.
+surface remain Phase 10.1 or later work. Existing CNCF MCP `tools/call`
+remains the only potential read transport; no administrative MCP surface or
+second BoK server follows from this contract. This contract changes only
+private resident storage and its private replacement seam.

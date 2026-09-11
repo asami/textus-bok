@@ -46,9 +46,9 @@ final case class BokSemanticRecord(
   )
 }
 
-/** Selected profile and caller disclosure boundary for direct semantic reads. */
+/** Selected profile and caller disclosure boundary for semantic reads. */
 final case class BokSemanticAccess(
-  selection: ResolvedBokProfile,
+  selection: ResolvedBokSelection,
   privilege: BokSemanticAccess.CallerPrivilege
 ) {
   def permits(record: BokSemanticRecord): Boolean = privilege match {
@@ -58,6 +58,12 @@ final case class BokSemanticAccess(
 }
 
 object BokSemanticAccess {
+  def apply(
+    selection: ResolvedBokProfile,
+    privilege: CallerPrivilege
+  ): BokSemanticAccess =
+    new BokSemanticAccess(ResolvedBokSelection.Direct(selection), privilege)
+
   enum CallerPrivilege {
     case Public
     case MetadataReader

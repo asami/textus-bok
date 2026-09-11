@@ -76,10 +76,27 @@ final class BokKnowledgeCatalog {
     focus: Option[String],
     nodeLimit: Option[Int],
     relationshipLimit: Option[Int]
+  ): GetKnowledgeMapResponse =
+    getKnowledgeMap(
+      ResolvedBokSelection.Direct(resolved),
+      category,
+      termType,
+      focus,
+      nodeLimit,
+      relationshipLimit
+    )
+
+  def getKnowledgeMap(
+    selection: ResolvedBokSelection,
+    category: Option[String],
+    termType: Option[String],
+    focus: Option[String],
+    nodeLimit: Option[Int],
+    relationshipLimit: Option[Int]
   ): GetKnowledgeMapResponse = synchronized {
     val nodebound = _map_limit(nodeLimit, BokKnowledgeCatalog.DEFAULT_KNOWLEDGE_MAP_NODE_LIMIT, "node")
     val relationshipbound = _map_limit(relationshipLimit, BokKnowledgeCatalog.DEFAULT_KNOWLEDGE_MAP_RELATIONSHIP_LIMIT, "relationship")
-    val sources = _map_sources(resolved)
+    val sources = _map_sources(selection)
     val nodes = sources.flatMap(_map_nodes)
     val relationships = sources.flatMap(_map_relationships)
     val filtered = nodes.filter(_matches_map_filters(_, category, termType))
@@ -123,7 +140,7 @@ final class BokKnowledgeCatalog {
     val status = if (resultnodes.nonEmpty) "matched" else "no-match"
     GetKnowledgeMapResponse(
       BokQueryStatus(status),
-      _selection(resolved),
+      _selection(selection),
       sources.map(_map_selected_source),
       resultnodes.map(_map_node),
       resultrelationships.map(_map_relationship),
@@ -141,15 +158,25 @@ final class BokKnowledgeCatalog {
     limit: Int
   )(
     candidateScores: Set[BokCandidateKey] => Consequence[Map[BokCandidateKey, Double]]
+  ): Consequence[SearchTermsResponse] =
+    searchTerms(ResolvedBokSelection.Direct(resolved), query, category, limit)(candidateScores)
+
+  def searchTerms(
+    selection: ResolvedBokSelection,
+    query: String,
+    category: Option[String],
+    limit: Int
+  )(
+    candidateScores: Set[BokCandidateKey] => Consequence[Map[BokCandidateKey, Double]]
   ): Consequence[SearchTermsResponse] = {
-    val entries = _terms(resolved).filter { entry =>
+    val entries = _terms(selection).filter { entry =>
       category.forall(x => entry.term.category.exists(y => _normalize(y.value) == _normalize(x)))
     }
     val exact = entries.filter(x => _term_identities(x.term).contains(_normalize(query)))
     if (_normalize(query).isEmpty || entries.isEmpty)
-      Consequence.success(_term_response(resolved, "no-match", query, Vector.empty, limit))
+      Consequence.success(_term_response(selection, "no-match", query, Vector.empty, limit))
     else if (exact.nonEmpty)
-      Consequence.success(_term_response(resolved, _term_status(exact.map(_.term)), query, exact.map(x => _term_match(x.term, "exact", 1.0, query)), limit))
+      Consequence.success(_term_response(selection, _term_status(exact.map(_.term)), query, exact.map(x => _term_match(x.term, "exact", 1.0, query)), limit))
     else
       candidateScores(entries.map(_term_candidate_key).toSet).map { scores =>
         val matches = entries.flatMap { entry =>
@@ -165,17 +192,20 @@ final class BokKnowledgeCatalog {
           if (matches.isEmpty) "no-match"
           else if (matches.size > 1 && _same_score(matches(0).score, matches(1).score)) "ambiguous"
           else "matched"
-        _term_response(resolved, status, query, matches, limit)
+        _term_response(selection, status, query, matches, limit)
       }
   }
 
-  def explainTerm(resolved: ResolvedBokProfile, query: String): ExplainTermResponse = {
-    val exact = _terms(resolved).filter(x => _term_identities(x.term).contains(_normalize(query)))
+  def explainTerm(resolved: ResolvedBokProfile, query: String): ExplainTermResponse =
+    explainTerm(ResolvedBokSelection.Direct(resolved), query)
+
+  def explainTerm(selection: ResolvedBokSelection, query: String): ExplainTermResponse = {
+    val exact = _terms(selection).filter(x => _term_identities(x.term).contains(_normalize(query)))
     val status = if (_normalize(query).isEmpty || exact.isEmpty) "no-match" else _term_status(exact.map(_.term))
     val result = exact.sortBy(x => (x.sourceid, x.datasetid, x.term.title.value, x.term.termId.value)).headOption.map(x => _term_match(x.term, "exact", 1.0, query))
     ExplainTermResponse(
       BokQueryStatus(status),
-      _selection(resolved),
+      _selection(selection),
       BokTermSearchText(query),
       result,
       _warnings(status)
@@ -189,14 +219,24 @@ final class BokKnowledgeCatalog {
     limit: Int
   )(
     candidateScores: Set[BokCandidateKey] => Consequence[Map[BokCandidateKey, Double]]
+  ): Consequence[ComponentReferenceSearchResponse] =
+    searchComponentReferences(ResolvedBokSelection.Direct(resolved), query, kind, limit)(candidateScores)
+
+  def searchComponentReferences(
+    selection: ResolvedBokSelection,
+    query: String,
+    kind: Option[String],
+    limit: Int
+  )(
+    candidateScores: Set[BokCandidateKey] => Consequence[Map[BokCandidateKey, Double]]
   ): Consequence[ComponentReferenceSearchResponse] = {
-    val entries = _components(resolved).filter(x => kind.forall(y => _normalize(x.reference.kind.value) == _normalize(y)))
+    val entries = _components(selection).filter(x => kind.forall(y => _normalize(x.reference.kind.value) == _normalize(y)))
     val exact = entries.filter(x => _component_identities(x.reference).contains(_normalize(query)))
     if (_normalize(query).isEmpty || entries.isEmpty)
-      Consequence.success(_component_response(resolved, "no-match", query, Vector.empty, limit))
+      Consequence.success(_component_response(selection, "no-match", query, Vector.empty, limit))
     else if (exact.nonEmpty)
       Consequence.success(_component_response(
-        resolved,
+        selection,
         "matched",
         query,
         exact.sortBy(x => (x.sourceid, x.datasetid, BokComponentReferenceIdentity.orderKey(x.reference)))
@@ -214,7 +254,7 @@ final class BokKnowledgeCatalog {
         }.map { case (entry, score) =>
           _component_match(entry.reference, "candidate", score, query)
         }
-        _component_response(resolved, if (matches.nonEmpty) "matched" else "no-match", query, matches, limit)
+        _component_response(selection, if (matches.nonEmpty) "matched" else "no-match", query, matches, limit)
       }
   }
 
@@ -224,8 +264,17 @@ final class BokKnowledgeCatalog {
     version: Option[String],
     kind: Option[String],
     organization: Option[String]
+  ): ComponentReferenceLookupResponse =
+    getComponentReference(ResolvedBokSelection.Direct(resolved), name, version, kind, organization)
+
+  def getComponentReference(
+    selection: ResolvedBokSelection,
+    name: String,
+    version: Option[String],
+    kind: Option[String],
+    organization: Option[String]
   ): ComponentReferenceLookupResponse = {
-    val matches = _components(resolved)
+    val matches = _components(selection)
       .filter(x => _normalize(x.reference.name.value) == _normalize(name))
       .filter(x => version.forall(y => x.reference.version.exists(z => _normalize(z.value) == _normalize(y))))
       .filter(x => kind.forall(y => _normalize(x.reference.kind.value) == _normalize(y)))
@@ -236,7 +285,7 @@ final class BokKnowledgeCatalog {
       case Vector(single) => Some(single.reference)
       case _ => None
     }
-    ComponentReferenceLookupResponse(BokQueryStatus(status), _selection(resolved), reference, _warnings(status))
+    ComponentReferenceLookupResponse(BokQueryStatus(status), _selection(selection), reference, _warnings(status))
   }
 
   def searchSemanticKnowledge(
@@ -305,8 +354,8 @@ final class BokKnowledgeCatalog {
   private def _semantic_records(access: BokSemanticAccess): Vector[BokSemanticRecord] =
     _all_semantic_records(access.selection).filter(x => !x.stale && access.permits(x))
 
-  private def _all_semantic_records(resolved: ResolvedBokProfile): Vector[BokSemanticRecord] = synchronized {
-    _selected_sources(resolved).flatMap(_.semanticRecords)
+  private def _all_semantic_records(selection: ResolvedBokSelection): Vector[BokSemanticRecord] = synchronized {
+    _selected_sources(selection).flatMap(_.semanticRecords)
   }
 
   private def _semantic_matches(record: BokSemanticRecord, query: String): Boolean = {
@@ -325,9 +374,9 @@ final class BokKnowledgeCatalog {
 
   private def _semantic_limit(value: Int): Int = value.max(1).min(100)
 
-  private def _semantic_search_response(resolved: ResolvedBokProfile, query: String, records: Vector[BokSemanticRecord], bound: Int): SemanticKnowledgeSearchResponse = {
+  private def _semantic_search_response(selection: ResolvedBokSelection, query: String, records: Vector[BokSemanticRecord], bound: Int): SemanticKnowledgeSearchResponse = {
     val results = records.sortBy(x => (x.kind, x.identity))
-    SemanticKnowledgeSearchResponse(BokQueryStatus(if (results.nonEmpty) "matched" else "no-match"), _selection(resolved), query, results.take(bound).map(_semantic_record), bound, results.size > bound, None, None, None, Vector.empty)
+    SemanticKnowledgeSearchResponse(BokQueryStatus(if (results.nonEmpty) "matched" else "no-match"), _selection(selection), query, results.take(bound).map(_semantic_record), bound, results.size > bound, None, None, None, Vector.empty)
   }
 
   private def _semantic_record(record: BokSemanticRecord): SemanticKnowledgeRecord =
@@ -360,8 +409,8 @@ final class BokKnowledgeCatalog {
       record.publicationDigest
     )
 
-  private def _terms(resolved: ResolvedBokProfile): Vector[TermEntry] = synchronized {
-    _selected_sources(resolved).flatMap { source =>
+  private def _terms(selection: ResolvedBokSelection): Vector[TermEntry] = synchronized {
+    _selected_sources(selection).flatMap { source =>
       source.terms.map(TermEntry(
         source.source.datasetId.value,
         source.source.sourceId.value,
@@ -370,8 +419,8 @@ final class BokKnowledgeCatalog {
     }
   }
 
-  private def _components(resolved: ResolvedBokProfile): Vector[ComponentEntry] = synchronized {
-    _selected_sources(resolved).flatMap { source =>
+  private def _components(selection: ResolvedBokSelection): Vector[ComponentEntry] = synchronized {
+    _selected_sources(selection).flatMap { source =>
       source.components.map(ComponentEntry(
         source.source.datasetId.value,
         source.source.sourceId.value,
@@ -388,19 +437,29 @@ final class BokKnowledgeCatalog {
       attribution.datasetId == normalized.source.datasetId &&
       attribution.generation == normalized.source.generation
 
-  private def _selected_sources(resolved: ResolvedBokProfile): Vector[NormalizedBokSource] =
+  private def _selected_sources(selection: ResolvedBokSelection): Vector[NormalizedBokSource] =
     _resident_scopes.toVector
-      .filter { case (_, entry) => _matches_resolved(entry.normalizedsource, resolved) }
-      .sortBy { case (scope, _) => (scope.sourceid, scope.datasetid) }
+      .filter { case (_, entry) => _matches_selection(entry.normalizedsource, selection) }
+      .sortBy { case (scope, entry) => (
+        scope.sourceid,
+        scope.datasetid,
+        entry.normalizedsource.source.generation.value
+      ) }
       .map { case (_, entry) => entry.normalizedsource }
+
+  private def _matches_selection(
+    source: NormalizedBokSource,
+    selection: ResolvedBokSelection
+  ): Boolean =
+    selection.memberProfiles.exists(_matches_resolved(source, _))
 
   private def _matches_resolved(source: NormalizedBokSource, resolved: ResolvedBokProfile): Boolean =
     source.source.datasetId == resolved.datasetId &&
       source.source.sourceId == resolved.sourceId &&
       source.source.generation == resolved.generation
 
-  private def _map_sources(resolved: ResolvedBokProfile): Vector[MapSource] =
-    _selected_sources(resolved)
+  private def _map_sources(selection: ResolvedBokSelection): Vector[MapSource] =
+    _selected_sources(selection)
       .map(MapSource.apply)
 
   private def _map_nodes(source: MapSource): Vector[MapNode] =
@@ -572,7 +631,7 @@ final class BokKnowledgeCatalog {
     )
 
   private def _term_response(
-    resolved: ResolvedBokProfile,
+    selection: ResolvedBokSelection,
     status: String,
     query: String,
     matches: Vector[BokTermMatch],
@@ -580,14 +639,14 @@ final class BokKnowledgeCatalog {
   ): SearchTermsResponse =
     SearchTermsResponse(
       BokQueryStatus(status),
-      _selection(resolved),
+      _selection(selection),
       BokTermSearchText(query),
       matches.take(_limit(limit)),
       _warnings(status)
     )
 
   private def _component_response(
-    resolved: ResolvedBokProfile,
+    selection: ResolvedBokSelection,
     status: String,
     query: String,
     matches: Vector[ComponentReferenceMatch],
@@ -595,7 +654,7 @@ final class BokKnowledgeCatalog {
   ): ComponentReferenceSearchResponse =
     ComponentReferenceSearchResponse(
       BokQueryStatus(status),
-      _selection(resolved),
+      _selection(selection),
       ComponentSearchText(query),
       matches.take(_limit(limit)),
       _warnings(status)
@@ -610,8 +669,34 @@ final class BokKnowledgeCatalog {
 
   private def _limit(value: Int): Int = value.max(1).min(100)
 
-  private def _selection(resolved: ResolvedBokProfile): BokResolvedSelection =
-    BokResolvedSelection(
+  private def _selection(selection: ResolvedBokSelection): BokResolvedSelection =
+    selection match {
+      case ResolvedBokSelection.Direct(resolved) =>
+        BokResolvedSelection(
+          BokProfile(resolved.resolvedProfile),
+          resolved.projectId.map(BokProjectId.apply),
+          None,
+          Some(resolved.datasetId),
+          Some(resolved.sourceId),
+          Some(resolved.generation),
+          Some(resolved.evidence),
+          Vector.empty
+        )
+      case ResolvedBokSelection.Catalog(catalogid, members) =>
+        BokResolvedSelection(
+          BokProfile("catalog"),
+          None,
+          Some(BokCatalogId(catalogid.value)),
+          None,
+          None,
+          None,
+          None,
+          members.map(_catalog_member)
+        )
+    }
+
+  private def _catalog_member(resolved: ResolvedBokProfile): BokResolvedCatalogMember =
+    BokResolvedCatalogMember(
       BokProfile(resolved.resolvedProfile),
       resolved.projectId.map(BokProjectId.apply),
       resolved.datasetId,

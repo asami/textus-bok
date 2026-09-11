@@ -124,9 +124,9 @@ final class RepresentativeDocumentationProfileRetrievalSpec
       normalized.semanticRecords.map(_.identity) should not contain _source_identity
       discovered.status.value shouldBe "matched"
       discovered.results should have size 3
-      discovered.selection.sourceId.value shouldBe "simplemodeling"
-      discovered.selection.datasetId.value shouldBe "simplemodeling-bok"
-      discovered.selection.generation.value shouldBe "2026-08-27"
+      discovered.selection.sourceId.map(_.value) shouldBe Some("simplemodeling")
+      discovered.selection.datasetId.map(_.value) shouldBe Some("simplemodeling-bok")
+      discovered.selection.generation.map(_.value) shouldBe Some("2026-08-27")
       discovered.results.map(_.identity).toSet shouldBe Set(
         _framework_identity,
         _directive_identity,

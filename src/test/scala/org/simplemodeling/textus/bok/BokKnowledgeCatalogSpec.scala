@@ -39,9 +39,9 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
         missing.status.value shouldBe "no-match"
         missing.result shouldBe empty
         exact.selection.resolvedProfile.value shouldBe "official"
-        exact.selection.datasetId.value shouldBe "dataset-a"
-        exact.selection.sourceId.value shouldBe "source-a"
-        exact.selection.generation.value shouldBe "g1"
+        exact.selection.datasetId.map(_.value) shouldBe Some("dataset-a")
+        exact.selection.sourceId.map(_.value) shouldBe Some("source-a")
+        exact.selection.generation.map(_.value) shouldBe Some("g1")
       }
 
       "constrain provider accepted keys before candidate classification and limits" in {
@@ -215,8 +215,8 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
           Some(Vector("car" -> "textus-account"))
         complete.relationships.map(_.predicate.value) shouldBe Vector("references")
         complete.truncated shouldBe false
-        complete.selection.generation.value shouldBe "g1"
-        complete.selection.evidence.uri.value shouldBe "urn:textus:bok:source-a:selection"
+        complete.selection.generation.map(_.value) shouldBe Some("g1")
+        complete.selection.evidence.map(_.uri.value) shouldBe Some("urn:textus:bok:source-a:selection")
       }
 
       "report no-match for a focus absent from the resolved generation" in {
@@ -357,6 +357,62 @@ final class BokKnowledgeCatalogSpec extends AnyWordSpec with Matchers with Given
         catalog.explainTerm(secondselection, "Shared").result.map(_.term.definition.value) shouldBe Some("Definition B.")
         catalog.selectedTopology("source-a", "dataset-shared").map(_.nodes.map(_.id)) shouldBe Some(Vector("shared-node-new"))
         catalog.selectedTopology("source-b", "dataset-shared").map(_.nodes.map(_.id)) shouldBe Some(Vector("shared-node"))
+      }
+    }
+
+    "catalog selections" which {
+      "read every resolved member scope without a primary source, fallback, or deduplication" in {
+        Given("two independently committed direct generations with equal local term identities")
+        val catalog = new BokKnowledgeCatalog()
+        val project = _resolved("project", Some("knowledgehub"), "project-dataset", "a-project-source", "project-g1")
+        val development = _resolved("development", None, "development-dataset", "z-development-source", "development-g1")
+        val projectterm = _term("catalog:marker", "Catalog Marker", "Project definition.", "a-project-source", "project-dataset")
+        val developmentterm = _term("catalog:marker", "Catalog Marker", "Development definition.", "z-development-source", "development-dataset")
+        val projectcomponent = _component("catalog-component", "Catalog Component", "car", "a-project-source")
+        val developmentcomponent = _component("catalog-component", "Catalog Component", "car", "z-development-source")
+        _commit(catalog, _normalized(
+          "a-project-source",
+          "project-dataset",
+          "project-g1",
+          Vector(projectterm),
+          Vector(projectcomponent),
+          _topology("project-catalog-node")
+        ))
+        _commit(catalog, _normalized(
+          "z-development-source",
+          "development-dataset",
+          "development-g1",
+          Vector(developmentterm),
+          Vector(developmentcomponent),
+          _topology("development-catalog-node")
+        ))
+        val selection = ResolvedBokSelection.Catalog(
+          BokCatalogId("documentation"),
+          Vector(project, development)
+        )
+
+        When("terminology, component, and map reads use the resolved catalog selection")
+        val terms = catalog.searchTerms(selection, "Catalog Marker", None, 10)(
+          _ => Consequence.success(Map.empty)
+        ).TAKE
+        val components = catalog.searchComponentReferences(selection, "catalog-component", Some("car"), 10)(
+          _ => Consequence.success(Map.empty)
+        ).TAKE
+        val map = catalog.getKnowledgeMap(selection, None, None, None, Some(10), Some(10))
+
+        Then("every result remains source-qualified and the catalog selection has no synthetic direct tuple")
+        terms.status.value shouldBe "conflict"
+        terms.results.map(_.term.evidence.sourceId.value) shouldBe Vector("a-project-source", "z-development-source")
+        components.results.map(_.reference.evidence.sourceId.value) shouldBe Vector("a-project-source", "z-development-source")
+        map.nodes.map(_.nodeId.value) shouldBe Vector("project-catalog-node", "development-catalog-node")
+        map.sources.map(_.sourceId.value) shouldBe Vector("a-project-source", "z-development-source")
+        terms.selection.resolvedProfile.value shouldBe "catalog"
+        terms.selection.catalogId.map(_.value) shouldBe Some("documentation")
+        terms.selection.datasetId shouldBe empty
+        terms.selection.sourceId shouldBe empty
+        terms.selection.generation shouldBe empty
+        terms.selection.evidence shouldBe empty
+        terms.selection.members.map(_.sourceId.value) shouldBe Vector("a-project-source", "z-development-source")
       }
     }
   }

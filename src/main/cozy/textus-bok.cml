@@ -366,6 +366,14 @@ Discover bounded attributable public semantic metadata.
 |------|------|--------------|
 | value | string | 1 |
 
+## BokCatalogId
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| value | string | 1 |
+
 ## BokDatasetId
 
 ### ATTRIBUTE
@@ -629,6 +637,7 @@ Input command identifying one logical BoK source generation.
 | limit | int | ? |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## ExplainTermRequest
 
@@ -641,6 +650,7 @@ Input command identifying one logical BoK source generation.
 | term | BokTermSearchText | 1 |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## ComponentReferenceSearchRequest
 
@@ -655,6 +665,7 @@ Input command identifying one logical BoK source generation.
 | limit | int | ? |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## ComponentReferenceLookupRequest
 
@@ -670,6 +681,7 @@ Input command identifying one logical BoK source generation.
 | organization | ComponentOrganization | ? |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## GetKnowledgeMapRequest
 
@@ -688,6 +700,7 @@ Input command identifying one logical BoK source generation.
 | relationshipLimit | int | ? |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## SemanticKnowledgeSearchRequest
 
@@ -701,6 +714,7 @@ Input command identifying one logical BoK source generation.
 | limit | int | ? |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## SemanticManifestRequest
 
@@ -713,6 +727,7 @@ Input command identifying one logical BoK source generation.
 | identity | string | 1 |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## SemanticResourceRequest
 
@@ -725,6 +740,7 @@ Input command identifying one logical BoK source generation.
 | identity | string | 1 |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## SemanticSectionRequest
 
@@ -738,6 +754,7 @@ Input command identifying one logical BoK source generation.
 | sectionId | string | 1 |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 ## SemanticKnowledgeDiscoveryRequest
 
@@ -751,6 +768,7 @@ Input command identifying one logical BoK source generation.
 | limit | int | ? |
 | profile | BokProfile | ? |
 | projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
 
 # VALUE
 
@@ -785,11 +803,11 @@ Attributable evidence retained with a BoK term or component existence record.
 | observedAt | BokObservedAt | ? |
 | freshness | BokFreshness | ? |
 
-## BokResolvedSelection
+## BokResolvedCatalogMember
 
 ### DESCRIPTION
 
-One complete BoK generation selected by the public logical profile request.
+One complete direct BoK generation included in an aggregate catalog selection.
 
 ### ATTRIBUTE
 
@@ -801,6 +819,28 @@ One complete BoK generation selected by the public logical profile request.
 | sourceId | BokSourceId | 1 |
 | generation | BokSourceGeneration | 1 |
 | evidence | BokEvidence | 1 |
+
+## BokResolvedSelection
+
+### DESCRIPTION
+
+The conditional direct-or-catalog attribution selected by a public logical
+profile request. Direct selection retains its complete single-source fields.
+Catalog selection has `resolvedProfile = catalog`, `catalogId`, and complete
+source-qualified member attributions, without a primary source tuple.
+
+### ATTRIBUTE
+
+| name | type | multiplicity |
+|------|------|--------------|
+| resolvedProfile | BokProfile | 1 |
+| projectId | BokProjectId | ? |
+| catalogId | BokCatalogId | ? |
+| datasetId | BokDatasetId | ? |
+| sourceId | BokSourceId | ? |
+| generation | BokSourceGeneration | ? |
+| evidence | BokEvidence | ? |
+| members | BokResolvedCatalogMember | * |
 
 ## BokTerm
 

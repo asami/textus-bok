@@ -37,36 +37,84 @@ private[bok] object BokProfileKey {
 
   def project(projectId: String): Consequence[BokProfileKey] =
     BokProfileSelection.project(projectId).normalize
+
+  def parse(value: String): Consequence[BokProfileKey] =
+    value.split(":", 2).toVector match {
+      case Vector("official") => Consequence.success(official)
+      case Vector("development") => Consequence.success(development)
+      case Vector("project", projectid) => project(projectid)
+      case _ => BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.InvalidSelection,
+        None,
+        s"The configured BoK catalog member '$value' is not a direct profile key"
+      )
+    }
+}
+
+private[bok] object BokCatalogIdValidation {
+  private val _pattern = "[A-Za-z0-9][A-Za-z0-9._-]{0,127}".r
+
+  def create(value: String): Consequence[BokCatalogId] =
+    if (value == value.trim && _pattern.matches(value))
+      Consequence.success(BokCatalogId(value))
+    else
+      BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.InvalidSelection,
+        None,
+        "The BoK catalogId must be one explicit logical catalog identity"
+      )
 }
 
 private[bok] final case class BokProfileSelection(
   profile: Option[String] = None,
-  projectId: Option[String] = None
+  projectId: Option[String] = None,
+  catalogId: Option[String] = None
 ) {
   def normalize: Consequence[BokProfileKey] =
     BokProfileSelection.normalize(this)
+
+  def isCatalog: Boolean = profile.contains("catalog")
+
+  def catalogIdC: Consequence[BokCatalogId] =
+    catalogId match {
+      case Some(value) => BokCatalogIdValidation.create(value)
+      case None => BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.InvalidSelection,
+        None,
+        "The catalog profile requires one explicit logical catalogId"
+      )
+    }
 }
 
 private[bok] object BokProfileSelection {
   private val _project_id_pattern = "[A-Za-z0-9][A-Za-z0-9._-]{0,127}".r
 
-  val official: BokProfileSelection = BokProfileSelection(Some("official"), None)
-  val development: BokProfileSelection = BokProfileSelection(Some("development"), None)
+  val official: BokProfileSelection = BokProfileSelection(Some("official"), None, None)
+  val development: BokProfileSelection = BokProfileSelection(Some("development"), None, None)
 
   def project(projectId: String): BokProfileSelection =
-    BokProfileSelection(Some("project"), Some(projectId))
+    BokProfileSelection(Some("project"), Some(projectId), None)
+
+  def catalog(catalogId: String): BokProfileSelection =
+    BokProfileSelection(Some("catalog"), None, Some(catalogId))
 
   def normalize(selection: BokProfileSelection): Consequence[BokProfileKey] = {
     val profile = selection.profile.getOrElse("official")
     profile match {
       case "official" =>
-        _without_project_identity(BokProfileKey.official, selection.projectId)
+        _without_direct_identity(BokProfileKey.official, selection.projectId, selection.catalogId)
       case "development" =>
-        _without_project_identity(BokProfileKey.development, selection.projectId)
+        _without_direct_identity(BokProfileKey.development, selection.projectId, selection.catalogId)
       case "project" =>
-        selection.projectId match {
-          case Some(projectid) if _valid_project_id(projectid) =>
+        (selection.projectId, selection.catalogId) match {
+          case (Some(projectid), None) if _valid_project_id(projectid) =>
             Consequence.success(BokProfileKey(BokProfileKind.Project, Some(BokProjectId(projectid))))
+          case (_, Some(_)) =>
+            BokProfileResolutionFailure.failure(
+              BokProfileResolutionFailure.ConflictingSelection,
+              None,
+              "The project profile does not accept catalogId"
+            )
           case _ =>
             BokProfileResolutionFailure.failure(
               BokProfileResolutionFailure.ProjectIdentityRequired,
@@ -74,6 +122,12 @@ private[bok] object BokProfileSelection {
               "The project profile requires one explicit logical projectId"
             )
         }
+      case "catalog" =>
+        BokProfileResolutionFailure.failure(
+          BokProfileResolutionFailure.InvalidSelection,
+          None,
+          "Catalog selection must be resolved through the catalog selection boundary"
+        )
       case _ =>
         BokProfileResolutionFailure.failure(
           BokProfileResolutionFailure.InvalidSelection,
@@ -83,17 +137,24 @@ private[bok] object BokProfileSelection {
     }
   }
 
-  private def _without_project_identity(
+  private def _without_direct_identity(
     key: BokProfileKey,
-    projectid: Option[String]
+    projectid: Option[String],
+    catalogid: Option[String]
   ): Consequence[BokProfileKey] =
-    projectid match {
-      case None => Consequence.success(key)
-      case Some(_) =>
+    (projectid, catalogid) match {
+      case (None, None) => Consequence.success(key)
+      case (Some(_), _) =>
         BokProfileResolutionFailure.failure(
           BokProfileResolutionFailure.ConflictingSelection,
           Some(key),
           s"The ${key.kind.selectionName} profile does not accept projectId"
+        )
+      case (_, Some(_)) =>
+        BokProfileResolutionFailure.failure(
+          BokProfileResolutionFailure.ConflictingSelection,
+          Some(key),
+          s"The ${key.kind.selectionName} profile does not accept catalogId"
         )
     }
 
@@ -227,20 +288,75 @@ private[bok] object BokProfileBinding {
 }
 
 private[bok] final case class BokProfileRegistryConfiguration(
-  bindings: Vector[BokProfileBinding]
+  bindings: Vector[BokProfileBinding],
+  catalogs: Vector[BokProfileCatalog] = Vector.empty
 )
+
+private[bok] final case class BokProfileCatalog(
+  catalogId: BokCatalogId,
+  members: Vector[BokProfileKey]
+)
+
+private[bok] object BokProfileCatalog {
+  def createC(record: Record): Consequence[BokProfileCatalog] =
+    for {
+      catalogid <- _catalog_id(record)
+      members <- _members(record)
+    } yield BokProfileCatalog(catalogid, members)
+
+  private def _catalog_id(record: Record): Consequence[BokCatalogId] =
+    record.getAny("catalogId") match {
+      case Some(value: String) => BokCatalogIdValidation.create(value)
+      case Some(value: BokCatalogId) => BokCatalogIdValidation.create(value.value)
+      case _ => _invalid_configuration("The BoK catalogId is required")
+    }
+
+  private def _members(record: Record): Consequence[Vector[BokProfileKey]] =
+    record.getVector("members") match {
+      case Some(values) if values.nonEmpty =>
+        Consequence.zipN(values.map {
+          case value: String => BokProfileKey.parse(value)
+          case value: BokProfileKey => Consequence.success(value)
+          case _ => _invalid_configuration[BokProfileKey]("A BoK catalog member is invalid")
+        }).map(_.toVector)
+      case Some(_) => _invalid_configuration("A BoK catalog requires one or more direct members")
+      case None => _invalid_configuration("The BoK catalog members collection is required")
+    }
+
+  private def _invalid_configuration[A](message: String): Consequence[A] =
+    BokProfileResolutionFailure.failure(
+      BokProfileResolutionFailure.InvalidSelection,
+      None,
+      message
+    )
+}
 
 private[bok] object BokProfileRegistryConfiguration {
   val configurationKey = "textus.bok.profile-registry"
 
   def createC(record: Record): Consequence[BokProfileRegistryConfiguration] =
+    for {
+      bindings <- _bindings(record)
+      catalogs <- _catalogs(record)
+    } yield BokProfileRegistryConfiguration(bindings, catalogs)
+
+  private def _bindings(record: Record): Consequence[Vector[BokProfileBinding]] =
     record.getVector("profiles") match {
       case Some(values) =>
         _sequence(values.map {
           case binding: Record => BokProfileBinding.createC(binding)
           case _ => _invalid_configuration[BokProfileBinding]("A BoK profile binding is invalid")
-        }).map(BokProfileRegistryConfiguration.apply)
+        })
       case None => _invalid_configuration("The BoK profile-registry profiles collection is required")
+    }
+
+  private def _catalogs(record: Record): Consequence[Vector[BokProfileCatalog]] =
+    record.getVector("catalogs") match {
+      case Some(values) => _sequence(values.map {
+        case catalog: Record => BokProfileCatalog.createC(catalog)
+        case _ => _invalid_configuration[BokProfileCatalog]("A BoK catalog binding is invalid")
+      })
+      case None => Consequence.success(Vector.empty)
     }
 
   def fromConfiguration(
@@ -314,15 +430,25 @@ private[bok] object BokProfileRegistryConfiguration {
 }
 
 private[bok] final case class BokProfileAuthorization(
-  allowedKeys: Set[BokProfileKey]
+  allowedKeys: Set[BokProfileKey],
+  allowedCatalogIds: Set[BokCatalogId] = Set.empty
 ) {
   def allows(key: BokProfileKey): Boolean =
     allowedKeys.contains(key)
+
+  def allowsCatalog(catalogId: BokCatalogId): Boolean =
+    allowedCatalogIds.contains(catalogId)
+
+  def allowsCatalogMember(catalogId: BokCatalogId, key: BokProfileKey): Boolean =
+    allows(key) || allowsCatalog(catalogId)
 }
 
 private[bok] object BokProfileAuthorization {
   def allow(keys: BokProfileKey*): BokProfileAuthorization =
     BokProfileAuthorization(keys.toSet)
+
+  def allowCatalog(catalogId: BokCatalogId): BokProfileAuthorization =
+    BokProfileAuthorization(Set.empty, Set(catalogId))
 }
 
 private[bok] final case class ResolvedBokProfile(
@@ -333,6 +459,16 @@ private[bok] final case class ResolvedBokProfile(
   generation: BokSourceGeneration,
   evidence: BokEvidence
 )
+
+private[bok] enum ResolvedBokSelection {
+  case Direct(profile: ResolvedBokProfile)
+  case Catalog(catalogId: BokCatalogId, members: Vector[ResolvedBokProfile])
+
+  def memberProfiles: Vector[ResolvedBokProfile] = this match {
+    case Direct(profile) => Vector(profile)
+    case Catalog(_, members) => members
+  }
+}
 
 /**
  * The private replacement admission outcome.  Attribution is populated only
@@ -408,7 +544,8 @@ private[bok] object BokProfileResolutionFailure {
 }
 
 private[bok] final class BokProfileRegistry private (
-  initialBindings: Map[BokProfileKey, BokProfileBinding]
+  initialBindings: Map[BokProfileKey, BokProfileBinding],
+  initialCatalogs: Map[BokCatalogId, BokProfileCatalog]
 ) {
   private final case class AdmittedGeneration(
     datasetid: BokDatasetId,
@@ -423,15 +560,17 @@ private[bok] final class BokProfileRegistry private (
   )
 
   private var _entries = initialBindings.view.mapValues(x => Entry(x, None)).toMap
+  private var _catalogs = initialCatalogs
 
   def configure(configuration: BokProfileRegistryConfiguration): Consequence[Unit] = synchronized {
-    BokProfileRegistry.validatedBindings(configuration).map { bindings =>
-      _entries = bindings.map { case (key, binding) =>
+    BokProfileRegistry.validatedConfiguration(configuration).map { configuration =>
+      _entries = configuration.bindings.map { case (key, binding) =>
         val admitted = _entries.get(key).flatMap { current =>
           Option.when(_same_logical_source(current.binding, binding))(current.admitted).flatten
         }
         key -> Entry(binding, admitted)
       }
+      _catalogs = configuration.catalogs
     }
   }
 
@@ -511,21 +650,17 @@ private[bok] final class BokProfileRegistry private (
     filter: BokProfileCompatibilityFilter,
     authorization: BokProfileAuthorization
   ): Consequence[ResolvedBokProfile] =
-    for {
-      key <- selection.normalize
-      _ <- _authorize(key, authorization)
-      entry <- _entry(key)
-      admitted <- _admitted(key, entry)
-      _ <- _fresh(key, entry.binding, admitted)
-      _ <- _compatible(key, filter, admitted)
-    } yield ResolvedBokProfile(
-      key.kind.selectionName,
-      key.projectId.map(_.value),
-      admitted.datasetid,
-      admitted.sourceid,
-      admitted.generation,
-      admitted.evidence
-    )
+    selection.normalize.flatMap(_resolve_direct(_, filter, authorization, None))
+
+  def resolveSelection(
+    selection: BokProfileSelection,
+    filter: BokProfileCompatibilityFilter,
+    authorization: BokProfileAuthorization
+  ): Consequence[ResolvedBokSelection] =
+    if (selection.isCatalog)
+      _resolve_catalog(selection, filter, authorization)
+    else
+      resolve(selection, filter, authorization).map(ResolvedBokSelection.Direct.apply)
 
   private def _binding(key: BokProfileKey): Consequence[BokProfileBinding] =
     _entry(key).map(_.binding)
@@ -553,6 +688,94 @@ private[bok] final class BokProfileRegistry private (
         Some(key),
         s"The caller is not authorized for BoK profile ${key.render}"
       )
+
+  private def _authorize_catalog(
+    catalogid: BokCatalogId,
+    authorization: BokProfileAuthorization
+  ): Consequence[Unit] =
+    if (authorization.allowsCatalog(catalogid))
+      Consequence.unit
+    else
+      BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.Unauthorized,
+        None,
+        "The caller is not authorized for the requested BoK catalog"
+      )
+
+  private def _resolve_catalog(
+    selection: BokProfileSelection,
+    filter: BokProfileCompatibilityFilter,
+    authorization: BokProfileAuthorization
+  ): Consequence[ResolvedBokSelection] =
+    for {
+      catalogid <- selection.catalogIdC
+      _ <- _validate_catalog_request(selection, filter)
+      _ <- _authorize_catalog(catalogid, authorization)
+      catalog <- _catalog(catalogid)
+      members <- Consequence.zipN(catalog.members.map(
+        _resolve_direct(_, BokProfileCompatibilityFilter(), authorization, Some(catalogid))
+      )).map(_.toVector.sortBy(member => (
+        member.sourceId.value,
+        member.datasetId.value,
+        member.generation.value
+      )))
+    } yield ResolvedBokSelection.Catalog(catalogid, members)
+
+  private def _validate_catalog_request(
+    selection: BokProfileSelection,
+    filter: BokProfileCompatibilityFilter
+  ): Consequence[Unit] =
+    if (selection.projectId.nonEmpty || filter.datasetId.nonEmpty || filter.sourceId.nonEmpty)
+      BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.ConflictingSelection,
+        None,
+        "The catalog profile does not accept projectId, datasetId, or sourceId"
+      )
+    else
+      Consequence.unit
+
+  private def _catalog(catalogid: BokCatalogId): Consequence[BokProfileCatalog] = synchronized {
+    _catalogs.get(catalogid) match {
+      case Some(catalog) => Consequence.success(catalog)
+      case None => BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.Unregistered,
+        None,
+        "The requested BoK catalog is not registered"
+      )
+    }
+  }
+
+  private def _resolve_direct(
+    key: BokProfileKey,
+    filter: BokProfileCompatibilityFilter,
+    authorization: BokProfileAuthorization,
+    catalogid: Option[BokCatalogId]
+  ): Consequence[ResolvedBokProfile] =
+    for {
+      _ <- _authorize_member(key, authorization, catalogid)
+      entry <- _entry(key)
+      admitted <- _admitted(key, entry)
+      _ <- _fresh(key, entry.binding, admitted)
+      _ <- _compatible(key, filter, admitted)
+    } yield ResolvedBokProfile(
+      key.kind.selectionName,
+      key.projectId.map(_.value),
+      admitted.datasetid,
+      admitted.sourceid,
+      admitted.generation,
+      admitted.evidence
+    )
+
+  private def _authorize_member(
+    key: BokProfileKey,
+    authorization: BokProfileAuthorization,
+    catalogid: Option[BokCatalogId]
+  ): Consequence[Unit] =
+    catalogid match {
+      case Some(value) if authorization.allowsCatalogMember(value, key) => Consequence.unit
+      case None => _authorize(key, authorization)
+      case Some(_) => _authorize(key, authorization)
+    }
 
   private def _admitted(
     key: BokProfileKey,
@@ -631,17 +854,29 @@ private[bok] final class BokProfileRegistry private (
 }
 
 private[bok] object BokProfileRegistry {
+  private[runtime] final case class ValidatedConfiguration(
+    bindings: Map[BokProfileKey, BokProfileBinding],
+    catalogs: Map[BokCatalogId, BokProfileCatalog]
+  )
+
   def create(
     configuration: BokProfileRegistryConfiguration
   ): Consequence[BokProfileRegistry] =
-    validatedBindings(configuration).map(new BokProfileRegistry(_))
+    validatedConfiguration(configuration).map(configuration =>
+      new BokProfileRegistry(configuration.bindings, configuration.catalogs)
+    )
 
   def createC(record: Record): Consequence[BokProfileRegistry] =
     BokProfileRegistryConfiguration.createC(record).flatMap(create)
 
   private[runtime] def validatedBindings(
     configuration: BokProfileRegistryConfiguration
-  ): Consequence[Map[BokProfileKey, BokProfileBinding]] = {
+  ): Consequence[Map[BokProfileKey, BokProfileBinding]] =
+    validatedConfiguration(configuration).map(_.bindings)
+
+  private[runtime] def validatedConfiguration(
+    configuration: BokProfileRegistryConfiguration
+  ): Consequence[ValidatedConfiguration] = {
     val duplicatekeys = configuration.bindings.groupBy(_.key).collect {
       case (key, bindings) if bindings.size > 1 => key
     }.toVector.sortBy(_.render)
@@ -661,6 +896,52 @@ private[bok] object BokProfileRegistry {
         s"A BoK dataset cannot claim more than one profile: ${duplicatedatasets.mkString(", ")}"
       )
     else
-      Consequence.success(configuration.bindings.map(x => x.key -> x).toMap)
+      _validated_catalogs(configuration, configuration.bindings.map(x => x.key -> x).toMap).map { catalogs =>
+        ValidatedConfiguration(configuration.bindings.map(x => x.key -> x).toMap, catalogs)
+      }
+  }
+
+  private def _validated_catalogs(
+    configuration: BokProfileRegistryConfiguration,
+    bindings: Map[BokProfileKey, BokProfileBinding]
+  ): Consequence[Map[BokCatalogId, BokProfileCatalog]] = {
+    val emptycatalogs = configuration.catalogs.filter(_.members.isEmpty).sortBy(_.catalogId.value)
+    val duplicateids = configuration.catalogs.groupBy(_.catalogId).collect {
+      case (catalogid, catalogs) if catalogs.size > 1 => catalogid
+    }.toVector.sortBy(_.value)
+    val duplicatecatalogmembers = configuration.catalogs.flatMap { catalog =>
+      catalog.members.groupBy(identity).collectFirst {
+        case (member, members) if members.size > 1 => catalog.catalogId -> member
+      }
+    }.sortBy { case (catalogid, member) => (catalogid.value, member.render) }
+    val unknownmembers = configuration.catalogs.flatMap { catalog =>
+      catalog.members.filterNot(bindings.contains).map(catalog.catalogId -> _)
+    }.sortBy { case (catalogid, member) => (catalogid.value, member.render) }
+    if (emptycatalogs.nonEmpty)
+      BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.InvalidSelection,
+        None,
+        "A private BoK catalog requires one or more direct members"
+      )
+    else if (duplicateids.nonEmpty)
+      BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.Ambiguous,
+        None,
+        s"Duplicate private BoK catalog bindings: ${duplicateids.map(_.value).mkString(", ")}"
+      )
+    else if (duplicatecatalogmembers.nonEmpty)
+      BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.Ambiguous,
+        Some(duplicatecatalogmembers.head._2),
+        "A private BoK catalog cannot include the same direct member more than once"
+      )
+    else if (unknownmembers.nonEmpty)
+      BokProfileResolutionFailure.failure(
+        BokProfileResolutionFailure.Unregistered,
+        Some(unknownmembers.head._2),
+        "A private BoK catalog member has no direct profile binding"
+      )
+    else
+      Consequence.success(configuration.catalogs.map(x => x.catalogId -> x).toMap)
   }
 }

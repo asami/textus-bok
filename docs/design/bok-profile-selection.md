@@ -1,13 +1,15 @@
 # BoK Profile Selection Design
 
-Status: stable Phase 7 design
+Status: stable Phase 7 direct-profile design; Phase 10.1 catalog extension
 
 ## Purpose
 
-Textus BoK selects exactly one attributable knowledge profile for each read.
-The selector expresses the caller's knowledge intent; it is not a source URL,
-filesystem location, provider choice, or instruction to discover a source from
-ambient process state.
+Textus BoK selects exactly one attributable direct knowledge profile for a
+direct read. An explicit catalog read is the one additive, configured
+multi-member selection form. In either case, the selector expresses the
+caller's knowledge intent; it is not a source URL, filesystem location,
+provider choice, or instruction to discover a source from ambient process
+state.
 
 This design separates the stable selection semantics from the later registry,
 public-operation, Web, and representative-runtime implementation in Phases
@@ -20,14 +22,20 @@ public-operation, Web, and representative-runtime implementation in Phases
 | `official` | The profile kind alone | The published BoK generation served by `simplemodeling.org` | Only the uniquely registered published generation may be represented as official. |
 | `development` | The profile kind alone | An explicitly prepared working generation from the `simplemodeling-org` repository | Development content is review input and never shadows, replaces, or claims official content. |
 | `project` | The profile kind plus an explicit `projectId` | The owner of the registered project-local BoK generation | One project identity cannot read another project's generation, and no project is inferred from a checkout or process context. |
+| `catalog` | The profile kind plus an explicit `catalogId` | Private registry configuration names included direct profile keys | Catalog membership is not caller input, has no precedence, and cannot expose resources or select arbitrary sources. |
 
-The three names are closed profile kinds. A new kind changes the public
+The four names are closed profile kinds. A new kind changes the public
 selection contract and requires a later reviewed specification change; it is
 not an operator-defined registry label.
 
 `projectId` is an opaque logical identity registered by component or SAR
 configuration. It is not a path, URL, Git remote, directory name discovered
 from the current process, host username, credential, or provider setting.
+
+`catalogId` is an opaque logical identity registered only in private profile
+registry configuration. It is never a resource, path, URL, repository, or
+member list. `profile = catalog` rejects `projectId`, `datasetId`, and
+`sourceId`; omission of profile remains direct `official`.
 
 ## Ownership
 
@@ -46,7 +54,7 @@ configuration.
 
 ## Selection and Resolution Model
 
-A logical request contains:
+A direct logical request contains:
 
 - an optional `profile` whose omission means `official`; and
 - `projectId` exactly when the selected profile is `project`.
@@ -76,6 +84,20 @@ The resolver never searches other profiles after a failure. A missing,
 unavailable, stale, ambiguous, unauthorized, or conflicting selection remains
 a failure of the requested key.
 
+A catalog request contains `profile = catalog` and a logical `catalogId`. Its
+private configuration names nonempty, unique existing direct profile keys. The
+resolver independently applies the same authorization, registration,
+complete-generation admission, and freshness sequence to every member. One
+failed member fails the catalog; there is no partial result, fallback,
+precedence, or alternate-member probe.
+
+Direct response attribution remains the complete `ResolvedBokProfile`. Catalog
+response attribution remains named `selection` and instead carries
+`resolvedProfile = catalog`, `catalogId`, and deterministic complete direct
+member attributions. It deliberately has no top-level dataset, source,
+generation, or evidence tuple because it has no primary source. P10-03C
+implements this conditional CML/runtime realization.
+
 ## Complete-Generation and Evidence Invariants
 
 A binding identifies an admitted logical resource through private component or
@@ -89,16 +111,19 @@ Failed or degraded replacement retains the preceding complete generation but
 does not make that generation current when an explicit freshness rule marks it
 stale.
 
-Every successful read exposes the resolved profile, optional project identity,
-source, dataset, generation, and evidence. Domain records retain their existing
-source evidence in addition to this selection attribution. Development and
-project results therefore remain visibly distinct from official results even
-when their terms happen to be textually identical.
+Every successful direct read exposes the resolved profile, optional project
+identity, source, dataset, generation, and evidence. A successful catalog read
+exposes its complete deterministic member attributions without fabricating a
+top-level source tuple. Domain records retain their existing source evidence
+in addition to selection attribution. Development and project results
+therefore remain visibly distinct from official results even when their terms
+happen to be textually identical.
 
 ## Existing Dataset and Source Filters
 
-`datasetId` and `sourceId` are compatibility filters, not alternate profile
-selectors. Profile resolution happens first.
+For direct reads, `datasetId` and `sourceId` are compatibility filters, not
+alternate profile selectors. Profile resolution happens first. A catalog read
+rejects those direct filters and `projectId` as conflicting selection.
 
 - A supplied filter that equals the resolved identity may narrow or confirm
   the read.
@@ -178,10 +203,15 @@ pass.
 
 ## Non-goals
 
-- No cross-profile union, precedence, overlay, or conflict merge.
+- No implicit cross-profile union, precedence, overlay, deduplication, or
+  conflict merge. Explicit catalog reads preserve source-qualified records and
+  existing operation-specific classification without semantic reconciliation.
 - No write-back or public source registration/replacement.
 - No profile discovery from current directory, Git state, environment,
   username, hostname, or request-supplied resource location.
-- No change to SIE provider ownership or CBD Support detail ownership.
+- No change to SIE provider ownership or CBD Support detail ownership. The
+  default resident in-memory terminology/component/map read path does not
+  require SIE; optional semantic-provider composition cannot select a catalog
+  member.
 - No implicit MCP readiness: Phase 9 expressly admits the bounded Knowledge
   Map, while administrative behavior remains excluded.

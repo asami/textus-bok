@@ -97,6 +97,72 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
           BokProfileResolutionFailure.InvalidSelection -> Some(BokProfileResolutionFailure.InvalidSelection.code)
         )
       }
+
+      "reject duplicate, unknown, and non-direct private catalog membership" in {
+        Given("two direct bindings and malformed private catalog declarations")
+        val developmentsource = _source("development-source", "development-dataset", "development-g1", "development")
+        val projectsource = _source("project-source", "project-dataset", "project-g1", "project")
+        val development = BokProfileBinding.development(developmentsource, _evidence(developmentsource)).TAKE
+        val project = BokProfileBinding.project("knowledgehub", projectsource, _evidence(projectsource)).TAKE
+        val documentation = BokProfileCatalog(
+          BokCatalogId("documentation"),
+          Vector(BokProfileKey.development, BokProfileKey.project("knowledgehub").TAKE)
+        )
+        val duplicatecatalog = BokProfileCatalog(
+          BokCatalogId("documentation"),
+          Vector(BokProfileKey.development)
+        )
+        val duplicatemember = BokProfileCatalog(
+          BokCatalogId("duplicate-member"),
+          Vector(BokProfileKey.development, BokProfileKey.development)
+        )
+        val unknownmember = BokProfileCatalog(
+          BokCatalogId("unknown-member"),
+          Vector(BokProfileKey.official)
+        )
+        val emptycatalog = BokProfileCatalog(BokCatalogId("empty"), Vector.empty)
+
+        When("each private catalog configuration is validated before installation")
+        val duplicate = BokProfileRegistry.create(
+          BokProfileRegistryConfiguration(Vector(development, project), Vector(documentation, duplicatecatalog))
+        )
+        val duplicateentry = BokProfileRegistry.create(
+          BokProfileRegistryConfiguration(Vector(development, project), Vector(duplicatemember))
+        )
+        val unknown = BokProfileRegistry.create(
+          BokProfileRegistryConfiguration(Vector(development, project), Vector(unknownmember))
+        )
+        val empty = BokProfileRegistry.create(
+          BokProfileRegistryConfiguration(Vector(development, project), Vector(emptycatalog))
+        )
+        val nested = BokProfileRegistry.createC(Record.dataAuto(
+          "profiles" -> Vector(
+            _binding_record("development", None, developmentsource),
+            _binding_record("project", Some("knowledgehub"), projectsource)
+          ),
+          "catalogs" -> Vector(Record.dataAuto(
+            "catalogId" -> "nested",
+            "members" -> Vector("catalog")
+          ))
+        ))
+
+        Then("catalogs remain nonempty, unique, and limited to existing direct profile keys")
+        _failure_projection(duplicate) shouldBe Some(
+          BokProfileResolutionFailure.Ambiguous -> Some(BokProfileResolutionFailure.Ambiguous.code)
+        )
+        _failure_projection(duplicateentry) shouldBe Some(
+          BokProfileResolutionFailure.Ambiguous -> Some(BokProfileResolutionFailure.Ambiguous.code)
+        )
+        _failure_projection(unknown) shouldBe Some(
+          BokProfileResolutionFailure.Unregistered -> Some(BokProfileResolutionFailure.Unregistered.code)
+        )
+        _failure_projection(empty) shouldBe Some(
+          BokProfileResolutionFailure.InvalidSelection -> Some(BokProfileResolutionFailure.InvalidSelection.code)
+        )
+        _failure_projection(nested) shouldBe Some(
+          BokProfileResolutionFailure.InvalidSelection -> Some(BokProfileResolutionFailure.InvalidSelection.code)
+        )
+      }
     }
 
     "load configured sources and admit complete generations" which {
@@ -208,6 +274,83 @@ final class BokProfileRegistrySpec extends AnyWordSpec with Matchers with GivenW
           case Consequence.Success(_) => fail("Expected the configured resource load to fail")
         }
         display should not include source.resource.value
+      }
+
+      "resolve every configured catalog member atomically in deterministic source scope order" in {
+        Given("one documentation catalog with development and project members")
+        val developmentsource = _source("z-development-source", "development-dataset", "development-g1", "development")
+        val projectsource = _source("a-project-source", "project-dataset", "project-g1", "project")
+        val developmentkey = BokProfileKey.development
+        val projectkey = BokProfileKey.project("knowledgehub").TAKE
+        val catalogid = BokCatalogId("documentation")
+        val registry = BokProfileRegistry.create(BokProfileRegistryConfiguration(
+          Vector(
+            BokProfileBinding.development(developmentsource, _evidence(developmentsource)).TAKE,
+            BokProfileBinding.project("knowledgehub", projectsource, _evidence(projectsource)).TAKE
+          ),
+          Vector(BokProfileCatalog(catalogid, Vector(developmentkey, projectkey)))
+        )).TAKE
+        val authorization = BokProfileAuthorization.allowCatalog(catalogid)
+
+        When("only one member has an admitted complete generation")
+        registry.admit(developmentkey, _publication("complete"), _normalized(developmentsource)).TAKE shouldBe true
+        val incomplete = registry.resolveSelection(
+          BokProfileSelection.catalog("documentation"),
+          BokProfileCompatibilityFilter(),
+          authorization
+        )
+
+        Then("the catalog fails as unavailable instead of returning a partial member list")
+        _failure_projection(incomplete) shouldBe Some(
+          BokProfileResolutionFailure.Unavailable -> Some(BokProfileResolutionFailure.Unavailable.code)
+        )
+
+        When("the remaining configured member is admitted and the catalog is selected")
+        registry.admit(projectkey, _publication("complete"), _normalized(projectsource)).TAKE shouldBe true
+        val resolved = registry.resolveSelection(
+          BokProfileSelection.catalog("documentation"),
+          BokProfileCompatibilityFilter(),
+          authorization
+        ).TAKE
+        val missingcatalogid = registry.resolveSelection(
+          BokProfileSelection(Some("catalog"), None, None),
+          BokProfileCompatibilityFilter(),
+          authorization
+        )
+        val conflicting = registry.resolveSelection(
+          BokProfileSelection.catalog("documentation"),
+          BokProfileCompatibilityFilter(datasetId = Some(developmentsource.datasetId.value)),
+          authorization
+        )
+
+        Then("the successful selection contains every direct attribution without a primary source")
+        resolved shouldBe ResolvedBokSelection.Catalog(
+          catalogid,
+          Vector(
+            ResolvedBokProfile(
+              "project",
+              Some("knowledgehub"),
+              projectsource.datasetId,
+              projectsource.sourceId,
+              projectsource.generation,
+              _evidence(projectsource)
+            ),
+            ResolvedBokProfile(
+              "development",
+              None,
+              developmentsource.datasetId,
+              developmentsource.sourceId,
+              developmentsource.generation,
+              _evidence(developmentsource)
+            )
+          )
+        )
+        _failure_projection(missingcatalogid) shouldBe Some(
+          BokProfileResolutionFailure.InvalidSelection -> Some(BokProfileResolutionFailure.InvalidSelection.code)
+        )
+        _failure_projection(conflicting) shouldBe Some(
+          BokProfileResolutionFailure.ConflictingSelection -> Some(BokProfileResolutionFailure.ConflictingSelection.code)
+        )
       }
     }
 

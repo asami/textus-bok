@@ -3,9 +3,10 @@
 ## Purpose
 
 Textus BoK interprets Body of Knowledge metadata as typed terminology and
-existence-only CAR/SAR references. It publishes provider-neutral documents to
-Textus Semantic Integration Engine (SIE), then interprets generic retrieval
-evidence as BoK-specific matches.
+existence-only CAR/SAR references. Its default resident in-memory path serves
+terminology, component, and map reads without SIE. When optional semantic
+provider composition is configured, BoK may interpret its provider-neutral
+retrieval evidence as BoK-specific matches.
 
 SIE owns federation and RDF/Vector provider isolation. Textus BoK owns term and
 component-reference meaning. Textus CBD Support owns detailed component usage,
@@ -13,10 +14,14 @@ dependencies, operations, compatibility, manuals, and reuse guidance.
 
 ## Composition
 
-The `Bok` component requires a `SemanticIntegrationEngine` component in the
-same CNCF subsystem. Calls fail with structured `service-unavailable` behavior
-when SIE is absent. Textus BoK does not connect directly to Fuseki, Chroma, an
-embedding provider, the host filesystem, or the network.
+The default `Bok` resident in-memory terminology, component, and map read path
+does not require a `SemanticIntegrationEngine` (SIE) component. Optional SIE
+semantic-provider composition is a separate responsibility: an operation that
+explicitly needs that composition reports structured `service-unavailable`
+behavior when SIE is absent, without disabling resident reads. SIE composition
+does not select a profile or catalog member. Textus BoK does not connect
+directly to Fuseki, Chroma, an embedding provider, the host filesystem, or the
+network.
 
 ## Service Contract
 
@@ -78,14 +83,16 @@ default; rendered HTML and CAR/SAR archive inspection are not required.
 
 ## Replacement Semantics
 
-The administrative command remains non-MCP and publishes one complete
-generation through SIE `KnowledgeFederation.replaceDataset`. In configured mode
+The administrative command remains non-MCP and admits one complete
+source-owned generation through the configured BoK backend. In configured mode
 the installed binding supplies the resource after identity matching; in legacy
-mode the request resource supplies it. The typed BoK generation becomes visible
-only when SIE reports `complete`. A complete later generation removes stale
-terms and component references. A degraded or failed publication leaves the
-previous complete typed generation visible until a later complete generation is
-admitted.
+mode the request resource supplies it. The default resident in-memory backend
+makes a typed BoK generation visible only after it is complete. Optional SIE
+semantic-provider composition remains separate from this resident admission
+path and cannot select a profile or catalog member. A complete later generation
+removes stale terms and component references. A degraded or failed publication
+leaves the previous complete typed generation visible until a later complete
+generation is admitted.
 
 ## Query Semantics
 
@@ -145,7 +152,9 @@ representative SAR pass.
 
 - Invalid manifests, unsafe child references, unsupported schemas, and
   duplicate identities are structured resource failures.
-- Missing SIE composition is a structured service failure.
+- Missing SIE is a structured service failure only for an operation that
+  explicitly requires optional semantic-provider composition; resident
+  terminology, component, and map reads remain available without SIE.
 - Unknown identities return `no-match` without generated knowledge.
 - Semantic retrieval is bounded to at most 100 provider results per source.
 - Detailed component capability or compatibility questions must be handed to
