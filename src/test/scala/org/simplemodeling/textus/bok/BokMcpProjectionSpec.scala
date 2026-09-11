@@ -247,6 +247,73 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
         mcpterm.downField("evidence").get[String]("uri") shouldBe Right(ordinarytermevidence.getString("uri").get)
         mcpterm.downField("evidence").get[String]("source_id") shouldBe Right(ordinarytermevidence.getString("sourceId").get)
       }
+
+      "read two complete direct generations through one source-qualified documentation catalog without publishing mutation" in {
+        Given("a development and KnowledgeHub profile bound to separate in-memory generated sources")
+        val developmentsource = _catalog_source(
+          "p10-catalog-simplemodeling",
+          "p10-catalog-simplemodeling-dataset",
+          "p10-catalog-simplemodeling-generation",
+          "p10-catalog-simplemodeling"
+        )
+        val knowledgehubsource = _catalog_source(
+          "p10-catalog-knowledgehub",
+          "p10-catalog-knowledgehub-dataset",
+          "p10-catalog-knowledgehub-generation",
+          "p10-catalog-knowledgehub"
+        )
+        val subsystem = RuntimeBindingAdmissionFixture.admit(
+          new Subsystem(
+            name = "textus-bok-mcp-two-source-catalog-spec",
+            configuration = _two_source_catalog_configuration(developmentsource, knowledgehubsource)
+          )
+        )
+        val bundle = new impl.ComponentFactory().create(
+          ComponentCreate(subsystem, ComponentOrigin.Repository("bok-mcp-two-source-catalog-spec"))
+        )
+        val component = bundle.primary
+        val context = _two_source_catalog_context
+        subsystem.add(bundle)
+
+        When("the protected replacement boundary admits both direct generations and MCP reads select documentation")
+        val developmentreplacement = _replace(component, context, developmentsource)
+        val knowledgehubreplacement = _replace(component, context, knowledgehubsource)
+        val adapter = new McpJsonRpcAdapter(subsystem)
+        val tools = McpToolCatalog.toolsForComponent(component).map(_.name).toSet
+        val story = _mcp_explain_term(adapter, "p10-catalog:story")
+        val embedding = _mcp_explain_term(adapter, "p10-catalog:embedding")
+
+        Then("both exact terms retain their direct source attribution while the catalog selection exposes both complete members")
+        developmentreplacement.getString("status") shouldBe Some("complete")
+        knowledgehubreplacement.getString("status") shouldBe Some("complete")
+        _catalog_selection_members(story) shouldBe Vector(
+          (
+            "p10-catalog-knowledgehub",
+            "p10-catalog-knowledgehub-dataset",
+            "p10-catalog-knowledgehub-generation",
+            "https://evidence.example/p10-catalog-knowledgehub",
+            "p10-catalog-knowledgehub"
+          ),
+          (
+            "p10-catalog-simplemodeling",
+            "p10-catalog-simplemodeling-dataset",
+            "p10-catalog-simplemodeling-generation",
+            "https://evidence.example/p10-catalog-simplemodeling",
+            "p10-catalog-simplemodeling"
+          )
+        )
+        _catalog_selection_members(embedding) shouldBe _catalog_selection_members(story)
+        story.hcursor.downField("result").downField("term").get[String]("term_id") shouldBe Right("p10-catalog:story")
+        story.hcursor.downField("result").downField("term").get[String]("dataset_id") shouldBe Right(developmentsource.datasetId.value)
+        story.hcursor.downField("result").downField("term").downField("evidence").get[String]("source_id") shouldBe Right(developmentsource.sourceId.value)
+        embedding.hcursor.downField("result").downField("term").get[String]("term_id") shouldBe Right("p10-catalog:embedding")
+        embedding.hcursor.downField("result").downField("term").get[String]("dataset_id") shouldBe Right(knowledgehubsource.datasetId.value)
+        embedding.hcursor.downField("result").downField("term").downField("evidence").get[String]("source_id") shouldBe Right(knowledgehubsource.sourceId.value)
+
+        And("MCP keeps the ten declared reads and excludes protected source replacement")
+        tools should have size 10
+        tools should not contain "org.simplemodeling.textus.Bok.BokRetrieval.replaceKnowledgeSource"
+      }
     }
 
     "allow deployment policy to narrow reads without publishing source mutation" in {
@@ -371,6 +438,106 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
     ResolvedConfiguration(Configuration(Map("textus" -> textus)), ConfigurationTrace.empty)
   }
 
+  private def _catalog_source(
+    sourceid: String,
+    datasetid: String,
+    generation: String,
+    resourceid: String
+  ): BokKnowledgeSource =
+    BokKnowledgeSource(
+      BokSourceId(sourceid),
+      BokDatasetId(datasetid),
+      BokSourceGeneration(generation),
+      BokResourceReference(s"urn:textus:bok:$resourceid")
+    )
+
+  private def _two_source_catalog_context: ExecutionContext = {
+    val provider = new InMemoryTextusUrnResourceProvider("bok", Map(
+      "p10-catalog-simplemodeling/metadata/cncf/knowledge-source.json" ->
+        """{
+          |  "schemaVersion": "cncf.knowledge-source.v1",
+          |  "resources": [
+          |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"}
+          |  ]
+          |}""".stripMargin,
+      "p10-catalog-simplemodeling/metadata/glossary/terms.json" ->
+        """{
+          |  "terms": [
+          |    {
+          |      "id": "p10-catalog:story",
+          |      "title": "P10 Catalog Story",
+          |      "definition_text": "A source-qualified SimpleModeling catalog term.",
+          |      "term_type": "concept"
+          |    }
+          |  ]
+          |}""".stripMargin,
+      "p10-catalog-knowledgehub/metadata/cncf/knowledge-source.json" ->
+        """{
+          |  "schemaVersion": "cncf.knowledge-source.v1",
+          |  "resources": [
+          |    {"kind": "glossary-terms", "href": "metadata/glossary/terms.json"}
+          |  ]
+          |}""".stripMargin,
+      "p10-catalog-knowledgehub/metadata/glossary/terms.json" ->
+        """{
+          |  "terms": [
+          |    {
+          |      "id": "p10-catalog:embedding",
+          |      "title": "P10 Catalog Embedding",
+          |      "definition_text": "A source-qualified KnowledgeHub catalog term.",
+          |      "term_type": "technology"
+          |    }
+          |  ]
+          |}""".stripMargin
+    ))
+    val resources = ResourceAccessTestProfile(textusUrnProviders = Vector(provider)).resourceAccess
+    ExecutionContext.withResourceAccess(ExecutionContext.create(), resources)
+  }
+
+  private def _two_source_catalog_configuration(
+    developmentsource: BokKnowledgeSource,
+    knowledgehubsource: BokKnowledgeSource
+  ): ResolvedConfiguration = {
+    def _binding_(profile: String, projectid: Option[String], source: BokKnowledgeSource): ConfigurationValue = {
+      val project = projectid.map(value => Map("projectId" -> ConfigurationValue.StringValue(value))).getOrElse(Map.empty)
+      ConfigurationValue.ObjectValue(Map(
+        "profile" -> ConfigurationValue.StringValue(profile),
+        "source" -> ConfigurationValue.ObjectValue(Map(
+          "sourceId" -> ConfigurationValue.StringValue(source.sourceId.value),
+          "datasetId" -> ConfigurationValue.StringValue(source.datasetId.value),
+          "generation" -> ConfigurationValue.StringValue(source.generation.value),
+          "resource" -> ConfigurationValue.StringValue(source.resource.value)
+        )),
+        "evidence" -> ConfigurationValue.ObjectValue(Map(
+          "uri" -> ConfigurationValue.StringValue(s"https://evidence.example/${source.sourceId.value}"),
+          "sourceId" -> ConfigurationValue.StringValue(source.sourceId.value)
+        ))
+      ) ++ project)
+    }
+    val registry = ConfigurationValue.ObjectValue(Map(
+      "profiles" -> ConfigurationValue.ListValue(List(
+        _binding_("development", None, developmentsource),
+        _binding_("project", Some("knowledgehub"), knowledgehubsource)
+      )),
+      "catalogs" -> ConfigurationValue.ListValue(List(ConfigurationValue.ObjectValue(Map(
+        "catalogId" -> ConfigurationValue.StringValue("documentation"),
+        "members" -> ConfigurationValue.ListValue(List(
+          ConfigurationValue.StringValue("development"),
+          ConfigurationValue.StringValue("project:knowledgehub")
+        ))
+      ))))
+    ))
+    val textus = ConfigurationValue.ObjectValue(Map(
+      "bok" -> ConfigurationValue.ObjectValue(Map(
+        "profile-registry" -> registry,
+        "knowledge-backend" -> ConfigurationValue.ObjectValue(Map(
+          "backend" -> ConfigurationValue.StringValue("memory")
+        ))
+      ))
+    ))
+    ResolvedConfiguration(Configuration(Map("textus" -> textus)), ConfigurationTrace.empty)
+  }
+
   private def _replace(
     component: Component,
     context: ExecutionContext,
@@ -400,6 +567,37 @@ final class BokMcpProjectionSpec extends AnyWordSpec with Matchers with GivenWhe
       s"""{"jsonrpc":"2.0","id":"resident-catalog-search","method":"tools/call","params":{"name":"org.simplemodeling.textus.Bok.BokRetrieval.searchTerms","arguments":{"query":"$query","limit":1}}}""",
       Some(McpProtocolRevision.PREFERRED.print)
     ).responseBody.getOrElse(fail("MCP search outcome has no JSON response body"))
+  }
+
+  private def _mcp_explain_term(adapter: McpJsonRpcAdapter, term: String): Json = {
+    val response = adapter.handle(
+      s"""{"jsonrpc":"2.0","id":"catalog-$term","method":"tools/call","params":{"name":"org.simplemodeling.textus.Bok.BokRetrieval.explainTerm","arguments":{"term":"$term","profile":"catalog","catalogId":"documentation"}}}""",
+      Some(McpProtocolRevision.PREFERRED.print)
+    ).responseBody.getOrElse(fail("MCP catalog explanation has no JSON response body"))
+    val text = response.hcursor.downField("result").downField("content").downN(0).get[String]("text")
+      .getOrElse(fail("MCP catalog explanation has no JSON text content"))
+    parse(text).fold(error => fail(s"MCP catalog explanation has malformed JSON: ${error.getMessage}"), identity)
+  }
+
+  private def _catalog_selection_members(response: Json): Vector[(String, String, String, String, String)] = {
+    val selection = response.hcursor.downField("selection")
+    selection.downField("datasetId").focus shouldBe None
+    selection.downField("dataset_id").focus shouldBe None
+    selection.downField("sourceId").focus shouldBe None
+    selection.downField("source_id").focus shouldBe None
+    selection.downField("generation").focus shouldBe None
+    selection.downField("evidence").focus shouldBe None
+    selection.downField("members").focus.flatMap(_.asArray).getOrElse(Vector.empty).map { member =>
+      val cursor = member.hcursor
+      val evidence = cursor.downField("evidence")
+      (
+        cursor.get[String]("source_id").getOrElse(fail("Catalog member has no source_id")),
+        cursor.get[String]("dataset_id").getOrElse(fail("Catalog member has no dataset_id")),
+        cursor.get[String]("generation").getOrElse(fail("Catalog member has no generation")),
+        evidence.get[String]("uri").getOrElse(fail("Catalog member has no evidence uri")),
+        evidence.get[String]("source_id").getOrElse(fail("Catalog member has no evidence source_id"))
+      )
+    }
   }
 
   private def _record(response: OperationResponse): Record =

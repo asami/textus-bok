@@ -1,4 +1,4 @@
-# textus-bok-managed-profile-config: v1
+# textus-bok-managed-two-source-acceptance-config: v1
 # This private configuration binds explicitly accepted local website.d sources.
 # Do not replace it with the single-profile development writer: it would remove
 # the explicit KnowledgeHub project binding below.
@@ -34,7 +34,6 @@ textus.bok.bootstrap:
   profiles:
     - development
     - project:knowledgehub
-textus.sie:
-  rdf-db: in-memory
-  vector-db: in-memory
+textus.bok.knowledge-backend:
+  backend: memory
 textus.resource.url.file.roots: "/Users/asami/src/dev2025/simplemodeling-org/website.d,/Users/asami/src/Project2026/bok-knowledgehub/website.d"

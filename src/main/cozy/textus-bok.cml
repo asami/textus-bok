@@ -17,7 +17,7 @@ BoK terminology and CAR/SAR existence knowledge component.
 - spi-direction :: requires
 - spi-component-api :: org.simplemodeling.textus.semanticintegration.api.SemanticIntegrationFederationApi
 - spi-multiplicity :: "*"
-- spi-required :: true
+- spi-required :: false
 
 ### COMPONENTLET
 

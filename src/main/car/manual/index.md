@@ -148,6 +148,15 @@ static preparation is not a live runtime result. The Phase 7.4 release gate
 must execute the lifecycle and record live evidence before claiming a
 representative SAR pass.
 
+The bounded Phase 10.1 two-source acceptance is separately specified by the
+two-source acceptance contract.
+It verifies the resident memory path with SIE, BoK, and Scraper as sibling
+CARs plus local user security. SIE supplies the typed optional federation API
+at the CAR/SAR boundary, while Scraper joins only as SIE's required sibling
+dependency. Neither is embedded in BoK or selected as the BoK knowledge
+backend; Scraper is not a catalog source, catalog member, MCP capability, or
+external source access path.
+
 ## Failures And Limits
 
 - Invalid manifests, unsafe child references, unsupported schemas, and
